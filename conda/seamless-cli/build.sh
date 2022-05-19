@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u -e -x
 
-comdir=../../docker/commands
+comdir=../../seamless-cli
 docdir=$comdir/doc
 cd $RECIPE_DIR
 

@@ -4,8 +4,8 @@ seamless.code-workspace
 /build/
 /dist/
 **/build/*.1
-/docker/commands/doc/man/seamless-buffer-cache.zip
-/docker/commands/doc/man/seamless-result-cache.dat
+/seamless-cli/doc/man/seamless-buffer-cache.zip
+/seamless-cli/doc/man/seamless-result-cache.dat
 *.egg-info/
 *.*~
 */__pycache__/
