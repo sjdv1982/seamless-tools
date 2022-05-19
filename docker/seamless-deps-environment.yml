@@ -1,7 +1,5 @@
 channels:
-  - rpbs
   - conda-forge
-  - defaults
 dependencies:
   - python=3.8
   - pip
@@ -33,7 +31,7 @@ dependencies:
   - commentjson==0.9.*
   - jupyter-server-proxy==3.1.0
   - aiofiles==0.8.*
-  - silk
+  - rpbs::silk
   - pip:
     - nglview==2.7
     - snakemake==5.5

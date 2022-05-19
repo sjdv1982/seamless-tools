@@ -10,9 +10,11 @@ Building the package requires the *seamless* conda environment to be activated.
 - The Dockerfile to build the rpbs/seamless Docker image.
   This file installs the seamless-framework conda package on top of 
   the rpbs/seamless-deps Docker image, and adds the
-  Seamless scripts directory
+  scripts and tools directories from here.
+  The Seamless examples and tests are also bundled.
 
-- The Dockerfile for the rpbs/seamless-deps Docker image. This installs the dependencies of
-  Seamless on top of the Jupyter notebook+scipy Docker image.
+- The Dockerfile for the rpbs/seamless-deps Docker image. 
+  This installs the dependencies of Seamless on top of the Jupyter notebook+scipy Docker image.
+  Solving the conda environment typically takes 5 minutes.
 
 -
