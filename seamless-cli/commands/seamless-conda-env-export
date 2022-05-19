@@ -18,7 +18,7 @@ docker run \
   rpbs/seamless-minimal \
   bash -c 'conda env create --prefix /SEAMLESS-CONDA-ENV --file /seamless-minimal/environment.yml'
 
-Echo 'Caching package lists...'
+echo 'Caching package lists...'
 
 docker run \
   --rm \
