@@ -104,6 +104,7 @@ def format_response(response, *, none_as_404=False):
 class DatabaseStore:
     def __init__(self, config):
         self.path = config["path"]
+        self.path = os.path.realpath(os.path.expanduser(self.path))
         assert os.path.exists(self.path)
         self.readonly = config["readonly"]
         if not self.readonly:
