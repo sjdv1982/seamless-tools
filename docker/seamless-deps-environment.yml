@@ -14,7 +14,7 @@ dependencies:
   - aiohttp==3.7.*
   - multidict==4.7.*
   - wurlitzer==2.0.*
-  - yarl==1.4.*
+  - yarl==1.7.*
   - pandas==1.2.*
   - IPython==7.23.*
   - notebook==6.4.*
