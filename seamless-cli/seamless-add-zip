@@ -10,9 +10,13 @@ set -u -e
 # - Current directory is mounted to /cwd, and the command is executed there
 
 zipfile_dir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $1`
-zipfile_name=${1##*/}
+if [[ "$zipfile_dir" =~ ^/home/jovyan/.* ]]; then
+  zipfile_name=$1
+else
+  zipfile_name=${1##*/}
 
-cd ${zipfile_dir}
+  cd ${zipfile_dir}
+fi
 
 docker run --rm \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL \
