@@ -1,4 +1,4 @@
-FROM rpbs/seamless-deps
+FROM rpbs/seamless-deps:0.8
 LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 LABEL version="0.8"
 USER root
