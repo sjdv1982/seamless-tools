@@ -1,0 +1,37 @@
+websockets==8.1.*
+ruamel.yaml==0.16.*
+numpy>=1.17.*
+psutil==5.8.*
+requests==2.22.*
+expandvars
+
+############################################
+# Additional dependencies
+############################################
+
+# - silk (install with "conda -c rpbs -c conda-forge silk")
+
+## For (type=="bashdocker" and backend=="shell")
+# - Install Docker
+# - docker==3.7.* with pip
+
+## For sub_backend=="singularity"
+# - Install Singularity.
+
+## For (type=="generic" and backend=="shell" and sub_backend!="singularity")
+# - Install Docker
+# - pull the rpbs/seamless-minimal Docker image
+# - seamless-cli (install with Conda)
+
+## For (type=="generic" and sub_backend=="singularity")
+# - Build a .sif file from the rpbs/seamless-minimal Docker image
+#    See /seamless-cli-singularity/README.md for details
+# - Define ${SEAMLESS_TOOLS_DIR} (the seamless-tools git repo dir)
+#    if you are using the "[local/slurm]-with-generic-singularity.yaml" config file
+
+## For backend=="slurm"
+# - Install the slurm client
+
+## For (type=="bashdocker" and backend=="slurm" and sub_backend=="singularity")
+# - Build a .sif file for every docker_image used by your Transformers
+#   See the .yaml files in jobless/config for more details.
