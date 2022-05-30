@@ -5,6 +5,8 @@ set -e
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 source $currdir/seamless-fill-environment-variables
 
+export JUPYTER_ENABLE_LAB=${JUPYTER_ENABLE_LAB}
+
 set -u -e
 
 containerID=$(docker run --rm -d \
@@ -13,6 +15,7 @@ containerID=$(docker run --rm -d \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NAME \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL \
+  -e JUPYTER_ENABLE_LAB=${JUPYTER_ENABLE_LAB} \
   -e DOCKER_IMAGE=$SEAMLESS_DOCKER_IMAGE \
   -e HOSTCWD=`pwd` \
   -e SHARESERVER_ADDRESS=$SEAMLESS_SHARESERVER_ADDRESS \
