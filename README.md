@@ -86,7 +86,11 @@ You can use Seamless's generic `seamless-serve-graph` command together with jobl
 ```
 graph_dir=/home/jovyan/seamless-tests/highlevel
 seamless-add-zip $graph_dir/share-pdb.zip
-seamless-serve-graph $graph_dir//share-pdb.seamless --database --communion --ncores 0
+seamless-serve-graph $graph_dir/share-pdb.seamless --database --communion --ncores 0
 ```
 Then, open [http://localhost:5813/ctx/index.html]. 
 Use `seamless-serve-graph-interactive` to get an IPython shell instead.
+
+# FAIR server
+
+STUB
