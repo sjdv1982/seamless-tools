@@ -88,10 +88,21 @@ class JoblessServer:
         self.jobhandlers = []
         self.hard_canceled = set()
 
+    def get_new_peer_id(self, peer_id):
+        """Returns a new unused random instance ID"""
+        import random
+        if peer_id not in self.peers:
+            return peer_id
+        while 1:
+            instance = random.choice(range(1000, 10000))
+            peer_id0 = peer_id + "-" + str(instance)
+            if peer_id0 not in self.peers:
+                break
+        return peer_id0
+
     async def _listen_peer(self, websocket, peer_config):
         peer_id = peer_config["id"]
-        if peer_id in self.peers:
-            return
+        peer_id = self.get_new_peer_id(peer_id)
         if peer_config["protocol"] != list(self.PROTOCOL):
             print_warning("Protocol mismatch, peer '%s': %s, our protocol: %s" % (peer_config["id"], peer_config["protocol"], self.PROTOCOL))
             await websocket.send("Protocol mismatch: %s" % str(self.PROTOCOL))
