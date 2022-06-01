@@ -63,17 +63,16 @@ parser.add_argument(
 parser.add_argument("--ncores",type=int,default=None)
 
 parser.add_argument(
-    "--shares",
-    help="Share cells over the network as specified in the graph file(s)",
-    default=True,
-    type=bool
+    "--no-shares",
+    dest="no_shares",
+    help="Don't share cells over the network as specified in the graph file(s)",
+    action="store_true",
 )
 
 parser.add_argument(
     "--mounts",
     help="Mount cells on the file system as specified in the graph file(s)",
-    default=False,
-    type=bool
+    action="store_true",
 )
 
 parser.add_argument(
@@ -144,12 +143,13 @@ if args.communion:
 if args.ncores is not None:
     seamless.set_ncores(args.ncores)
 
-shareserver_address = env.get("SHARESERVER_ADDRESS")
-if shareserver_address is not None:
-    if shareserver_address == "HOSTNAME":
-        shareserver_address = subprocess.getoutput("hostname -I | awk '{print $1}'")
-    seamless.shareserver.DEFAULT_ADDRESS = shareserver_address
-    print("Setting shareserver address to: {}".format(shareserver_address))
+if not args.no_shares:
+    shareserver_address = env.get("SHARESERVER_ADDRESS")
+    if shareserver_address is not None:
+        if shareserver_address == "HOSTNAME":
+            shareserver_address = subprocess.getoutput("hostname -I | awk '{print $1}'")
+        seamless.shareserver.DEFAULT_ADDRESS = shareserver_address
+        print("Setting shareserver address to: {}".format(shareserver_address))
 
 import seamless.highlevel.stdlib
 
@@ -160,14 +160,14 @@ if args.database:
 from seamless.highlevel import load_graph, Context
 graph = json.load(args.graph)
 if args.zipfile is None and not args.add_zip:
-    ctx = load_graph(graph, mounts=args.mounts, shares=args.shares)
+    ctx = load_graph(graph, mounts=args.mounts, shares=(not args.no_shares))
 else:
     ctx = Context()
     if args.zipfile is not None:
         ctx.add_zip(args.zipfile)
     for zipf in args.add_zip:
         ctx.add_zip(zipf)
-    ctx.set_graph(graph, mounts=args.mounts, shares=args.shares)
+    ctx.set_graph(graph, mounts=args.mounts, shares=(not args.no_shares))
 ctx.translate()
 
 if args.status_graph:
