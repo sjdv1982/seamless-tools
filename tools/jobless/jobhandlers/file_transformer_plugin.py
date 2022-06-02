@@ -217,24 +217,24 @@ class FileTransformerPluginBase(TransformerPlugin):
             
             if filename is None or write_env: 
                 # we need the value. We have pin_buf already.
-                if json_value_only:
+                if json_buffer:
+                    if pin_buf[:1] == b'"' and pin_buf[-2:-1] == b'"':
+                        value = json.loads(pin_buf)
+                    elif pin_buf[-1:] != b'\n':
+                        value = json.loads(pin_buf)
+                    else:                        
+                        value = None
+                else:
                     if celltype in ("plain", "mixed", "int", "float", "bool", "str"):
                         value = json.loads(pin_buf)
                     elif celltype in ("text", "python", "ipython", "cson", "yaml", "checksum"):
                         value = pin_buf.decode()
                     else:
                         value = pin_buf
-                elif json_buffer:
-                    if pin_buf[:1] == b'"' and pin_buf[-2:-1] == b'"':
-                        value = json.loads(pin_buf)
-                    elif pin_buf[-1:] != b'\n':
-                        value = json.loads(pin_buf)
-                    else:
-                        value = None  # we can use the buffer directly
 
             env_value = None
             if write_env:
-                if value is None:
+                if value is None or isinstance(value, bytes):
                     if json_buffer:
                         env_value = json.loads(pin_buf.decode())
                     else:
@@ -293,7 +293,7 @@ def write_files(prepared_transformation, env, support_symlinks):
                     f.write(value)
             elif isinstance(value, str):
                 with open(pinfile, "w") as f:
-                    f.write(value)
+                    f.write(value.rstrip("\n"))
                     f.write("\n")
             else:
                 with open(pinfile, "w") as f:

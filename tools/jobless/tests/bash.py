@@ -1,6 +1,10 @@
 
 import os
 os.environ["SEAMLESS_COMMUNION_ID"] = "seamless"
+print("""Note: the final two tests assume that jobless is run in an 
+environment with Numpy available.
+Note that conda environments are not inherited from the shell that runs jobless!
+""")
 from seamless.highlevel import Context
 
 import seamless

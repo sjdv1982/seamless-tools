@@ -9,7 +9,7 @@ expandvars
 # Additional dependencies
 ############################################
 
-# - silk (install with "conda -c rpbs -c conda-forge silk")
+# - silk (install with "conda install -c rpbs -c conda-forge silk")
 
 ## For (type=="bashdocker" and backend=="shell")
 # - Install Docker

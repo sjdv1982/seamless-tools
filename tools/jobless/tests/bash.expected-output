@@ -1,3 +1,7 @@
+Note: the final two tests assume that jobless is run in an 
+environment with Numpy available.
+Note that conda environments are not inherited from the shell that runs jobless!
+
 INCOMING seamless jobless
 ADD SERVANT transformation
 a 
