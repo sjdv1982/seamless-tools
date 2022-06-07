@@ -27,10 +27,6 @@ def cache_buffer(checksum, buffer):
     buffer_cache_size += l
 
 async def read_buffer(checksum, filename):
-    hit = buffer_cache.get(checksum)
-    if hit is not None:
-        _, buffer = hit
-        return buffer
     if filename is None or not os.path.exists(filename):
         return None
     async with aiofiles.open(filename, "rb") as f:
@@ -326,6 +322,10 @@ class DatabaseServer:
             return None # None is also a valid response
 
         elif type == "buffer":
+            hit = buffer_cache.get(checksum)
+            if hit is not None:
+                _, buffer = hit
+                return buffer
             for store in self.stores:
                 filename = store._get_filename(checksum, as_external_path=False)
                 if filename is not None and os.path.exists(filename):
