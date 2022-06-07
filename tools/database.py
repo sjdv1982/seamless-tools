@@ -47,6 +47,8 @@ async def write_buffer(checksum, buffer, filename):
     cache_buffer(checksum, buffer)
 
 def delete_file(filename):
+    if filename is None:
+        return False
     try:
         os.remove(filename)
         return True
