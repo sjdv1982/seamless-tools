@@ -14,7 +14,7 @@ buffer_cache_size = 0
 buffer_cache_keys = deque()
 
 def cache_buffer(checksum, buffer):
-    global buffer_cache_size
+    global buffer_cache_size    
     l = len(buffer)
     if l > MAX_BUFFER_CACHE_SIZE:
         return
@@ -412,6 +412,7 @@ class DatabaseServer:
                         file_deleted = delete_file(filename)
                         if file_deleted:
                             deleted = True
+                        buffer_cache.pop(checksum, None)
                         continue
                     bucket = store.buckets[key_type]
                 except KeyError:
