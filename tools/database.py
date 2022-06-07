@@ -117,7 +117,7 @@ class DatabaseStore:
         self.buckets = {}
         for bucketname in bucketnames:
             subdir = os.path.abspath(os.path.join(self.path, bucketname))
-            bucket = TopBucket(subdir)
+            bucket = TopBucket(subdir, readonly=self.readonly)
             self.buckets[bucketname] = bucket
 
     def _get_filename(self, checksum, as_external_path):
