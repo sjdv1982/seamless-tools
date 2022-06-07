@@ -1,4 +1,3 @@
-from copy import deepcopy
 from aiohttp import web
 import aiofiles
 import os, sys, asyncio, json, socket
@@ -396,7 +395,8 @@ class DatabaseServer:
                 bucket = store.buckets["buffer_independence"]
                 bucket.set(checksum, independent)
                 filename = store._get_filename(checksum, as_external_path=False)
-                await write_buffer(checksum, value, filename)
+                if filename is not None:
+                    await write_buffer(checksum, value, filename)
 
         elif type == "delete_key":
             deleted = False
