@@ -1,5 +1,4 @@
 from copy import deepcopy
-import shutil
 from aiohttp import web
 import aiofiles
 import os, sys, asyncio, json, socket
@@ -9,8 +8,6 @@ from seamless.core.buffer_info import BufferInfo
 from collections import deque
 import gc
 import signal
-
-from sympy import O
 
 MAX_BUFFER_CACHE_SIZE = 5*1e8  # 500 million bytes
 buffer_cache = {}
