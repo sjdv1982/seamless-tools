@@ -128,8 +128,6 @@ class DatabaseStore:
             self.buckets[bucketname] = bucket
 
     def _get_filename(self, checksum, as_external_path):
-        if not self.serve_filenames:
-            return None
         if checksum is None:
             return None
         dir = self.external_path if as_external_path else self.path
