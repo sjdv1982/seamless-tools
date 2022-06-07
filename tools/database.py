@@ -1,4 +1,5 @@
 from copy import deepcopy
+import shutil
 from aiohttp import web
 import aiofiles
 import os, sys, asyncio, json, socket
@@ -8,6 +9,8 @@ from seamless.core.buffer_info import BufferInfo
 from collections import deque
 import gc
 import signal
+
+from sympy import O
 
 MAX_BUFFER_CACHE_SIZE = 5*1e8  # 500 million bytes
 buffer_cache = {}
@@ -47,6 +50,12 @@ async def write_buffer(checksum, buffer, filename):
         await f.write(buffer)
     cache_buffer(checksum, buffer)
 
+def delete_file(filename):
+    try:
+        os.remove(filename)
+        return True
+    except FileNotFoundError:
+        return False
 
 def err(*args, **kwargs):
     print("ERROR: " + args[0], *args[1:], **kwargs)
@@ -401,6 +410,12 @@ class DatabaseServer:
                     key_type = request["key_type"]
                     if key_type in ("transformation", "compilation"):
                         key_type += "s"
+                    if key_type == "buffer":
+                        filename = store._get_filename(checksum, as_external_path=False)
+                        file_deleted = delete_file(filename)
+                        if file_deleted:
+                            deleted = True
+                        continue
                     bucket = store.buckets[key_type]
                 except KeyError:
                     raise DatabaseError("Malformed SET delete key request: invalid key_type")
