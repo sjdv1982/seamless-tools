@@ -1,4 +1,3 @@
-from copy import deepcopy
 from aiohttp import web
 import aiofiles
 import os, sys, asyncio, json, socket
@@ -15,7 +14,7 @@ buffer_cache_size = 0
 buffer_cache_keys = deque()
 
 def cache_buffer(checksum, buffer):
-    global buffer_cache_size
+    global buffer_cache_size    
     l = len(buffer)
     if l > MAX_BUFFER_CACHE_SIZE:
         return
@@ -28,10 +27,6 @@ def cache_buffer(checksum, buffer):
     buffer_cache_size += l
 
 async def read_buffer(checksum, filename):
-    hit = buffer_cache.get(checksum)
-    if hit is not None:
-        _, buffer = hit
-        return buffer
     if filename is None or not os.path.exists(filename):
         return None
     async with aiofiles.open(filename, "rb") as f:
@@ -47,6 +42,14 @@ async def write_buffer(checksum, buffer, filename):
         await f.write(buffer)
     cache_buffer(checksum, buffer)
 
+def delete_file(filename):
+    if filename is None:
+        return False
+    try:
+        os.remove(filename)
+        return True
+    except FileNotFoundError:
+        return False
 
 def err(*args, **kwargs):
     print("ERROR: " + args[0], *args[1:], **kwargs)
@@ -117,12 +120,10 @@ class DatabaseStore:
         self.buckets = {}
         for bucketname in bucketnames:
             subdir = os.path.abspath(os.path.join(self.path, bucketname))
-            bucket = TopBucket(subdir)
+            bucket = TopBucket(subdir, readonly=self.readonly)
             self.buckets[bucketname] = bucket
 
     def _get_filename(self, checksum, as_external_path):
-        if not self.serve_filenames:
-            return None
         if checksum is None:
             return None
         dir = self.external_path if as_external_path else self.path
@@ -321,6 +322,10 @@ class DatabaseServer:
             return None # None is also a valid response
 
         elif type == "buffer":
+            hit = buffer_cache.get(checksum)
+            if hit is not None:
+                _, buffer = hit
+                return buffer
             for store in self.stores:
                 filename = store._get_filename(checksum, as_external_path=False)
                 if filename is not None and os.path.exists(filename):
@@ -390,7 +395,8 @@ class DatabaseServer:
                 bucket = store.buckets["buffer_independence"]
                 bucket.set(checksum, independent)
                 filename = store._get_filename(checksum, as_external_path=False)
-                await write_buffer(checksum, value, filename)
+                if filename is not None:
+                    await write_buffer(checksum, value, filename)
 
         elif type == "delete_key":
             deleted = False
@@ -401,6 +407,13 @@ class DatabaseServer:
                     key_type = request["key_type"]
                     if key_type in ("transformation", "compilation"):
                         key_type += "s"
+                    if key_type == "buffer":
+                        filename = store._get_filename(checksum, as_external_path=False)
+                        file_deleted = delete_file(filename)
+                        if file_deleted:
+                            deleted = True
+                        buffer_cache.pop(checksum, None)
+                        continue
                     bucket = store.buckets[key_type]
                 except KeyError:
                     raise DatabaseError("Malformed SET delete key request: invalid key_type")

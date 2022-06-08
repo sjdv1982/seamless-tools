@@ -91,9 +91,10 @@ def get_data(filename):
     return result
 
 class TopBucket:
-    def __init__(self, directory, max_size=MAX_BUCKET_SIZE):
+    def __init__(self, directory, readonly, *, max_size=MAX_BUCKET_SIZE):
         self.directory = directory
         self.max_size = max_size
+        self.readonly = readonly
         self._file = os.path.join(self.directory, "ALL")
         self.children = {}
         self._read_children()
@@ -112,6 +113,7 @@ class TopBucket:
             )
 
     def set(self, checksum, value):
+        assert not self.readonly
         try:
             checksum = parse_checksum(checksum)
         except ValueError:
@@ -147,6 +149,8 @@ class TopBucket:
 
     def get(self, checksum):
         if not self._dir_exist_validated:
+            if self.readonly:
+                return None
             if not os.path.exists(self.directory):
                 os.mkdir(self.directory)
             self._dir_exist_validated = True
