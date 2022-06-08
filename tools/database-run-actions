@@ -436,8 +436,9 @@ for root, dirnames, filenames in sorted(os.walk(dirpath, followlinks=False)):
             continue
         entry = os.path.join(root[len(dirpath):], filename).lstrip("/")
         try:
-            inode = str(os.stat(filepath, follow_symlinks=False).st_ino)
-            mtime = str(os.stat(filepath, follow_symlinks=False).st_mtime)
+            stat = os.stat(filepath, follow_symlinks=False)
+            inode = str(stat.st_ino)
+            mtime = str(stat.st_mtime)
         except OSError:
             report("Error in {}".format(filepath))
             continue
