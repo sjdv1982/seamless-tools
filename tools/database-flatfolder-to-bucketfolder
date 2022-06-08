@@ -9,7 +9,7 @@ from database_bucket import TopBucket
 assert target_bucket in bucketnames, target_bucket
 target_directory = os.path.abspath(os.path.join(target_db_directory, target_bucket))
 assert target_directory != source_directory, source_directory
-bucket = TopBucket(target_directory)
+bucket = TopBucket(target_directory, readonly=False)
 for fnr, filename in enumerate(glob.glob(source_directory + "/*")):
     checksum = os.path.split(filename)[1]
     with open(filename) as f:
