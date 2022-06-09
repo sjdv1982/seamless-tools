@@ -6,6 +6,8 @@ class CommunionError(Exception):
 
 import logging
 logger = logging.getLogger("jobless")
+#logging.basicConfig()
+#logger.setLevel(logging.DEBUG)
 
 def print_info(*args):
     msg = " ".join([str(arg) for arg in args])
@@ -183,10 +185,27 @@ class JoblessServer:
                     result = 0, "HardCancelError"
                 else:
                     peer_id = self.rev_peers[peer]  # TODO: check that peer_id actually submitted?
+                    found = False
                     if checksum in self.transformations:
+                        found = True
                         jobhandler = self.transformations[checksum]
                         result = jobhandler.get_status(checksum)
-                    else:
+                        if result[0] == 3:
+                            result_checksum = bytes.fromhex(result[1])
+                            has_buffer = database_client.has_buffer(result_checksum)
+                            if not has_buffer:
+                                jobhandler.forget(checksum)
+                                self.transformations.pop(checksum)
+                                peers = self.transformation_peers.pop(checksum, [])
+                                for peer0 in peers:
+                                    try:
+                                        self.peer_transformations[peer0].remove(checksum)
+                                    except KeyError:
+                                        pass
+                                self.transformation_births.pop(checksum, None)
+
+                                found = False
+                    if not found:
                         transformation_buffer = database_client.get_buffer(checksum)
                         if transformation_buffer is None:
                             result = -3, None
@@ -270,7 +289,7 @@ class JoblessServer:
             if error:
                 response["error"] = True
             msg = communion_encode(response)
-            assert isinstance(msg, bytes)
+            assert isinstance(msg, bytes)            
             try:
                 peer_id = self.rev_peers[peer]
                 print_info("  Communion response: send %d bytes to peer '%s' (#%d)" % (len(msg), peer_id, response["id"]))

@@ -14,7 +14,8 @@ Jobs are submitted by checksum. There is also a job status API, which can return
     1: Job is runnable. None is returned.
     2: Job is running; progress and preliminary checksum are returned, i.e. "return 2, progress, prelim"
     3: Job result is known; job result checksum is returned, i.e. "return 3, job_checksum"
-
+       NOTE: jobless will then check if the buffer is then actually available from seamless database.
+       If not, jobless will invoke Backend.forget(...)
 """
 
 import asyncio
@@ -143,6 +144,12 @@ class Backend:
         To be implemented by backend.
         """
         raise NotImplementedError
+
+    def forget(self, checksum):
+        assert checksum in self.results
+        self.results.pop(checksum)
+        self.identifiers.pop(checksum, None)
+        self.transformations.pop(checksum, None)
 
     def cancel_transformation(self, checksum):
         identifier = self.identifiers.pop(checksum)
