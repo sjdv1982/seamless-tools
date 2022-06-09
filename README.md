@@ -63,6 +63,9 @@ First, delete the database and launch jobless.
 
 These are available in `jobless/tests`. They use the Transformer.docker_image values "ubuntu", "rpbs/seamless" and "rpbs/autodock". Make sure that these are available as Docker or Singularity images in the place where the jobs will be run.
 
+If you have run the tests before, you should clean the database first,
+see README.txt in the test dir.
+
 Launch a shell in a Seamless container with `seamless-bash`
 
 Run the tests `bash.py`, `docker_.py` and `autodock.py` with python3.

@@ -12,8 +12,11 @@ communion_server.configure_master(
     transformation_status=True,
 )
 
+db_loghandle = open("jobless-test-dblog.txt", "a")
 seamless.database_sink.connect()
+seamless.database_sink.set_log(db_loghandle)
 seamless.database_cache.connect()
+seamless.database_cache.set_log(db_loghandle)
 communion_server.start()
 
 def count_atoms(pdbdata):
