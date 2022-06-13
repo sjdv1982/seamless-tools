@@ -53,7 +53,7 @@ if [ -z "$SEAMLESS_SHARESERVER_ADDRESS" ]; then
 fi
 
 if [ -z "$SEAMLESS_BUFFER_SERVERS" ]; then
-  export SEAMLESS_BUFFER_SERVERS='buffer.rpbs.univ-paris-diderot.fr'
+  export SEAMLESS_BUFFER_SERVERS='https://buffer.rpbs.univ-paris-diderot.fr'
 fi
 
 if [ -z "$SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK" ]; then
