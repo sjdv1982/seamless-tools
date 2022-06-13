@@ -355,14 +355,12 @@ for job in dag.jobs:
     tf = Transformer(pins=pins)
     setattr(ctx.jobs, jobname, tf)
 
+    tf.language = "bash"
     docker_image = job.singularity_img_url
     if docker_image is not None:
         if not docker_image.startswith("docker://"):
             raise Exception("Docker image '%s' (rule %s) does not start with docker://" % (docker_image, rule.name))
-        tf.language = "docker"
         tf.docker_image = docker_image[len("docker://"):]
-    else:
-        tf.language = "bash"
     tf.code = getattr(ctx.rules, rule.name)
 
     if not len(job.input.keys()):
@@ -397,7 +395,7 @@ for job in dag.jobs:
 
     for k,v in inputs.items():
         kk = getattr(indummies,k)
-        inp = getattr(fs, v)
+        inp = getattr(fs, v, None)
         if not isinstance(inp, Cell):
             inp = Cell()
             setattr(fs, v, inp)
