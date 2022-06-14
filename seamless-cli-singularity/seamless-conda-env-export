@@ -28,4 +28,6 @@ singularity run \
   --home $HOMEDIR \
   $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i 'conda activate; conda activate /SEAMLESS-CONDA-ENV; mamba repoquery search conda -c conda-forge -c main'
 
+chmod -R a+r $CONDA_ENV_OUTPUT_DIR
+
 rm -rf $HOMEDIR
