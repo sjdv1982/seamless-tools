@@ -101,7 +101,7 @@ jobhandlers:
   # - on the SLURM cluster UNDER THE SAME NAME
   temp_conda_env_directory: /tmp/JOBLESS-CONDA-ENV 
   
-  temp_conda_env_lifetime: 3600
+  temp_conda_env_lifetime: 3600  # TODO: implement
 
   # make sure this file exists on the SLURM cluster
   singularity_image_file: ~/seamless-minimal.sif  

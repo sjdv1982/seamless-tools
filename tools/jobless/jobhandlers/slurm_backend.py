@@ -300,7 +300,7 @@ class SlurmGenericSingularityBackend(SlurmSingularityBackend):
         cmd = [            
             self.CONDA_ENV_RUN_TRANSFORMATION_COMMAND,
         ]
-        d = prepared_transformation["temp_conda_env_dir"]
+        d = prepared_transformation["temp_conda_env_directory"]
         checksum = prepared_transformation["__checksum__"]
         cmd.append(d)
         cmd.append(checksum)
