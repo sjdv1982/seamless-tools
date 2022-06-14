@@ -10,6 +10,7 @@ seamless-conda-env-modify
 seamless-conda-env-bash
 seamless-conda-env-run-transformation
 seamless-database
+seamless-delete-database-from-log
 seamless-http-put
 seamless-ipython
 seamless-ipython-no-shareserver

@@ -7,4 +7,5 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
    $(lsb_release -cs) \
    stable" && sudo apt update && sudo apt install -y docker-ce-cli
 COPY docker/seamless-deps-environment.yml seamless-deps-environment.yml
-RUN conda config --set channel_priority strict && conda env update --name base --file seamless-deps-environment.yml
+RUN conda config --set channel_priority strict && sed -i -e "1d" /opt/conda/conda-meta/pinned && conda env update --name base --file seamless-deps-environment.yml
+RUN chown -R jovyan /opt/conda
