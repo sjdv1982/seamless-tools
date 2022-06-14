@@ -25,7 +25,7 @@ class GenericBackend(Backend):
     def _run(self, checksum, transformation, prepared_transformation):    
         checksum = parse_checksum(checksum)
         cmd = [self.CONDA_ENV_RUN_TRANSFORMATION_COMMAND]
-        d = prepared_transformation["temp_conda_env_dir"]
+        d = prepared_transformation["temp_conda_env_directory"]
         cmd.append(d)
         cmd.append(checksum)
         filezones = prepared_transformation["filezones"]
