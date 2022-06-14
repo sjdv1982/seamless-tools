@@ -15,12 +15,12 @@ mkdir -p $CONDA_ENV_OUTPUT_DIR
 HOMEDIR=$(mktemp -d /tmp/temphome-XXXXXXXXXX)
 cp $currdir/dummy-bashrc $HOMEDIR/.bashrc
 
- singularity run \
+singularity run \
    --cleanenv \
    --containall \
    --bind $CONDA_ENV_OUTPUT_DIR:/SEAMLESS-CONDA-ENV:rw \
    --home $HOMEDIR \
-   $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i 'conda activate; cp /seamless-minimal/environment.yml /tmp; conda env create --prefix /SEAMLESS-CONDA-ENV --file /tmp/environment.yml'
+   $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i 'conda activate; cp /seamless-minimal/environment.yml /tmp; export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV; conda env create --prefix /SEAMLESS-CONDA-ENV --file /tmp/environment.yml'
 
 singularity run \
   --cleanenv \
