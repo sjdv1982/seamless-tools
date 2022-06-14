@@ -161,7 +161,7 @@ Generic transformer error
             "__checksum__": checksum.hex(),
             "__generic__": True,
             "conda_env": conda_env,
-            "temp_conda_env_dir": d,
+            "temp_conda_env_directory": d,
             "filezones": self.filezones
         }
 
