@@ -15,6 +15,8 @@ mkdir -p $CONDA_ENV_OUTPUT_DIR
 HOMEDIR=$(mktemp -d /tmp/temphome-XXXXXXXXXX)
 cp $currdir/dummy-bashrc $HOMEDIR/.bashrc
 
+set -u +e
+
 singularity run \
    --cleanenv \
    --containall \
