@@ -235,7 +235,7 @@ class JoblessServer:
                 if transformation_buffer is None:
                     raise ValueError("Unknown transformation checksum %s" % checksum.hex())
                 transformation = json.loads(transformation_buffer)
-                result = self.run_transformation(checksum, transformation, peer_id)
+                result = await self.run_transformation(checksum, transformation, peer_id)
                 return
 
             elif type == "transformation_wait":
@@ -300,12 +300,12 @@ class JoblessServer:
                 await peer.send(msg)
 
 
-    def run_transformation(self, checksum, transformation, peer_id):
+    async def run_transformation(self, checksum, transformation, peer_id):
         # For now, just 1 or -1
         for jobhandler in self.jobhandlers:
             result = jobhandler.can_accept_transformation(checksum, transformation)
             if result == 1:
-                jobhandler.run_transformation(checksum, transformation)
+                await jobhandler.run_transformation(checksum, transformation)
                 self.transformations[checksum] = jobhandler
                 self.transformation_births[checksum] = time.time()
                 self.transformation_peers[checksum] = set([peer_id])

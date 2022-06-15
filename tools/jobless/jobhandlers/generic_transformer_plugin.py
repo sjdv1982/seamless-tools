@@ -7,6 +7,7 @@ import shutil
 import copy
 import time
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import tempfile
 
@@ -88,14 +89,23 @@ class GenericTransformerPlugin(TransformerPlugin):
                 self.conda_env_last_used.pop(conda_env)
             await asyncio.sleep(2)
 
-    def _create_conda_env(self, conda_env, conda_buf):
+    async def _create_conda_env(self, conda_env, conda_buf):
         d = self._get_temp_conda_env_dir(conda_env)
         if not os.path.exists(d):
 
-            # does not work...
-            #shutil.copytree(self.exported_conda_env_directory, d, ignore_dangling_symlinks=True)
-            os.system("cp -r {} {}".format(self.exported_conda_env_directory, d))
-            
+            def clone():
+                print("conda env clone default environment: {} => {}".format(self.exported_conda_env_directory, d))
+                # does not work...
+                #shutil.copytree(self.exported_conda_env_directory, d, ignore_dangling_symlinks=True)
+                os.system("cp -r {} {}".format(self.exported_conda_env_directory, d))
+
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as executor:
+                await loop.run_in_executor(
+                    executor,
+                    clone,
+                )
+
             if conda_env is not None:
                 with tempfile.NamedTemporaryFile(suffix=".yml") as f:
                     f.write(conda_buf.encode())
@@ -105,19 +115,35 @@ class GenericTransformerPlugin(TransformerPlugin):
                     cmd = [self.CONDA_ENV_MODIFY_COMMAND, d, f.name]
                     cmd2 = " ".join(cmd)  
                     print("conda env modify command:", cmd2)               
+                    #subprocess.run(cmd2, shell=True, env=env)
+                    # except subprocess.CalledProcessError as exc:
+                    #     stdout = exc.stdout
+                    #     try:
+                    #         stdout = stdout.decode()
+                    #     except:
+                    #         pass
+                    #     stderr = exc.stderr
+                    #     try:
+                    #         stderr = stderr.decode()
+                    #     except:
+                    #         pass
+
+                    proc = await asyncio.create_subprocess_shell(
+                        cmd2, env=env,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, stderr = await proc.communicate()                        
                     try:
-                        subprocess.run(cmd2, shell=True, env=env)
-                    except subprocess.CalledProcessError as exc:
-                        stdout = exc.stdout
-                        try:
-                            stdout = stdout.decode()
-                        except:
-                            pass
-                        stderr = exc.stderr
-                        try:
-                            stderr = stderr.decode()
-                        except:
-                            pass
+                        stdout = stdout.decode()
+                    except Exception:
+                        stdout = "<Binary>"
+                    try:
+                        stderr = stderr.decode()
+                    except Exception:
+                        stderr = "<Binary>"
+
+                    if proc.returncode:
                         raise SeamlessTransformationError("""
 Generic transformer error
 ==========================
@@ -140,11 +166,13 @@ Generic transformer error
 {}
 *************************************************
 """.format(cmd2, stdout, stderr)) from None
-
+                    else:
+                        print(stdout)
+                        print(stderr)
         self.conda_env_last_used[conda_env] = time.time()
         self.conda_env_to_transformations[conda_env] = []
 
-    def prepare_transformation(self, checksum, transformation):
+    async def prepare_transformation(self, checksum, transformation):
         conda_env = None
         conda_buf = None
         if "__env__" in transformation:
@@ -154,8 +182,15 @@ Generic transformer error
             if conda is not None:
                 conda_buf = json.dumps(conda, sort_keys=True, indent=2)
                 conda_env = calculate_checksum(conda_buf, hex=True)
+        conda_env_exists = True
         if conda_env not in self.conda_env_last_used:
-            self._create_conda_env(conda_env, conda_buf)
+            conda_env_exists = False
+        else:
+            d = self._get_temp_conda_env_dir(conda_env)
+            if not os.path.exists(d):
+                conda_env_exists = False
+        if not conda_env_exists:
+            await self._create_conda_env(conda_env, conda_buf)
         d = self._get_temp_conda_env_dir(conda_env)
         return {
             "__checksum__": checksum.hex(),

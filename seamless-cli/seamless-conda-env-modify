@@ -17,4 +17,8 @@ docker run \
   -v $CONDA_ENV_DIR:/SEAMLESS-CONDA-ENV \
   -v $yaml:$yaml \
   rpbs/seamless-minimal \
-  bash -i -c 'echo "conda activate /SEAMLESS-CONDA-ENV" >> /.bashrc; bash -c -i "mamba env update --file $yaml"'
+  bash -i -c '''
+  echo "conda activate /SEAMLESS-CONDA-ENV" >> /.bashrc
+  echo "export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV" >> /.bashrc
+  bash -c -i "mamba env update --file $yaml"
+  '''
