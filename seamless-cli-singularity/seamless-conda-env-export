@@ -15,20 +15,29 @@ mkdir -p $CONDA_ENV_OUTPUT_DIR
 HOMEDIR=$(mktemp -d /tmp/temphome-XXXXXXXXXX)
 cp $currdir/dummy-bashrc $HOMEDIR/.bashrc
 
-set -u +e
-
 singularity run \
    --cleanenv \
    --containall \
    --bind $CONDA_ENV_OUTPUT_DIR:/SEAMLESS-CONDA-ENV:rw \
    --home $HOMEDIR \
-   $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i 'conda activate; cp /seamless-minimal/environment.yml /tmp; export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV; conda env create --prefix /SEAMLESS-CONDA-ENV --file /tmp/environment.yml'
+   $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i '''
+   conda activate
+   cp /seamless-minimal/environment.yml /tmp
+   export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV
+   conda env create --prefix /SEAMLESS-CONDA-ENV --file /tmp/environment.yml || exit 1
+   '''
 
 singularity run \
   --cleanenv \
+  --containall \
   --bind $CONDA_ENV_OUTPUT_DIR:/SEAMLESS-CONDA-ENV:rw \
   --home $HOMEDIR \
-  $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i 'conda activate; conda activate /SEAMLESS-CONDA-ENV; mamba repoquery search conda -c conda-forge -c main'
+  --bind /tmp:/tmp \
+  $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i '''
+  conda activate; conda activate /SEAMLESS-CONDA-ENV 
+  export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV
+  mamba repoquery search conda -c conda-forge -c main
+  '''
 
 chmod -R a+r $CONDA_ENV_OUTPUT_DIR
 

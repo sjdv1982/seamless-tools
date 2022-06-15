@@ -35,6 +35,7 @@ cp $currdir/dummy-bashrc $HOMEDIR/.bashrc
 
 singularity run \
   --cleanenv \
+  --containall \
   --env DOCKER_IMAGE=$SEAMLESS_DOCKER_IMAGE \
   --env SEAMLESS_DOCKER_HOST_IP=localhost \
   --env SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
