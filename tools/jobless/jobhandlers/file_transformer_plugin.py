@@ -99,7 +99,7 @@ class FileTransformerPluginBase(TransformerPlugin):
                     return False
         return True
 
-    def prepare_transformation(self, checksum, transformation):
+    async def prepare_transformation(self, checksum, transformation):
         tdict = {"__checksum__": checksum.hex()}
         if "__env__" in transformation:
             env_buf = self.database_client.get_buffer(transformation["__env__"])

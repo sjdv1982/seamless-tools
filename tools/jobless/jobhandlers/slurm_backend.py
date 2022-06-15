@@ -68,7 +68,7 @@ class SlurmBackend(Backend):
             coro = get_error()
             jobid = None
             os.chdir(old_cwd)
-            shutil.rmtree(tempdir, ignore_errors=True)
+            ###shutil.rmtree(tempdir, ignore_errors=True)
         finally:
             os.chdir(old_cwd)
 
@@ -188,7 +188,7 @@ async def await_job(jobname, identifier, code, tftype, tempdir, polling_interval
             result = parse_resultfile(resultfile)
     finally:
         os.chdir(old_cwd)
-        shutil.rmtree(tempdir, ignore_errors=True)
+        ###shutil.rmtree(tempdir, ignore_errors=True)
 
     error_msg = None
     if exit_code > 0:

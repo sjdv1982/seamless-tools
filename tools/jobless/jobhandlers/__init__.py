@@ -34,7 +34,7 @@ class TransformerPlugin:
         # To be implemented by backend.
         raise NotImplementedError
 
-    def prepare_transformation(self, checksum, transformation):
+    async def prepare_transformation(self, checksum, transformation):
         # To be implemented by backend.
         raise NotImplementedError
 
@@ -93,8 +93,8 @@ class Backend:
         """
         raise NotImplementedError
 
-    def run_transformation(self, checksum, transformation):
-        prepared_transformation = self.prepare_transformation(checksum, transformation)
+    async def run_transformation(self, checksum, transformation):
+        prepared_transformation = await self.prepare_transformation(checksum, transformation)
         awaitable, identifier = self.launch_transformation(checksum, transformation, prepared_transformation)
         future = asyncio.ensure_future(awaitable)
         future.add_done_callback(partial(self.transformation_finished, checksum))

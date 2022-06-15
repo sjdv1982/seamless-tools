@@ -59,7 +59,7 @@ class ShellBackend(Backend):
         finally:
             kill_children()
             os.chdir(old_cwd)
-            shutil.rmtree(tempdir, ignore_errors=True)
+            ###shutil.rmtree(tempdir, ignore_errors=True)
 
 
     def launch_transformation(self, checksum, transformation, prepared_transformation):

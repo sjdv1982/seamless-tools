@@ -93,8 +93,8 @@ Generic transformer error
         )
 
 
-    def run_transformation(self, checksum, transformation):
-        super().run_transformation(checksum, transformation)
+    async def run_transformation(self, checksum, transformation):
+        await super().run_transformation(checksum, transformation)
         future = self.transformations[checksum] 
         future.add_done_callback(partial(self.transformation_finished2, checksum))
 
