@@ -1,1 +1,1 @@
-docker build . -t rpbs/seamless
+docker build . -t rpbs/seamless --no-cache
