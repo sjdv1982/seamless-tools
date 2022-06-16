@@ -100,5 +100,6 @@ jobhandlers:
 
   ## only for sub_backend=singularity
   ## Command to execute a Singularity image
+  # NOTE: with Slurm and type=bashdocker, don't use --cleanenv
 
   # singularity_exec: 'singularity exec'
