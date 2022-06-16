@@ -6,6 +6,7 @@ import time
 from functools import partial
 import subprocess
 import sys, os
+import asyncio
 
 class GenericBackend(Backend):
 
@@ -98,6 +99,12 @@ Generic transformer error
         future = self.transformations[checksum] 
         future.add_done_callback(partial(self.transformation_finished2, checksum))
 
+
+    def cancel_job(self, checksum, identifier):
+        if checksum in self.coros:
+            coro = self.coros.pop(checksum)
+            task = asyncio.ensure_future(coro)
+            task.cancel()
 
 class GenericSingularityBackend(GenericBackend):
     SINGULARITY_IMAGE_FILE = None # to be defined by jobless
