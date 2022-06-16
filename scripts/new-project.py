@@ -144,11 +144,20 @@ async def load_communion():
     #
     # These are passed into the Seamless Docker container when you run 
     #  seamless-load-project, seamless-jupyter, etc.
-    # Seamless provides default values for these environment variables
-    # These defaults will try to connect to jobless.
+    # If these environment variables are not defined, 
+    # Seamless provides default values for them.
+    # These default values will try to connect to jobless.
     # 
     # Then, uncomment the following lines:
     #
+    # seamless.communion_server.configure_master({
+    #     "buffer": True,
+    #     "buffer_status": True,
+    #     "buffer_info": True,
+    #     "transformation_job": True,
+    #     "transformation_status": True,
+    #     "semantic_to_syntactic": True,
+    # })
     # await seamless.communion_server.start_async()
     # npeers = len(seamless.communion_server.peers)
     # COMMUNION_MSG="\\n\\n{} communion peer(s) found.".format(npeers)
