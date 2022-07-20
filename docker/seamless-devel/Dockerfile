@@ -1,7 +1,7 @@
 FROM rpbs/seamless-deps
 LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 USER root
-RUN apt install less && conda install black mypy types-requests -y && echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc
+RUN apt install less && conda install black mypy types-requests sphinx recommonmark -y && echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc
 COPY . /usr/local/src/seamless-tools
 RUN rm -rf /usr/local/src/seamless-tools/.git && \
     mkdir /home/jovyan/software && \
