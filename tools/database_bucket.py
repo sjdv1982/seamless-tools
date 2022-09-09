@@ -127,7 +127,7 @@ class TopBucket:
         try:
             child = self.children[first]
         except KeyError:
-            filename = os.path.join(self.directory, self._file)
+            filename = self._file
             data = get_data(filename)
             if value is None:
                 old = data.pop(checksum, None)
@@ -159,7 +159,7 @@ class TopBucket:
         try:
             child = self.children[first]
         except KeyError:
-            filename = os.path.join(self.directory, self._file)
+            filename = self._file
             data = get_data(filename)
             return data.get(checksum)
         else:
@@ -205,7 +205,7 @@ class Bucket:
         try:
             child = self.children[first]
         except KeyError:
-            filename = os.path.join(self.directory, self._file)
+            filename = self._file
             data = get_data(filename)
             if value is None:
                 data.pop(checksum, None)
@@ -223,7 +223,7 @@ class Bucket:
         try:
             child = self.children[first]
         except KeyError:
-            filename = os.path.join(self.directory, self._file)
+            filename = self._file
             data = get_data(filename)
             return data.get(checksum)
         else:
