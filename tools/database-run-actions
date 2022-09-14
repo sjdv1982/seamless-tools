@@ -949,7 +949,6 @@ try:
                 origin_collection = collections[origin_collection_name]
 
                 if origin_collection.get("default"):
-                    raise NotImplementedError # TODO: a test for this
                     origin_checksums = {}
                     deepcell0 = {}
                     for inode in inode_table:

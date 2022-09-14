@@ -1,6 +1,8 @@
 FROM rpbs/seamless-deps
 LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 USER root
+RUN apt install less && conda install black mypy types-requests sphinx recommonmark -y && pip install sphinx_rtd_theme && echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc 
+RUN chown -R jovyan /opt/conda && chmod -R a+w /opt/conda
 COPY . /usr/local/src/seamless-tools
 RUN rm -rf /usr/local/src/seamless-tools/.git && \
     mkdir /home/jovyan/software && \
@@ -11,3 +13,4 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
     cp -Lr /usr/local/src/seamless-tools/tools /home/jovyan/seamless-tools
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
 ENV PYTHONPATH /home/jovyan/software:$PYTHONPATH
+ENV XDG_CONFIG_HOME=/seamless
