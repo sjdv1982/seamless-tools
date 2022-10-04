@@ -32,6 +32,21 @@ def write_all():
 
 atexit.register(write_all)
 
+_flushed_buckets = {}
+
+async def flush_bucket(flush_time):
+    while 1:
+        t = time.time()
+        for filename, value in bucket_cache.items():
+            if filename not in _flushed_buckets:
+                _flushed_buckets[filename] = t
+            elif _flushed_buckets[filename] - t > flush_time:
+                write_bucket(filename, value)
+                _flushed_buckets[filename] = t
+        await asyncio.sleep(1)
+
+asyncio.ensure_future(flush_bucket(60))
+
 async def decay_cache(min_wait):
     while 1:
         while not len(bucket_cache):

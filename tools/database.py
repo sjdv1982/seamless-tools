@@ -18,6 +18,9 @@ def cache_buffer(checksum, buffer):
     l = len(buffer)
     if l > MAX_BUFFER_CACHE_SIZE:
         return
+    if checksum in buffer_cache:
+        buffer_cache_keys.remove(checksum)
+        buffer_cache_keys.append(checksum)
     while l + buffer_cache_size > MAX_BUFFER_CACHE_SIZE:
         k = buffer_cache_keys.popleft()
         klen, _ = buffer_cache.pop(k)
@@ -152,7 +155,7 @@ class DatabaseServer:
             store = DatabaseStore(store_config)
             stores.append(store)
         self.stores = stores
-
+        self.temp_buffercache = {}
 
     async def _start(self):
         if is_port_in_use(self.host, self.port): # KLUDGE
@@ -281,7 +284,9 @@ class DatabaseServer:
     async def _get(self, type, checksum, request):
         if type == "has_buffer":
             found = False
-            if checksum in buffer_cache:
+            if checksum in self.temp_buffercache:
+                found = True
+            elif checksum in buffer_cache:
                 found = True
             else:
                 for store in self.stores:
@@ -322,6 +327,9 @@ class DatabaseServer:
             return None # None is also a valid response
 
         elif type == "buffer":
+            if checksum in self.temp_buffercache:
+                # unpythonic, but this should be a rare event
+                return self.temp_buffercache[checksum]
             hit = buffer_cache.get(checksum)
             if hit is not None:
                 _, buffer = hit
@@ -388,17 +396,22 @@ class DatabaseServer:
         if type == "buffer":
             if isinstance(value, str):
                 value = value.encode()
-            independent = bool(request.get("independent", False))
-            for store in self.stores:
-                if store.readonly:
-                    continue
-                bucket = store.buckets["buffer_independence"]
-                bucket.set(checksum, independent)
-                filename = store._get_filename(checksum, as_external_path=False)
-                if filename is not None:
-                    await write_buffer(checksum, value, filename)
+            self.temp_buffercache[checksum] = value
+            try:
+                independent = bool(request.get("independent", False))
+                for store in self.stores:
+                    if store.readonly:
+                        continue
+                    bucket = store.buckets["buffer_independence"]
+                    bucket.set(checksum, independent)
+                    filename = store._get_filename(checksum, as_external_path=False)
+                    if filename is not None:
+                        await write_buffer(checksum, value, filename)
+            finally:
+                self.temp_buffercache.pop(checksum, None)
 
         elif type == "delete_key":
+            global buffer_cache_size
             deleted = False
             for store in self.stores:
                 if store.readonly:
@@ -412,7 +425,10 @@ class DatabaseServer:
                         file_deleted = delete_file(filename)
                         if file_deleted:
                             deleted = True
-                        buffer_cache.pop(checksum, None)
+                        c = buffer_cache.pop(checksum, None)
+                        if c is not None:
+                            buffer_cache_keys.remove(checksum)
+                            buffer_cache_size -= c[0]
                         continue
                     bucket = store.buckets[key_type]
                 except KeyError:

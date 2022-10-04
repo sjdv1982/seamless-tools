@@ -75,6 +75,11 @@ if [ "$SEAMLESS_DOCKER_IMAGE" == seamless-devel ]; then
   else
     export SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL="-v $SEAMLESSDIR:/seamless -v $SILKDIR:/silk -e PYTHONPATH=/silk:/seamless"
   fi
+  if [ -z "$SEAMLESS_TOOLS_DIR" ]; then
+      echo 'SEAMLESS_TOOLS_DIR undefined, using Docker-installed version' > /dev/stderr
+  else
+    export SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL=$SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL" -v $SEAMLESS_TOOLS_DIR/tools:/home/jovyan/seamless-tools"
+  fi
 fi
 
 export SEAMLESS_DOCKER_RUN_PARAMS_X_NAME=''
