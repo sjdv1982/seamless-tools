@@ -36,7 +36,8 @@ containerID=$(docker run --rm -d \
   -v /tmp:/tmp \
   -u `id -u` \
   --group-add users \
-    $SEAMLESS_DOCKER_IMAGE start-notebook.sh \
+  $SEAMLESS_DOCKER_CUSTOM_PARAMS \
+  $SEAMLESS_DOCKER_IMAGE start-notebook.sh \
   --NotebookApp.token='' --NotebookApp.password='' \
   $*)
 

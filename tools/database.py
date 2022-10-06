@@ -21,6 +21,7 @@ def cache_buffer(checksum, buffer):
     if checksum in buffer_cache:
         buffer_cache_keys.remove(checksum)
         buffer_cache_keys.append(checksum)
+        return
     while l + buffer_cache_size > MAX_BUFFER_CACHE_SIZE:
         k = buffer_cache_keys.popleft()
         klen, _ = buffer_cache.pop(k)

@@ -29,4 +29,5 @@ docker run --rm \
   -u `id -u` \
   --group-add users \
   -it \
+  $SEAMLESS_DOCKER_CUSTOM_PARAMS \
   $SEAMLESS_DOCKER_IMAGE start.sh ipython3 -i /home/jovyan/seamless-scripts/serve-graph.py -- --interactive $*

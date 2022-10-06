@@ -31,6 +31,7 @@ containerID=$(docker run --rm -it -d \
   -v /tmp:/tmp \
   -u `id -u` \
   --group-add users \
+  $SEAMLESS_DOCKER_CUSTOM_PARAMS \
   $SEAMLESS_DOCKER_IMAGE start.sh)
 
 echo $containerID | docker exec -i $containerID /bin/bash -c 'cat > /home/jovyan/DOCKER_CONTAINER'

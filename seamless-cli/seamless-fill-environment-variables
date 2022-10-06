@@ -101,6 +101,10 @@ if [ -z ${SEAMLESS_DOCKER_PUBLISH_DEBUG_PORTS+x} ]; then
   export SEAMLESS_DOCKER_PUBLISH_DEBUG_PORTS="-p 5679-5685:5679-5685"
 fi
 
+if [ -z "$SEAMLESS_DOCKER_CUSTOM_PARAMS" ]; then
+  export SEAMLESS_DOCKER_CUSTOM_PARAMS=""
+fi
+
 printenv | sort | python3 -c '''
 import sys
 for l in sys.stdin.readlines():
