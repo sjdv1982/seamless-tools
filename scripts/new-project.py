@@ -203,7 +203,7 @@ async def load():
             del seamless._defining_graph
         except AttributeError:
             pass
-    new_graph = ctx.get_graph(copy=True)
+    new_graph = ctx.get_graph()
     graph_file = "graph/" + PROJNAME + ".seamless"
     ctx.load_vault("vault")
     if new_graph != empty_graph:
