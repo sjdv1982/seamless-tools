@@ -194,7 +194,7 @@ async def load():
             pr("Existing '{}' found, moving to '{}'".format(f, dest))
             shutil.move(f, dest)
     ctx = Context()
-    empty_graph = await ctx._get_graph_async(copy=True)
+    empty_graph = ctx.get_graph()
     try:
         seamless._defining_graph = True
         await define_graph(ctx)
@@ -203,7 +203,7 @@ async def load():
             del seamless._defining_graph
         except AttributeError:
             pass
-    new_graph = await ctx._get_graph_async(copy=True)
+    new_graph = ctx.get_graph(copy=True)
     graph_file = "graph/" + PROJNAME + ".seamless"
     ctx.load_vault("vault")
     if new_graph != empty_graph:
