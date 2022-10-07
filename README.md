@@ -1,4 +1,4 @@
-This repo contains tools related to the deployment of Seamless (https://github.com/sjdv1982/seamless).
+This repo contains tools related to the distribution and deployment of Seamless (https://github.com/sjdv1982/seamless).
 
 - The seamless-cli commands, written in bash, and using the Docker command line interface.
 seamless-cli is distributed as a conda package. 
