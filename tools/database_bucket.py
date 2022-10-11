@@ -40,12 +40,12 @@ async def flush_bucket(flush_time):
         for filename, value in bucket_cache.items():
             if filename not in _flushed_buckets:
                 _flushed_buckets[filename] = t
-            elif _flushed_buckets[filename] - t > flush_time:
+            elif t - _flushed_buckets[filename] > flush_time:
                 write_bucket(filename, value)
                 _flushed_buckets[filename] = t
         await asyncio.sleep(1)
 
-asyncio.ensure_future(flush_bucket(60))
+flush_bucket_task = asyncio.ensure_future(flush_bucket(1000))
 
 async def decay_cache(min_wait):
     while 1:
@@ -65,7 +65,7 @@ async def decay_cache(min_wait):
         write_bucket(oldest, value)
         bucket_cache.pop(oldest)  # does not call write_bucket
 
-asyncio.ensure_future(decay_cache(10))
+decay_cache_task = asyncio.ensure_future(decay_cache(10))
 
 def split_bucket(bucket:dict):
     """Finds the most common first letter of the key.

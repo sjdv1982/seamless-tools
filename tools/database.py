@@ -1,5 +1,6 @@
 from aiohttp import web
 import aiofiles
+import aiofiles.os
 import os, sys, asyncio, json, socket
 from seamless import calculate_checksum
 from seamless.util import parse_checksum
@@ -31,13 +32,15 @@ def cache_buffer(checksum, buffer):
     buffer_cache_size += l
 
 async def read_buffer(checksum, filename):
-    if filename is None or not os.path.exists(filename):
+    if filename is None or not await aiofiles.os.path.exists(filename):
         return None
     async with aiofiles.open(filename, "rb") as f:
         buffer = await f.read()
-        cs = calculate_checksum(buffer, hex=True)
-        if cs != checksum: # database corruption!
-            return None
+    '''
+    cs = calculate_checksum(buffer, hex=True)
+    if cs != checksum: # database corruption!
+        return None
+    '''
     cache_buffer(checksum, buffer)
     return buffer
 
@@ -265,8 +268,10 @@ class DatabaseServer:
                     raise DatabaseError("Malformed request") from None
 
                 response = await self._set(type, checksum, value, rq)
+                """
                 if type == "buffer":
                     gc.collect()
+                """
             except DatabaseError as exc:
                 status = 400
                 response = "ERROR: " + exc.args[0]
@@ -292,7 +297,7 @@ class DatabaseServer:
             else:
                 for store in self.stores:
                     filename = store._get_filename(checksum, as_external_path=False)
-                    if filename is not None and os.path.exists(filename):
+                    if filename is not None and await aiofiles.os.path.exists(filename):
                         found = True
             return found
 
@@ -307,7 +312,7 @@ class DatabaseServer:
                     if store.filezone not in filezones:
                         continue
                 filename = store._get_filename(checksum, as_external_path=False)
-                if filename is not None and os.path.exists(filename):
+                if filename is not None and await aiofiles.os.path.exists(filename):
                     filename2 = store._get_filename(checksum, as_external_path=True)
                     return filename2
             return None # None is also a valid response
@@ -323,7 +328,7 @@ class DatabaseServer:
                     if store.filezone not in filezones:
                         continue
                 directory = store._get_directory(checksum, as_external_path=False)
-                if directory is not None and os.path.exists(directory):
+                if directory is not None and await aiofiles.os.path.exists(directory):
                     return store._get_directory(checksum, as_external_path=True)
             return None # None is also a valid response
 
@@ -337,7 +342,7 @@ class DatabaseServer:
                 return buffer
             for store in self.stores:
                 filename = store._get_filename(checksum, as_external_path=False)
-                if filename is not None and os.path.exists(filename):
+                if filename is not None and await aiofiles.os.path.exists(filename):
                     result = await read_buffer(checksum, filename)
                     if result is not None:
                         return result 
