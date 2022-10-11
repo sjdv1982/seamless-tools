@@ -5,7 +5,7 @@ How to build the CLI Conda packages
 
 2. Update the version number in `*/meta.yaml`. Git commit and tag.
 
-3. If you didn't do already, create a conda environment to build and upload conda environments: `conda create -n seamless-build anaconda-client conda-build -c conda-forge -c rpbs silk seamless-cli -y`
+3. If you didn't do already, create a conda environment to build and upload conda environments: `conda create -n seamless-build -c conda-forge -c rpbs silk seamless-cli anaconda-client conda-build -y`
 
 4. From here, do `conda activate seamless-build`. Then launch `conda build seamless-cli`. Note the output file (.tar.bz2).
 If you forget it, run `conda build seamless-cli --output`
