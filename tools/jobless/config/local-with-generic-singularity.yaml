@@ -67,7 +67,7 @@ jobhandlers:
 
 
   sub_backend: singularity
-  singularity_image_file: ~/seamless-minimal.sif
+  singularity_image_file: ${SEAMLESS_MINIMAL_SINGULARITY_IMAGE}
   singularity_env_modify_command: ${SEAMLESS_TOOLS_DIR}/seamless-cli-singularity/seamless-conda-env-modify
   singularity_run_transformation_command: ${SEAMLESS_TOOLS_DIR}/seamless-cli-singularity/seamless-conda-env-run-transformation
 

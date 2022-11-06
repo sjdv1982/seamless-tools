@@ -57,14 +57,23 @@ Launch jobless with `python3 /jobless/jobless.py <config file>.yaml`
 
 ## Testing Jobless
 
-First, delete the database and launch jobless. 
+First, launch a database and launch jobless. You are recommended to use a fresh temporary database directory, e.g. `seamless-database /tmp/somedir` and delete it after running tests. However, with the test suite it is possible to delete only the tested data, computations and results from the database.
 
-### Specific Jobless tests
+### Test configs
 
-These are available in `jobless/tests`. They use the Transformer.docker_image values "ubuntu", "rpbs/seamless" and "rpbs/autodock". Make sure that these are available as Docker or Singularity images in the place where the jobs will be run.
+In `config/`, there are several jobless config files that you can test and/or adapt to your needs. They are briefly explained below. More information on jobless config options is in the Seamless documentation, and in the config files themselves.
 
-If you have run the tests before, you should clean the database first,
-see README.txt in the test dir.
+- local-minimal.yaml. This can execute bash transformations (no environment, no Docker image) locally.
+
+- local.yaml. In addition, this can execute bash transformations that have a Docker image.
+
+- local-with-generic.yaml. In addition, all other transformations (Python, compiled, conda environment) are executed inside the rpbs/seamless-minimal Docker image. It requires that `seamless-conda-env-export /tmp/SEAMLESS-MINIMAL` has been run first. Temporary conda environments are cached in `/tmp/JOBLESS-CONDA-ENV` (this dir must exist).
+
+- local-with-generic-singularity. For the rpbs/seamless-minimal image, Singularity (must be installed) is used instead of Docker. It requires SEAMLESS_TOOLS_DIR to be defined (pointing to this Git repo). In addition, it requires SEAMLESS_MINIMAL_SINGULARITY_IMAGE to be defined and pointing to the seamless-minimal .sif file: see `seamless-cli-singularity/README.md` for instructions on how to generate it.
+
+### Test suite
+
+These are available in `jobless/tests`. They use the Transformer.docker_image values "ubuntu", "rpbs/seamless" and "rpbs/autodock". Make sure that these are available as Docker images in the place where the jobs will be run. NOTE: If you are using Jobless with Slurm+Singularity (not available among the test configs), have them as Singularity .sif files instead of as Docker images.
 
 Launch a shell in a Seamless container with `seamless-bash`
 
@@ -83,14 +92,25 @@ The above tests are for bash/bashdocker transformations and will work for all of
 
 - `compiled.py`: a C++ transformer.
 
+### Cleaning the database after running the test suite
+
+Use this if you can't run the test suite using a fresh database dir that you can delete afterwards.
+
+After running the test suite in tests/, run "seamless-delete-database-from-log tests/jobless-test-dblog.txt" to clean up buffers, transformation results etc. from the database.
+
+tests/jobless-test-dblog-ORIGINAL.txt is jobless-test-dblog.txt when all tests are run in the order: bash, docker_, simple, parse-pdb, compiled, autodock.
+Use this if you have misplaced or scrambled your own jobless-test-dblog.txt 
+
 ### Testing Jobless in the general case
 
 You can use Seamless's generic `seamless-serve-graph` command together with jobless, for any Seamless graph saved with `ctx.save_graph()` + `ctx.save_zip()` . For example, the "share-pdb" graph in `seamless-tests/highlevel` (bundled with the Seamless Docker image) requires only bash transformers:
-```
+
+```bash
 graph_dir=/home/jovyan/seamless-tests/highlevel
 seamless-add-zip $graph_dir/share-pdb.zip
 seamless-serve-graph $graph_dir/share-pdb.seamless --database --communion --ncores 0
 ```
+
 Then, open [http://localhost:5813/ctx/index.html]. 
 Use `seamless-serve-graph-interactive` to get an IPython shell instead.
 
