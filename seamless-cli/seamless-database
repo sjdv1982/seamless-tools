@@ -30,18 +30,51 @@ for store in config["stores"]:
 print(result)
 '''
 
+default_database_config='''
+host: "0.0.0.0"  # can be omitted, default is 0.0.0.0
+port:  5522  # can be omitted, default is 5522
+             # Note that 5522 is assumed by many seamless-cli commands
+stores:  # Note that this a list, allowing multiple stores to be specified. 
+         # Only one store can be readonly: false
+    -
+      external_path: "{DATABASE_DIR}"
+      path: "/data"
+            
+      readonly: false
+      
+      serve_filenames: true
+      filezone: "local"  # can be omitted, default is "local"
+'''
+
 if [ -z "$1" ]; then
-  database_config=$seamlessdir/default-database.yaml  
+  database_config=$seamlessdir/default-database-config.yaml  
   database_dir=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]))" ~/.seamless/database)
   mkdir -p $database_dir
   docker_params="-p 5522:5522 -v "$database_dir":/data"
-  database_config_intern=/home/jovyan/seamless-tools/default-database.yaml  
+  database_config_intern=/home/jovyan/seamless-tools/default-database-config.yaml  
   database_config_mount=""
 else
   database_config=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]))" $1)
-  docker_params=$(echo "$get_docker_params" | python /dev/stdin $database_config)
-  database_config_intern=/database-config.yaml
-  database_config_mount="-v $database_config:$database_config_intern:ro"
+  if [ -e "$database_config" ]; then
+    if [ -d "$database_config" ]; then
+      database_config2=$database_config/database-config.yaml
+      if [ ! -e "$database_config2" ]; then
+        if [ "$(ls -A $database_config)" ]; then
+          echo "ERROR: $database_config is not empty, but does not contain database-config.yaml" > /dev/stderr
+          exit 1
+        fi
+        # Empty directory: create database-config.yaml
+        echo "$default_database_config" | python -c 'import sys; print(sys.stdin.read().format(DATABASE_DIR=sys.argv[1]))' "$database_config" > $database_config2
+      fi 
+      database_config=$database_config2
+    fi
+    docker_params=$(echo "$get_docker_params" | python /dev/stdin $database_config)
+    database_config_intern=/database-config.yaml
+    database_config_mount="-v $database_config:$database_config_intern:ro"
+  else
+    echo "ERROR: $1 does not exist" > /dev/stderr
+    exit 1
+  fi
 fi
 
 set -u -e
