@@ -24,7 +24,7 @@ singularity run \
    conda activate
    cp /seamless-minimal/environment.yml /tmp
    export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV
-   conda env create --prefix /SEAMLESS-CONDA-ENV --file /tmp/environment.yml || exit 1
+   mamba env create --prefix /SEAMLESS-CONDA-ENV --file /tmp/environment.yml || exit 1
    '''
 
 singularity run \

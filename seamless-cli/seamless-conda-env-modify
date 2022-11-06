@@ -7,7 +7,7 @@
 set -u -e
 
 CONDA_ENV_DIR=$1
-yaml=$2
+yaml=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]))" $2)
 
 docker run \
   --rm \
@@ -15,10 +15,10 @@ docker run \
   -u `id -u` \
   -e yaml=$yaml \
   -v $CONDA_ENV_DIR:/SEAMLESS-CONDA-ENV \
-  -v $yaml:$yaml \
+  -v $yaml:/env.yaml \
   rpbs/seamless-minimal \
   bash -i -c '''
   echo "conda activate /SEAMLESS-CONDA-ENV" >> /.bashrc
   echo "export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV" >> /.bashrc
-  bash -c -i "mamba env update --file $yaml"
+  bash -c -i "mamba env update --file /env.yaml"
   '''

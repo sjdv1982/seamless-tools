@@ -19,7 +19,7 @@ docker run \
   rpbs/seamless-minimal \
   bash -c '''
   export CONDA_PKGS_DIRS=/SEAMLESS-CONDA-ENV
-  conda env create --prefix /SEAMLESS-CONDA-ENV --file /seamless-minimal/environment.yml
+  mamba env create --prefix /SEAMLESS-CONDA-ENV --file /seamless-minimal/environment.yml
   '''
 
 echo 'Caching package lists...'
