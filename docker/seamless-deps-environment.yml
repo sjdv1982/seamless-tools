@@ -38,6 +38,7 @@ dependencies:
   - mamba
   - openmp
   - pip:
+    - makefun
     - nglview
     - snakemake
     - cson==0.8
