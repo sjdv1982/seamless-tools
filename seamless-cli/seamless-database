@@ -47,11 +47,11 @@ stores:  # Note that this a list, allowing multiple stores to be specified.
 '''
 
 if [ -z "$1" ]; then
-  database_config=$seamlessdir/default-database-config.yaml  
+  database_config=$seamlessdir/default-database.yaml  
   database_dir=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]))" ~/.seamless/database)
   mkdir -p $database_dir
   docker_params="-p 5522:5522 -v "$database_dir":/data"
-  database_config_intern=/home/jovyan/seamless-tools/default-database-config.yaml  
+  database_config_intern=/home/jovyan/seamless-tools/default-database.yaml  
   database_config_mount=""
 else
   database_config=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]))" $1)
