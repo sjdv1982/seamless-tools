@@ -173,7 +173,7 @@ ctx.translate()
 if args.status_graph:
     from seamless.metalevel.bind_status_graph import bind_status_graph
     status_graph = json.load(args.status_graph)
-    ctx2 = bind_status_graph(
+    webctx = bind_status_graph(
         ctx, status_graph,
         mounts=False,
         shares=True,
