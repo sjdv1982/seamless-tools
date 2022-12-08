@@ -1,7 +1,7 @@
-FROM rpbs/seamless-deps:0.9
+FROM rpbs/seamless-deps:0.10
 LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 LABEL maintainer="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
-LABEL version="0.9.5"
+LABEL version="0.10"
 USER root
 RUN cd /usr/local/src && git clone https://github.com/sjdv1982/seamless.git --branch stable --depth 1 && rm seamless/.git -rf
 RUN conda config --env --set channel_priority strict && conda env update --name base --file /usr/local/src/seamless/conda/seamless-framework-environment.yml

@@ -1,14 +1,15 @@
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("zipfile")
+args = parser.parse_args()
+
 import seamless
 from seamless.core.cache.buffer_cache import buffer_cache
-import os
-
 seamless.database_sink.connect()
 
-# TODO: proper command line options (also for mounts)
-import sys
 from seamless.highlevel import Context
-zipfile = sys.argv[1]
 ctx = Context()
-checksums = ctx.add_zip(zipfile, incref=True)
+checksums = ctx.add_zip(args.zipfile, incref=True)
+print("Added {} buffers".format(len(checksums)))
 for checksum in checksums:
     buffer_cache.decref(bytes.fromhex(checksum))
