@@ -7,6 +7,13 @@ set -e
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 source $currdir/seamless-fill-environment-variables
 
+if [ -z "$1" ]; then
+  workdir=/cwd
+else 
+  relpath=`python3 -c 'import os,sys;print(os.path.relpath(sys.argv[1], os.getcwd()))' $1`
+  workdir=/cwd/$relpath
+fi
+
 set -u -e
 
 containerID=$(docker run --rm -it -d \
@@ -29,7 +36,7 @@ containerID=$(docker run --rm -it -d \
   -e SEAMLESS_COMMUNION_PORT=$SEAMLESS_COMMUNION_PORT \
   -e SEAMLESS_COMMUNION_ID=$SEAMLESS_COMMUNION_ID \
   -v `pwd`:/cwd \
-  --workdir /cwd \
+  --workdir $workdir \
   -v /tmp:/tmp \
   -u `id -u` \
   --group-add users \
