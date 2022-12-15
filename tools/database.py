@@ -72,6 +72,7 @@ def is_port_in_use(address, port): # KLUDGE: For some reason, websockets does no
 
 types = (
     "protocol",
+    "readonly",
     "has_buffer",
     "has_key",
     "delete_key",
@@ -150,14 +151,19 @@ class DatabaseStore:
 
 class DatabaseServer:
     future = None
-    PROTOCOL = ("seamless", "database", "0.1")
+    readonly = None
+    PROTOCOL = ("seamless", "database", "0.2")
     def __init__(self, config):
         self.host = config.get("host", "0.0.0.0")
-        self.port = int(config.get("port", 5522))        
+        self.port = int(config.get("port", 5522))
         stores = []
+        readonly = True
         for store_config in config["stores"]:
             store = DatabaseStore(store_config)
+            if not store.readonly:
+                readonly = False
             stores.append(store)
+        self.readonly = readonly
         self.stores = stores
         self.temp_buffercache = {}
 
@@ -199,12 +205,14 @@ class DatabaseServer:
                     type = rq["type"]
                     if type not in types:
                         raise KeyError
-                    if type != "protocol":
+                    if type not in ("protocol", "readonly"):
                         checksum = rq["checksum"]
                 except KeyError:
                     raise DatabaseError("Malformed request") from None
                 if type == "protocol":
                     response = list(self.PROTOCOL)
+                elif type == "readonly":
+                    response = self.readonly
                 else:
                     response = await self._get(type, checksum, rq)
             except DatabaseError as exc:
