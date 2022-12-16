@@ -30,6 +30,7 @@ containerID=$(docker run --rm -d \
   --hostname localhost \
   --workdir /home/jovyan \
   -v `pwd`:/home/jovyan/cwd \
+  -v `pwd`:/cwd \
   -v /tmp:/tmp \
   -u `id -u` \
   --group-add users \
