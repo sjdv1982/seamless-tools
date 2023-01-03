@@ -1,85 +1,105 @@
 # Adapted from SnakeMake source code
+# (Copyright 2022, Johannes Köster)
 
 from snakemake.workflow import *
 
 # monkey-patch Workflow.execute
-def execute(self,
-            targets=None,
-            dryrun=False,
-            touch=False,
-            cores=1,
-            nodes=1,
-            local_cores=1,
-            forcetargets=False,
-            forceall=False,
-            forcerun=None,
-            until=[],
-            omit_from=[],
-            prioritytargets=None,
-            quiet=False,
-            keepgoing=False,
-            printshellcmds=False,
-            printreason=False,
-            printdag=False,
-            cluster=None,
-            cluster_sync=None,
-            jobname=None,
-            immediate_submit=False,
-            ignore_ambiguity=False,
-            printrulegraph=False,
-            printd3dag=False,
-            drmaa=None,
-            drmaa_log_dir=None,
-            kubernetes=None,
-            kubernetes_envvars=None,
-            container_image=None,
-            stats=None,
-            force_incomplete=False,
-            ignore_incomplete=False,
-            list_version_changes=False,
-            list_code_changes=False,
-            list_input_changes=False,
-            list_params_changes=False,
-            list_untracked=False,
-            list_conda_envs=False,
-            summary=False,
-            archive=None,
-            delete_all_output=False,
-            delete_temp_output=False,
-            detailed_summary=False,
-            latency_wait=3,
-            wait_for_files=None,
-            nolock=False,
-            unlock=False,
-            resources=None,
-            notemp=False,
-            nodeps=False,
-            cleanup_metadata=None,
-            cleanup_conda=False,
-            cleanup_shadow=False,
-            subsnakemake=None,
-            updated_files=None,
-            keep_target_files=False,
-            keep_shadow=False,
-            keep_remote_local=False,
-            allowed_rules=None,
-            max_jobs_per_second=None,
-            max_status_checks_per_second=None,
-            greediness=1.0,
-            no_hooks=False,
-            force_use_threads=False,
-            create_envs_only=False,
-            assume_shared_fs=True,
-            cluster_status=None,
-            report=None,
-            export_cwl=False):
-
+# copied from workflow.py, Copyright 2022, Johannes Köster
+def execute(
+    self,
+    targets=None,
+    target_jobs=None,
+    dryrun=False,
+    generate_unit_tests=None,
+    touch=False,
+    scheduler_type=None,
+    scheduler_ilp_solver=None,
+    local_cores=1,
+    forcetargets=False,
+    forceall=False,
+    forcerun=None,
+    until=[],
+    omit_from=[],
+    prioritytargets=None,
+    quiet=False,
+    keepgoing=False,
+    printshellcmds=False,
+    printreason=False,
+    printdag=False,
+    cluster=None,
+    cluster_sync=None,
+    jobname=None,
+    immediate_submit=False,
+    ignore_ambiguity=False,
+    printrulegraph=False,
+    printfilegraph=False,
+    printd3dag=False,
+    drmaa=None,
+    drmaa_log_dir=None,
+    kubernetes=None,
+    k8s_cpu_scalar=1.0,
+    flux=None,
+    tibanna=None,
+    tibanna_sfn=None,
+    google_lifesciences=None,
+    google_lifesciences_regions=None,
+    google_lifesciences_location=None,
+    google_lifesciences_cache=False,
+    tes=None,
+    precommand="",
+    preemption_default=None,
+    preemptible_rules=None,
+    tibanna_config=False,
+    container_image=None,
+    stats=None,
+    force_incomplete=False,
+    ignore_incomplete=False,
+    list_version_changes=False,
+    list_code_changes=False,
+    list_input_changes=False,
+    list_params_changes=False,
+    list_untracked=False,
+    list_conda_envs=False,
+    summary=False,
+    archive=None,
+    delete_all_output=False,
+    delete_temp_output=False,
+    detailed_summary=False,
+    wait_for_files=None,
+    nolock=False,
+    unlock=False,
+    notemp=False,
+    nodeps=False,
+    cleanup_metadata=None,
+    conda_cleanup_envs=False,
+    cleanup_shadow=False,
+    cleanup_scripts=True,
+    subsnakemake=None,
+    updated_files=None,
+    keep_target_files=False,
+    keep_shadow=False,
+    keep_remote_local=False,
+    allowed_rules=None,
+    max_jobs_per_second=None,
+    max_status_checks_per_second=None,
+    greediness=1.0,
+    no_hooks=False,
+    force_use_threads=False,
+    conda_create_envs_only=False,
+    cluster_status=None,
+    cluster_cancel=None,
+    cluster_cancel_nargs=None,
+    cluster_sidecar=None,
+    report=None,
+    report_stylesheet=None,
+    export_cwl=False,
+    batch=None,
+    keepincomplete=False,
+    containerize=False,
+):
     self.check_localrules()
-
-    self.global_resources = dict() if resources is None else resources
-    self.global_resources["_cores"] = cores
-    self.global_resources["_nodes"] = nodes
     self.immediate_submit = immediate_submit
+    self.cleanup_scripts = cleanup_scripts
 
     def rules(items):
         return map(self._rules.__getitem__, filter(self.is_rule, items))
@@ -88,15 +108,21 @@ def execute(self,
 
         def files(items):
             return filterfalse(self.is_rule, items)
+
     else:
 
         def files(items):
-            relpath = lambda f: f if os.path.isabs(f) else os.path.relpath(f)
+            relpath = (
+                lambda f: f
+                if os.path.isabs(f) or f.startswith("root://")
+                else os.path.relpath(f)
+            )
             return map(relpath, filterfalse(self.is_rule, items))
 
-    if not targets:
-        targets = [self.first_rule
-                    ] if self.first_rule is not None else list()
+    if not targets and not target_jobs:
+        targets = (
+            [self.default_target] if self.default_target is not None else list()
+        )
 
     if prioritytargets is None:
         prioritytargets = list()
@@ -115,10 +141,14 @@ def execute(self,
     untilfiles = set(files(until))
     omitrules = set(rules(omit_from))
     omitfiles = set(files(omit_from))
-    targetrules = set(chain(rules(targets),
-                            filterfalse(Rule.has_wildcards, priorityrules),
-                            filterfalse(Rule.has_wildcards, forcerules),
-                            filterfalse(Rule.has_wildcards, untilrules)))
+    targetrules = set(
+        chain(
+            rules(targets),
+            filterfalse(Rule.has_wildcards, priorityrules),
+            filterfalse(Rule.has_wildcards, forcerules),
+            filterfalse(Rule.has_wildcards, untilrules),
+        )
+    )
     targetfiles = set(chain(files(targets), priorityfiles, forcefiles, untilfiles))
     if forcetargets:
         forcefiles.update(targetfiles)
@@ -126,24 +156,28 @@ def execute(self,
 
     rules = self.rules
     if allowed_rules:
-        rules = [rule for rule in rules if rule.name in set(allowed_rules)]
+        allowed_rules = set(allowed_rules)
+        rules = [rule for rule in rules if rule.name in allowed_rules]
 
     if wait_for_files is not None:
         try:
-            snakemake.io.wait_for_files(wait_for_files,
-                                        latency_wait=latency_wait)
+            snakemake.io.wait_for_files(
+                wait_for_files, latency_wait=self.latency_wait
+            )
         except IOError as e:
             logger.error(str(e))
             return False
 
     dag = DAG(
-        self, rules,
-        dryrun=dryrun,
+        self,
+        rules,
+        dryrun=True, #override
         targetfiles=targetfiles,
         targetrules=targetrules,
+        target_jobs_def=target_jobs,
         # when cleaning up conda, we should enforce all possible jobs
         # since their envs shall not be deleted
-        forceall=forceall or cleanup_conda,
+        forceall=forceall or conda_cleanup_envs,
         forcefiles=forcefiles,
         forcerules=forcerules,
         priorityfiles=priorityfiles,
@@ -154,11 +188,40 @@ def execute(self,
         omitrules=omitrules,
         ignore_ambiguity=ignore_ambiguity,
         force_incomplete=force_incomplete,
-        ignore_incomplete=ignore_incomplete or printdag or printrulegraph,
+        ignore_incomplete=ignore_incomplete
+        or printdag
+        or printrulegraph
+        or printfilegraph,
         notemp=notemp,
-        keep_remote_local=keep_remote_local)
+        keep_remote_local=keep_remote_local,
+        batch=batch,
+    )
+    self.persistence = Persistence(
+        nolock=nolock,
+        dag=dag,
+        conda_prefix=self.conda_prefix,
+        singularity_prefix=self.singularity_prefix,
+        shadow_prefix=self.shadow_prefix,
+        warn_only=dryrun
+        or printrulegraph
+        or printfilegraph
+        or printdag
+        or summary
+        or archive
+        or list_version_changes
+        or list_code_changes
+        or list_input_changes
+        or list_params_changes
+        or list_untracked
+        or delete_all_output
+        or delete_temp_output,
+    )
+
     dag.init()
+    # abort Workflow.execute here. 
+    # return dag instead of executing it.
     return dag
+# /copy
 
 Workflow.execute = execute
 
@@ -211,6 +274,9 @@ dag = snakemake.snakemake(
 if dag == False:
     import sys
     sys.exit()
+
+import asyncio
+asyncio.set_event_loop(asyncio.new_event_loop())
 
 import seamless
 from seamless.highlevel import Context, Transformer, Cell
@@ -318,7 +384,7 @@ for rule in rules:
     else:
         outputs = " ".join(outdummies._dict.values())
         shellcmd += ";mkdir RESULT; for i in %s; do ii=`dirname $i`; mkdir -p $ii`; mv $i $ii; done" % outputs
-    if rule._singularity_img:
+    if rule.is_containerized:
         shellcmd = "bash -c '" + shellcmd + "'"
 
     setattr(ctx.rules, rule.name, shellcmd)
@@ -342,7 +408,7 @@ def get_jobname(job):
         jobname += "_" + clean(wildcard_value)
     return jobname
 
-for job in dag.jobs:
+for job in sorted(dag.jobs,key=lambda job:get_jobname(job)):
     rule = job.rule
     jobname =  get_jobname(job)
     if not len(job.output):
@@ -356,7 +422,7 @@ for job in dag.jobs:
     setattr(ctx.jobs, jobname, tf)
 
     tf.language = "bash"
-    docker_image = job.singularity_img_url
+    docker_image = job.container_img
     if docker_image is not None:
         if not docker_image.startswith("docker://"):
             raise Exception("Docker image '%s' (rule %s) does not start with docker://" % (docker_image, rule.name))
