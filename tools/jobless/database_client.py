@@ -17,7 +17,7 @@ BUFFER_EMPTY_DICT = b'{}\n'
 
 class DatabaseClient:
     active = False
-    PROTOCOL = ("seamless", "database", "0.1")
+    PROTOCOLS = [("seamless", "database", "0.2"), ("seamless", "database", "0.1")]
 
     def _connect(self, host, port):
         self.host = host
@@ -28,7 +28,8 @@ class DatabaseClient:
         }
         response = session.get(url, data=json.dumps(request))
         try:
-            assert response.json() == list(self.PROTOCOL)
+            protocol = response.json()
+            assert protocol in [list(p) for p in self.PROTOCOLS]                
         except (AssertionError, ValueError, json.JSONDecodeError):
             raise Exception("Incorrect Seamless database protocol") from None
         self.active = True
