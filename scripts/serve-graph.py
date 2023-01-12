@@ -114,6 +114,8 @@ import seamless.shareserver
 from seamless import communion_server
 
 if args.communion:
+    # config below is now already the default
+    # remove upon next release
     communion_server.configure_master({
         "buffer": True,
         "buffer_status": True,
