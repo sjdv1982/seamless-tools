@@ -30,4 +30,3 @@ docker run \
   echo "conda activate /SEAMLESS-CONDA-ENV" >> /.bashrc
   bash -c -i "python /usr/local/seamless-scripts/run-transformation.py $tf_checksum $*"
   ''' $*
-  sleep 1
