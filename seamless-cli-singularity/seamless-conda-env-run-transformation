@@ -43,6 +43,6 @@ singularity run \
   --bind $CONDA_ENV_DIR:/SEAMLESS-CONDA-ENV:ro \
   --env tf_checksum=$tf_checksum \
   --home $HOMEDIR \
-  $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c -i 'conda activate /SEAMLESS-CONDA-ENV; python /usr/local/seamless-scripts/run-transformation.py $tf_checksum'
+  $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -c 'source ~/.bashrc; conda activate /SEAMLESS-CONDA-ENV; python /usr/local/seamless-scripts/run-transformation.py $tf_checksum'
 
 rm -rf $HOMEDIR

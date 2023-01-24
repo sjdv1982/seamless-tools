@@ -17,7 +17,6 @@ shift 1
 
 docker run \
   --rm \
-  -it \
   -u `id -u` \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK \
   -e DOCKER_IMAGE=$SEAMLESS_DOCKER_IMAGE \
@@ -31,3 +30,4 @@ docker run \
   echo "conda activate /SEAMLESS-CONDA-ENV" >> /.bashrc
   bash -c -i "python /usr/local/seamless-scripts/run-transformation.py $tf_checksum $*"
   ''' $*
+  sleep 1
