@@ -1,4 +1,5 @@
 import time
+from requests.exceptions import ConnectionError
 
 class CommunionError(Exception):
     pass
@@ -179,8 +180,19 @@ class JoblessServer:
 
         try:
 
-            if type == "transformation_status":
-                checksum = bytes.fromhex(content)
+            if type in ("transformation_status", "transformation_status_with_meta"):
+                try:
+                    if type == "transformation_status_with_meta":
+                        content = json.loads(content)
+                        checksum = bytes.fromhex(content["checksum"])
+                        meta = content["meta"]
+                    elif type == "transformation_status":
+                        checksum = bytes.fromhex(content)
+                        meta = {}
+                    else:
+                        raise NotImplementedError
+                except Exception:
+                    raise ValueError("Malformed transformation") from None
                 if checksum in self.hard_canceled:
                     result = 0, "HardCancelError"
                 else:
@@ -216,16 +228,31 @@ class JoblessServer:
                                 result = -3, None
                             else:
                                 # For now, just 1 or -1
-                                for jobhandler in self.jobhandlers:
-                                    result = jobhandler.can_accept_transformation(checksum, transformation)
-                                    if result == 1:
-                                        result = 1, None
-                                        break
-                                else:
+                                if meta.get("local"):
                                     result = -1, None
+                                else:
+                                    for jobhandler in self.jobhandlers:
+                                        result = jobhandler.can_accept_transformation(checksum, transformation)
+                                        if result == 1:
+                                            result = 1, None
+                                            break
+                                    else:
+                                        result = -1, None
 
-            elif type == "transformation_job":
-                checksum = bytes.fromhex(content)
+            elif type in ("transformation_job", "transformation_job_with_meta"):
+                try:
+                    if type == "transformation_job_with_meta":
+                        content = json.loads(content)
+                        checksum = bytes.fromhex(content["checksum"])
+                        meta = content["meta"]
+                    elif type == "transformation_job":
+                        checksum = bytes.fromhex(content)
+                        meta = {}
+                    else:
+                        raise NotImplementedError
+                except Exception:
+                    traceback.print_exc()
+                    raise ValueError("Malformed transformation") from None
                 peer_id = self.rev_peers[peer]
                 if checksum in self.transformation_peers:
                     self.transformation_peers[checksum].add(peer_id)
@@ -272,8 +299,6 @@ class JoblessServer:
                 self.hard_canceled.discard(checksum)
                 result = "OK"
                 return
-
-
 
         except Exception as exc:
             print_error(traceback.format_exc())
@@ -450,7 +475,11 @@ if __name__ == "__main__":
     database_client = DatabaseClient()
     seamless_database_ip = config["seamless_database_ip"]
     seamless_database_port = config["seamless_database_port"]
-    database_client.connect(seamless_database_ip, seamless_database_port)
+    try:
+        database_client.connect(seamless_database_ip, seamless_database_port)
+    except ConnectionError:
+        msg = "Cannot connect to Seamlesss database at {}:{}".format(seamless_database_ip, seamless_database_port)
+        raise ConnectionError(msg) from None
 
     address = config["address"]
     port = int(config["port"])

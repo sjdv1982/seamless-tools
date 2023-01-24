@@ -161,6 +161,12 @@ if args.database:
 
 from seamless.highlevel import load_graph, Context
 graph = json.load(args.graph)
+if args.communion and args.ncores is not None and int(args.ncores) == 0:
+    for node in graph.get("nodes", []):
+        if node.get("type") == "transformer":
+            meta = node.get("meta")
+            if meta is not None:
+                meta.pop("local", None)
 if args.zipfile is None and not args.add_zip:
     ctx = load_graph(graph, mounts=args.mounts, shares=(not args.no_shares))
 else:
@@ -175,6 +181,12 @@ ctx.translate()
 if args.status_graph:
     from seamless.metalevel.bind_status_graph import bind_status_graph
     status_graph = json.load(args.status_graph)
+    if args.communion and (args.ncores is None or int(args.ncores)):
+        for node in status_graph.get("nodes", []):
+            if node.get("type") == "transformer":
+                meta = node.get("meta", {})
+                meta["local"] = True
+                node["meta"] = meta
     webctx = bind_status_graph(
         ctx, status_graph,
         mounts=False,
