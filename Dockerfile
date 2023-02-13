@@ -15,3 +15,4 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
     cp -Lr /usr/local/src/seamless-tools/tools /home/jovyan/seamless-tools && \
     ln -s /opt/conda/lib/python3.8/site-packages/seamless /home/jovyan/software/seamless
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
+RUN ln -s /opt/conda/lib/python3.8/site-packages/seamless/graphs /seamless-graphs

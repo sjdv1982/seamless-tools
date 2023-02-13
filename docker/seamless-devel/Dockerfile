@@ -12,5 +12,6 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
     cp -Lr /usr/local/src/seamless-tools/scripts /home/jovyan/seamless-scripts && \
     cp -Lr /usr/local/src/seamless-tools/tools /home/jovyan/seamless-tools
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
+RUN ln -s /seamless/seamless/graphs /seamless-graphs
 ENV PYTHONPATH /home/jovyan/software:$PYTHONPATH
 ENV XDG_CONFIG_HOME=/seamless
