@@ -101,12 +101,14 @@ class Backend:
         self.transformations[checksum] = future
         self.identifiers[checksum] = identifier
 
-    def transformation_finished(self, checksum, future):
+    def transformation_finished(self, checksum, future):        
         try:
             result = future.result()
         except:
             return
         if result is None:
+            self.transformations.pop(checksum)
+            self.results[checksum] = None
             return        
         try:
             if isinstance(result, Checksum):

@@ -24,6 +24,28 @@ class GenericBackend(Backend):
         return 2, None, None
 
     def _run(self, checksum, transformation, prepared_transformation):    
+        errmsg = """
+Generic transformer error
+==========================
+
+*************************************************
+* Command
+*************************************************
+{}
+*************************************************
+
+*************************************************
+* Standard output
+*************************************************
+{}
+*************************************************
+
+*************************************************
+* Standard error
+*************************************************
+{}
+*************************************************
+"""        
         checksum = parse_checksum(checksum)
         cmd = [self.CONDA_ENV_RUN_TRANSFORMATION_COMMAND]
         d = prepared_transformation["temp_conda_env_directory"]
@@ -54,32 +76,25 @@ class GenericBackend(Backend):
                 stderr = stderr.decode()
             except:
                 pass
-            raise SeamlessTransformationError("""
-Generic transformer error
-==========================
-
-*************************************************
-* Command
-*************************************************
-{}
-*************************************************
-
-*************************************************
-* Standard output
-*************************************************
-{}
-*************************************************
-
-*************************************************
-* Standard error
-*************************************************
-{}
-*************************************************
-""".format(cmd2, stdout, stderr)) from None
+            raise SeamlessTransformationError(errmsg.format(cmd2, stdout, stderr)) from None
 
         result_checksum = self.database_client.get_transformation_result(checksum)
         if result_checksum is not None:
             return Checksum(result_checksum)
+
+        cmd3 = cmd2 + "\n" + "Output is empty"
+        stdout = process.stdout
+        try:
+            stdout = stdout.decode()
+        except:
+            pass
+        stderr = process.stderr
+        try:
+            stderr = stderr.decode()
+        except:
+            pass
+
+        raise SeamlessTransformationError(errmsg.format(cmd3, stdout, stderr)) from None
 
     def launch_transformation(self, checksum, transformation, prepared_transformation):
         checksum = parse_checksum(checksum)
