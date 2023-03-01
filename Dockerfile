@@ -1,4 +1,4 @@
-FROM rpbs/seamless-deps:0.10
+FROM rpbs/seamless-deps:0.11
 LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 LABEL maintainer="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 LABEL version="0.11"
