@@ -37,6 +37,7 @@ There are several documented example configuration files in `jobless/config/*.ya
 
 See `jobless/config/local.yaml` for a minimal example, where bash transformations and bashdocker transformations are run as local jobs.
 Other .yaml files in that directory show:
+
 - The use of a Slurm backend.
 - The use of Singularity for bashdocker transformations (with Slurm)
 - The use of generic transformers. These can run transformations in any language (bash, Python, compiled, ipython-bridged) with any conda environment specified. Transformations are run inside a `rpbs/seamless-minimal` Docker container, and an external location
@@ -44,11 +45,9 @@ must be provided where jobless can store Conda environments.
 - The use of generic transformers plus Singularity. Instead of in a Docker container, these run inside a Singularity container.
 - Generic transformers plus Singularity plus Slurm.
 
-
 ## Setup
 
-***NOTE: Jobless does not run properly under Python3.10. It does run
-properly under Python3.8. You are recommended to create a new conda environment for Jobless using `conda create -n jobless 'python=3.8'`***
+You are recommended to create a new conda environment for Jobless using `conda create -n jobless`
 
 Jobless runs without containerization. Its dependencies are in `jobless/requirements.txt`, to be installed with `pip -r`. It also requires silk and a few other dependencies, depending on which jobhandlers are being used.
 Please read `jobless/requirements.txt` for further instructions.
