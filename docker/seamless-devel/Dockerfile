@@ -1,7 +1,7 @@
 FROM rpbs/seamless-deps
 LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 USER root
-RUN apt install less gfortran -y && conda install black mypy types-requests sphinx recommonmark -y && pip install sphinx_rtd_theme 
+RUN apt install less gcc g++ gfortran -y && conda install black mypy types-requests sphinx recommonmark -y && pip install sphinx_rtd_theme 
 COPY . /usr/local/src/seamless-tools
 RUN rm -rf /usr/local/src/seamless-tools/.git && \
     mkdir /home/jovyan/software && \
