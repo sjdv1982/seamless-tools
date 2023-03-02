@@ -3,7 +3,7 @@ LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 LABEL maintainer="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
 LABEL version="0.11"
 USER root
-RUN cd /usr/local/src && git clone https://github.com/sjdv1982/seamless.git --branch stable --depth 1 && rm seamless/.git -rf
+RUN cd /usr/local/src && apt install git -y && git clone https://github.com/sjdv1982/seamless.git --branch stable --depth 1 && rm seamless/.git -rf
 RUN mamba env update --name base --file /usr/local/src/seamless/conda/seamless-exact-environment.yml
 COPY . /usr/local/src/seamless-tools
 RUN rm -rf /usr/local/src/seamless-tools/.git && \
