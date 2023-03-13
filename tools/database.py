@@ -14,6 +14,26 @@ buffer_cache = {}
 buffer_cache_size = 0
 buffer_cache_keys = deque()
 
+async def verify_filename_checksum_dict(checksum_dict):
+    async def verify_checksum(filename, checksum):
+        try:        
+            async with aiofiles.open(filename, "rb") as f:
+                buffer = await f.read()
+        except Exception:
+            return False
+        real_checksum = calculate_checksum(buffer)
+        return checksum == real_checksum    
+    filenames = sorted(checksum_dict.keys())
+    coros = [verify_checksum(filename, checksum_dict[filename]) for filename in filenames]    
+    coro_results = await asyncio.gather(coros, return_exceptions=True)
+    result = {}
+    for filename, coro_result in zip(filenames, coro_results):
+        if isinstance(coro_result, Exception) or not coro_result:
+            result[filename] = False
+        else:
+            result[filename] = True
+    return result
+
 def cache_buffer(checksum, buffer):
     global buffer_cache_size    
     l = len(buffer)
@@ -31,16 +51,15 @@ def cache_buffer(checksum, buffer):
     buffer_cache[checksum] = l, buffer
     buffer_cache_size += l
 
-async def read_buffer(checksum, filename):
+async def read_buffer(checksum, filename, verify):
     if filename is None or not await aiofiles.os.path.exists(filename):
         return None
     async with aiofiles.open(filename, "rb") as f:
         buffer = await f.read()
-    '''
-    cs = calculate_checksum(buffer, hex=True)
-    if cs != checksum: # database corruption!
-        return None
-    '''
+    if verify:
+        cs = calculate_checksum(buffer, hex=True)
+        if cs != checksum: # database corruption!
+            return None
     cache_buffer(checksum, buffer)
     return buffer
 
@@ -131,7 +150,7 @@ class DatabaseStore:
             bucket = TopBucket(subdir, readonly=self.readonly)
             self.buckets[bucketname] = bucket
 
-    def _get_filename(self, checksum, as_external_path):
+    def _get_buffer_file(self, checksum, as_external_path):
         if checksum is None:
             return None
         dir = self.external_path if as_external_path else self.path
@@ -156,6 +175,7 @@ class DatabaseServer:
     def __init__(self, config):
         self.host = config.get("host", "0.0.0.0")
         self.port = int(config.get("port", 5522))
+        self.verify_checksums = config.get("verify_checksums")
         stores = []
         readonly = True
         for store_config in config["stores"]:
@@ -261,16 +281,31 @@ class DatabaseServer:
                     type = rq["type"]
                     if type not in types:
                         raise KeyError
-                    checksum = rq["checksum"]
-                    value = None
-                    if type != "delete_key":
+                    if type == "filenames":
+                        for store in self.stores:
+                            if not store.readonly:
+                                if store.path != store.external_path:
+                                    raise DatabaseError("Database is in a containerized file system")
+                        checksum = None
                         value = rq["value"]
+                        try:
+                            for key, cs in value.items():
+                                assert isinstance(key, str)
+                                value[key] = parse_checksum(cs)
+                        except Exception:
+                            raise KeyError # will be propagated
+                    else:
+                        checksum = rq["checksum"]
+                        value = None
+                        if type != "delete_key":
+                            value = rq["value"]
                 except KeyError:
                     #import traceback; traceback.print_exc()
                     raise DatabaseError("Malformed request") from None
                  
                 try:
-                    checksum = parse_checksum(checksum)
+                    if checksum is not None:
+                        checksum = parse_checksum(checksum)
                 except ValueError:
                     #import traceback; traceback.print_exc()
                     raise DatabaseError("Malformed request") from None
@@ -297,17 +332,16 @@ class DatabaseServer:
 
     async def _get(self, type, checksum, request):
         if type == "has_buffer":
-            found = False
             if checksum in self.temp_buffercache:
-                found = True
+                return True
             elif checksum in buffer_cache:
-                found = True
+                return True
             else:
                 for store in self.stores:
-                    filename = store._get_filename(checksum, as_external_path=False)
+                    filename = store._get_buffer_file(checksum, as_external_path=False)
                     if filename is not None and await aiofiles.os.path.exists(filename):
-                        found = True
-            return found
+                        return True
+            return False
 
         elif type == "filename":
             filezones = request.get("filezones", [])
@@ -319,9 +353,9 @@ class DatabaseServer:
                 if len(filezones):
                     if store.filezone not in filezones:
                         continue
-                filename = store._get_filename(checksum, as_external_path=False)
+                filename = store._get_buffer_file(checksum, as_external_path=False)
                 if filename is not None and await aiofiles.os.path.exists(filename):
-                    filename2 = store._get_filename(checksum, as_external_path=True)
+                    filename2 = store._get_buffer_file(checksum, as_external_path=True)
                     return filename2
             return None # None is also a valid response
 
@@ -349,9 +383,9 @@ class DatabaseServer:
                 _, buffer = hit
                 return buffer
             for store in self.stores:
-                filename = store._get_filename(checksum, as_external_path=False)
+                filename = store._get_buffer_file(checksum, as_external_path=False)
                 if filename is not None and await aiofiles.os.path.exists(filename):
-                    result = await read_buffer(checksum, filename)
+                    result = await read_buffer(checksum, filename, verify=self.verify_checksums)
                     if result is not None:
                         return result 
             return None # None is also a valid response
@@ -418,7 +452,7 @@ class DatabaseServer:
                         continue
                     bucket = store.buckets["buffer_independence"]
                     bucket.set(checksum, independent)
-                    filename = store._get_filename(checksum, as_external_path=False)
+                    filename = store._get_buffer_file(checksum, as_external_path=False)
                     if filename is not None:
                         await write_buffer(checksum, value, filename)
             finally:
@@ -435,7 +469,7 @@ class DatabaseServer:
                     if key_type in ("transformation", "compilation"):
                         key_type += "s"
                     if key_type == "buffer":
-                        filename = store._get_filename(checksum, as_external_path=False)
+                        filename = store._get_buffer_file(checksum, as_external_path=False)
                         file_deleted = delete_file(filename)
                         if file_deleted:
                             deleted = True
