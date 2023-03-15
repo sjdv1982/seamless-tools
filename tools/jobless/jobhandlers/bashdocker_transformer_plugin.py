@@ -18,6 +18,8 @@ class BashDockerTransformerPlugin(FileTransformerPluginBase):
         '59e918e039a9b8a584ce9ba90b78941a8024ff9ff98db1133d67112974b0659f', # Seamless 0.8-0.10 bash transformer
         '5168198de7c671be93c56f1610c68fbfd31c88da02c53dcbca1cc88c848002ed', # Seamless 0.11
         'ac339d46f279489510a477d727f8f2c403009c20bb9cbc0c34eeaad715bc1a28', # Seamless 0.11 bash transformer
+        '24c05bdc28158f937efeceae3af047f6132912d5a5035954adc5364d4e039acd', # Seamless 0.12
+        'eeed9da129bac7b01785ca36ed04682e5351166bc302140eb6052bfc669224f5', # Seamless 0.12 bash transformer
     ]
 
     def allowed_docker_image(self, docker_image):
