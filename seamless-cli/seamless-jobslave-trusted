@@ -5,7 +5,7 @@
 set -e
 
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
-source $currdir/seamless-fill-environment-variables
+source $currdir/seamless-fill-environment-variables.
 
 if [ -z "$1" ]; then
   name="jobslave"
@@ -17,6 +17,8 @@ fi
 if [ -z "$SEAMLESS_COMMUNION_OUTGOING_PORT" ]; then
   export SEAMLESS_COMMUNION_OUTGOING_PORT=8602
 fi
+
+$currdir/seamless-detect-used-ports $SEAMLESS_COMMUNION_OUTGOING_PORT
 
 set -u -e
 

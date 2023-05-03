@@ -8,15 +8,17 @@ import json
 has_docker = subprocess.getoutput("docker --version").startswith("Docker version")
 
 ports = {
-    8888: "Jupyter port",
-    5138: "Seamless websocket port",
-    5813: "Seamless shareserver port",
+    8888: "Jupyter port 8888",
+    5138: "Seamless websocket port 5138",
+    5813: "Seamless shareserver port 5813",
+    5522: "Seamless database port 5522"
 }
+ports_original = ports.copy()
 
 ports_to_listen = [int(arg) for arg in sys.argv[1:]]
 for port in ports_to_listen:
     if port not in ports:
-        ports[port] = ""
+        ports[port] = "port {}".format(port)
 
 check_docker = False
 
@@ -38,6 +40,7 @@ if check_docker:
     except Exception:
         print("WARNING: cannot list Docker containers", file=sys.stderr)    
 
+found_docker = False
 for port, pid in result.items():
     if pid is None:
         found = False
@@ -51,19 +54,25 @@ for port, pid in result.items():
                         if len(lll) == 2:
                             cport = int(lll[1])
                             if cport == port:
-                                msg = "Cannot open {} (port {}): port is used by Docker container '{}', image '{}'"
-                                print(msg.format(ports[port], port, c[0], c[1]), file=sys.stderr)
+                                msg = "Cannot open {}: port is used by Docker container '{}', image '{}'"
+                                print(msg.format(ports[port], c[0], c[1]), file=sys.stderr)
                                 found = True
+                                if port in ports_original:
+                                    found_docker = True
                 except Exception:
                     # Fail silently...
                     pass
         if not found:
-            msg = "Cannot open {} (port {}): port is used by an unknown process" 
-            print(msg.format(ports[port], port), file=sys.stderr)
+            msg = "Cannot open {}: port is used by an unknown process" 
+            print(msg.format(ports[port]), file=sys.stderr)
         continue
     p = psutil.Process(pid)
-    msg = "Cannot open {} (port {}): port is used by process '{}' (process id {}, command '{}')"    
-    print(msg.format(ports[port], port, p.name(), pid, ' '.join(p.cmdline())), file=sys.stderr)
+    msg = "Cannot open {}: port is used by process '{}' (process id {}, command '{}')"    
+    print(msg.format(ports[port], p.name(), pid, ' '.join(p.cmdline())), file=sys.stderr)
 
 if len(result):
+    if found_docker:
+        msg = """It seems that you have a running seamless-bash, seamless-ipython or seamless-jupyter session.
+You must stop that session before starting a new one."""
+        print(msg, file=sys.stderr)
     exit(1)    

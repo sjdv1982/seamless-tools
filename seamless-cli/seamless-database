@@ -30,6 +30,16 @@ for store in config["stores"]:
 print(result)
 '''
 
+get_database_port='''
+import sys, os
+import ruamel.yaml
+yaml = ruamel.yaml.YAML(typ="safe")
+config = yaml.load(open(sys.argv[1]))
+assert isinstance(config, dict)
+port = int(config.get("port", 5522))
+print(port)
+'''
+
 default_database_config='''
 host: "0.0.0.0"  # can be omitted, default is 0.0.0.0
 port:  5522  # can be omitted, default is 5522
@@ -47,6 +57,7 @@ stores:  # Note that this a list, allowing multiple stores to be specified.
 '''
 
 if [ -z "$1" ]; then
+  $currdir/seamless-detect-used-ports 5522
   database_config=$seamlessdir/default-database.yaml  
   database_dir=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]))" ~/.seamless/database)
   mkdir -p $database_dir
@@ -69,6 +80,8 @@ else
       database_config=$database_config2
     fi
     docker_params=$(echo "$get_docker_params" | python /dev/stdin $database_config)
+    database_port=$(echo "$get_database_port" | python /dev/stdin $database_config)
+    $currdir/seamless-detect-used-ports $database_port
     database_config_intern=/database-config.yaml
     database_config_mount="-v $database_config:$database_config_intern:ro"
   else

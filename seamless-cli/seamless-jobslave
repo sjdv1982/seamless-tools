@@ -18,6 +18,8 @@ if [ -z "$SEAMLESS_COMMUNION_OUTGOING_PORT" ]; then
   export SEAMLESS_COMMUNION_OUTGOING_PORT=8602
 fi
 
+$currdir/seamless-detect-used-ports $SEAMLESS_COMMUNION_OUTGOING_PORT
+
 set -u -e
 
 containerID=$(docker run \
