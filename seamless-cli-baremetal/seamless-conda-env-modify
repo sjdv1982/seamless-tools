@@ -1,0 +1,14 @@
+#!/bin/bash -i
+
+set -u -e
+
+# modifies a conda environment that was exported with seamless-cli-baremetal/seamless-conda-env-export
+# $1: the environment dir
+# $2: the environment.yml file to modify with
+
+CONDA_ENV_DIR=$1
+yaml=$2
+
+conda activate $CONDA_ENV_DIR
+export CONDA_PKGS_DIRS=$CONDA_ENV_DIR
+mamba env update --file $yaml

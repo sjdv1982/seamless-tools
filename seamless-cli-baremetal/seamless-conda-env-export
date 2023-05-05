@@ -1,0 +1,21 @@
+#!/bin/bash -i
+
+set -u -e
+
+# exports the default seamless-baremetal conda environment
+# to the specified directory
+# NOTE: exported directories can be backed up with cp -r
+# but when executed, they must run under the original directory name
+
+currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
+
+CONDA_ENV_OUTPUT_DIR=$1
+rm -rf $CONDA_ENV_OUTPUT_DIR
+
+export CONDA_PKGS_DIRS=$CONDA_ENV_OUTPUT_DIR
+mamba create --prefix $CONDA_ENV_OUTPUT_DIR --clone seamless-baremetal --force || exit 1
+
+#KLUDGE: for some reason, seamless-framework cannot be cloned out of the root environment
+conda activate base
+PKG=$(conda list -n seamless-baremetal 'seamless-framework|^conda$' --export | grep -v '#')
+mamba install --prefix $CONDA_ENV_OUTPUT_DIR -c rpbs -c conda-forge $PKG -y

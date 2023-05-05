@@ -1,0 +1,32 @@
+#!/bin/bash -i
+
+# runs a transformation in the seamless-minimal Docker image
+# $1: the environment dir
+# $2: the transformation checksum
+
+if [ -z "$SEAMLESS_DOCKER_IMAGE" ]; then
+  # This defines which Transformer.docker_image values will be acceptable
+  export SEAMLESS_DOCKER_IMAGE=rpbs/seamless
+fi
+
+if [ -z "$SEAMLESS_DATABASE_IP" ]; then
+  export SEAMLESS_DATABASE_IP=localhost
+fi
+
+if [ -z "$SEAMLESS_DATABASE_PORT" ]; then
+  export SEAMLESS_DATABASE_PORT=5522
+fi
+
+set -u -e
+
+echo SEAMLESS_TOOLS_DIR=$(printenv SEAMLESS_TOOLS_DIR)
+echo SEAMLESS_DOCKER_IMAGE=$(printenv SEAMLESS_DOCKER_IMAGE)
+echo SEAMLESS_DATABASE_IP=$(printenv SEAMLESS_DATABASE_IP)
+echo SEAMLESS_DATABASE_PORT=$(printenv SEAMLESS_DATABASE_PORT)
+
+CONDA_ENV_DIR=$1
+tf_checksum=$2
+
+conda activate $CONDA_ENV_DIR
+python3 $SEAMLESS_TOOLS_DIR/scripts/run-transformation.py $tf_checksum
+
