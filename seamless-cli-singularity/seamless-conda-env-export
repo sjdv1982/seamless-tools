@@ -2,13 +2,20 @@
 
 set -u -e
 
-# modifies a conda environment in the seamless-minimal Docker image
-# $1: the environment dir
-# $2: the environment.yml file to modify with
+# exports the default seamless-minimal conda environment
+# (defined in /seamless-minimal/environment.yml)
+# to the specified directory
+# NOTE: exported directories can be backed up with cp -r
+# but when executed, they must run under the original directory name
 
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 
-CONDA_ENV_OUTPUT_DIR=$1
+CONDA_ENV_OUTPUT_DIR=`python3 -c '''
+import sys, os
+x = sys.argv[1]
+if not x.startswith(os.sep): 
+  x = "." + os.sep + x
+print(x)''' $1`
 rm -rf $CONDA_ENV_OUTPUT_DIR
 mkdir -p $CONDA_ENV_OUTPUT_DIR
 

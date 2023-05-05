@@ -390,7 +390,7 @@ class JoblessServer:
 
 from jobhandlers import (
     BashTransformerPlugin, BashDockerTransformerPlugin, GenericTransformerPlugin,
-    GenericSingularityTransformerPlugin, 
+    GenericSingularityTransformerPlugin, GenericBareMetalTransformerPlugin,
     GenericBackend, GenericSingularityBackend, ShellBashBackend, ShellBashDockerBackend,
     SlurmBashBackend, SlurmSingularityBackend, SlurmGenericSingularityBackend
 )
@@ -422,6 +422,19 @@ class SlurmGenericSingularityJobHandler(GenericSingularityTransformerPlugin, Slu
         GenericSingularityTransformerPlugin.__init__(self, *args, **kwargs)
         SlurmGenericSingularityBackend.__init__(self, *args, **kwargs)
 
+class GenericBareMetalJobHandler(GenericBareMetalTransformerPlugin, GenericBackend):
+    def __init__(self, *args, **kwargs):
+        GenericBareMetalTransformerPlugin.__init__(self, *args, **kwargs)
+        GenericBackend.__init__(self, *args, **kwargs)
+
+'''
+TODO: get it working with Slurm...
+class SlurmGenericSingularityJobHandler(GenericSingularityTransformerPlugin, SlurmGenericSingularityBackend):
+    def __init__(self, *args, **kwargs):
+        GenericSingularityTransformerPlugin.__init__(self, *args, **kwargs)
+        SlurmGeneric.__init__(self, *args, **kwargs)
+'''
+
 jobhandler_classes = {
     # mapping of (type, backend, sub_backend) to jobhandler class
 
@@ -436,6 +449,8 @@ jobhandler_classes = {
     ("generic", "shell", None): GenericJobHandler,
 
     ("generic", "shell", "singularity"): GenericSingularityJobHandler,
+
+    ("generic", "shell", "baremetal"): GenericBareMetalJobHandler,
 
     ("generic", "slurm", "singularity"): SlurmGenericSingularityJobHandler,
 
@@ -542,6 +557,12 @@ if __name__ == "__main__":
                     jh.SINGULARITY_IMAGE_FILE = jobhandler["singularity_image_file"]
                     jh.CONDA_ENV_RUN_TRANSFORMATION_COMMAND = jobhandler["singularity_run_transformation_command"]
                     jh.CONDA_ENV_MODIFY_COMMAND = jobhandler["singularity_env_modify_command"]
+                elif sub_backend == "baremetal":
+                    if os.environ.get("SEAMLESS_TOOLS_DIR") is None:
+                        raise Exception("For sub-backend 'baremetal', SEAMLESS_TOOLS_DIR must be defined")
+                    jh.CONDA_ENV_RUN_TRANSFORMATION_COMMAND = jobhandler["conda_run_transformation_command"]
+                    jh.CONDA_ENV_MODIFY_COMMAND = jobhandler["conda_env_modify_command"]
+                    jh.CONDA_ENV_CLONE_COMMAND = jobhandler["conda_env_clone_command"] + " {} {}"
 
         elif backend == "slurm":
             jh.SLURM_EXTRA_HEADER = jobhandler.get("slurm_extra_header")
@@ -556,7 +577,9 @@ if __name__ == "__main__":
                 if sub_backend == "singularity":
                     jh.SINGULARITY_IMAGE_FILE = jobhandler["singularity_image_file"]
                     jh.CONDA_ENV_RUN_TRANSFORMATION_COMMAND = jobhandler["singularity_run_transformation_command"]
-                    jh.CONDA_ENV_MODIFY_COMMAND = jobhandler["singularity_env_modify_command"]
+                    jh.CONDA_ENV_MODIFY_COMMAND = jobhandler["singularity_env_modify_command"]                    
+                if sub_backend == "baremetal":
+                    raise NotImplementedError
 
         jobhandlers.append(jh)
 

@@ -8,7 +8,13 @@
 
 set -u -e
 
-CONDA_ENV_OUTPUT_DIR=$1
+CONDA_ENV_OUTPUT_DIR=`python3 -c '''
+import sys, os
+x = sys.argv[1]
+if not x.startswith(os.sep): 
+  x = "." + os.sep + x
+print(x)''' $1`
+echo $CONDA_ENV_OUTPUT_DIR
 rm -rf $CONDA_ENV_OUTPUT_DIR
 mkdir -p $CONDA_ENV_OUTPUT_DIR
 

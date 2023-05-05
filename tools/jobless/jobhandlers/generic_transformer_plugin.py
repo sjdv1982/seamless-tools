@@ -15,6 +15,7 @@ from . import TransformerPlugin, SeamlessTransformationError
 
 class GenericTransformerPlugin(TransformerPlugin):
     CONDA_ENV_MODIFY_COMMAND = "seamless-conda-env-modify"
+    CONDA_ENV_CLONE_COMMAND = "cp -r {} {}"
 
     def prepare_conda_env_modify_env(self, env):
         pass
@@ -95,9 +96,8 @@ class GenericTransformerPlugin(TransformerPlugin):
 
             def clone():
                 print("conda env clone default environment: {} => {}".format(self.exported_conda_env_directory, d))
-                # does not work...
-                #shutil.copytree(self.exported_conda_env_directory, d, ignore_dangling_symlinks=True)
-                os.system("cp -r {} {}".format(self.exported_conda_env_directory, d))
+                cmd = self.CONDA_ENV_CLONE_COMMAND.format(self.exported_conda_env_directory, d)
+                os.system(cmd)
 
             loop = asyncio.get_event_loop()
             with ThreadPoolExecutor() as executor:
@@ -212,6 +212,7 @@ class GenericSingularityTransformerPlugin(GenericTransformerPlugin):
     def prepare_conda_env_modify_env(self, env):
         env["SEAMLESS_MINIMAL_SINGULARITY_IMAGE"] = self.SINGULARITY_IMAGE_FILE
 
-
+class GenericBareMetalTransformerPlugin(GenericTransformerPlugin):
+    CONDA_ENV_MODIFY_COMMAND = None  #to be set from YAML    
 
 from util import calculate_checksum, parse_checksum        

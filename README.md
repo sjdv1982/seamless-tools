@@ -68,7 +68,7 @@ In `config/`, there are several jobless config files that you can test and/or ad
 
 - local-with-generic.yaml. In addition, all other transformations (Python, compiled, conda environment) are executed inside the rpbs/seamless-minimal Docker image. It requires that `seamless-conda-env-export /tmp/SEAMLESS-MINIMAL` has been run first. Temporary conda environments are cached in `/tmp/JOBLESS-CONDA-ENV` (this dir must exist).
 
-- local-with-generic-singularity. For the rpbs/seamless-minimal image, Singularity (must be installed) is used instead of Docker. It requires SEAMLESS_TOOLS_DIR to be defined (pointing to this Git repo). In addition, it requires SEAMLESS_MINIMAL_SINGULARITY_IMAGE to be defined and pointing to the seamless-minimal .sif file: see `seamless-cli-singularity/README.md` for instructions on how to generate it.
+- local-with-generic-singularity.yaml. For the rpbs/seamless-minimal image, Singularity (must be installed) is used instead of Docker. It requires SEAMLESS_TOOLS_DIR to be defined (pointing to this Git repo). In addition, it requires SEAMLESS_MINIMAL_SINGULARITY_IMAGE to be defined and pointing to the seamless-minimal .sif file: see `seamless-cli-singularity/README.md` for instructions on how to generate it.
 
 ### Test suite
 
