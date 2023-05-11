@@ -1,19 +1,14 @@
-from . import Backend, SeamlessTransformationError, JoblessRemoteError
+from . import Backend, SeamlessTransformationError
 
 import asyncio
 import sys, os, tempfile, shutil
-import psutil
-import json
-import subprocess, tarfile
-from functools import partial
-import numpy as np
-from io import BytesIO
+import subprocess
 import traceback
 
 class SlurmBackend(Backend):
     support_symlinks = True
-    STATUS_POLLING_INTERVAL = 2.0   # TODO: conf file
-    SLURM_EXTRA_HEADER = None # TODO: conf file
+    STATUS_POLLING_INTERVAL = 2.0
+    SLURM_EXTRA_HEADER = None
     JOB_TEMPDIR = None
     RESULT_FILENAME = "RESULT"  # set to None to read no result file
 
@@ -68,7 +63,8 @@ class SlurmBackend(Backend):
             coro = get_error()
             jobid = None
             os.chdir(old_cwd)
-            ###shutil.rmtree(tempdir, ignore_errors=True)
+            # TODO: debug setting where job dir is not cleaned up
+            #shutil.rmtree(tempdir, ignore_errors=True)
         finally:
             os.chdir(old_cwd)
 
@@ -124,7 +120,7 @@ def submit_job(jobname, slurm_extra_header, env, code, *, use_host_environment):
     with open("SLURMFILE", "w") as f:
         f.write(code2)
     os.chmod("SLURMFILE", 0o755)
-    cmd = "sbatch -J {} SLURMFILE".format(jobname)
+    cmd = "sbatch -J {} {}".format(jobname, "SLURMFILE")
     env2 = os.environ.copy()
     env2.update(env)
 
@@ -188,7 +184,8 @@ async def await_job(jobname, identifier, code, tftype, tempdir, polling_interval
             result = parse_resultfile(resultfile)
     finally:
         os.chdir(old_cwd)
-        ###shutil.rmtree(tempdir, ignore_errors=True)
+        # TODO: debug setting where job dir is not cleaned up
+        #shutil.rmtree(tempdir, ignore_errors=True)
 
     error_msg = None
     if exit_code > 0:
@@ -241,7 +238,53 @@ class SlurmBashBackend(SlurmBackend):
 
     def submit_job(self, jobname, slurm_extra_header, env, code, prepared_transformation):
         self.prepare_slurm_env(env)
+        env = {k:str(v) for k,v in env.items()}
         msg = "Submit slurm bash job {}"
+        print(msg.format(jobname), file=sys.stderr)
+        return submit_job(
+            jobname, slurm_extra_header, env, code,
+            use_host_environment=self.USE_HOST_ENVIRONMENT
+        )
+
+class SlurmGenericBareMetalBackend(SlurmBackend):
+    support_symlinks = True
+    TF_TYPE = "Generic"
+    USE_HOST_ENVIRONMENT = False
+    SINGULARITY_IMAGE_FILE = None # to be defined by jobless
+    
+    def prepare_slurm_env(self, env):
+        env["SEAMLESS_TOOLS_DIR"] = os.environ["SEAMLESS_TOOLS_DIR"]
+        env["SEAMLESS_DATABASE_IP"] = self.SEAMLESS_DATABASE_IP
+        env["SEAMLESS_DATABASE_PORT"] = self.SEAMLESS_DATABASE_PORT
+
+    def get_code(self, transformation, prepared_transformation):
+        cmd = [            
+            self.CONDA_ENV_RUN_TRANSFORMATION_COMMAND,
+        ]
+        d = prepared_transformation["temp_conda_env_directory"]
+        checksum = prepared_transformation["__checksum__"]
+        cmd.append(d)
+        cmd.append(checksum)
+        filezones = prepared_transformation["filezones"]
+        if filezones is not None:
+            for filezone in filezones:
+                cmd.append("--filezone")
+                cmd.append(filezone)
+
+        code = " ".join(cmd)
+        return code
+
+    async def await_job(self, checksum, jobname, identifier, code, tftype, tempdir, polling_interval):
+        await await_job(jobname, identifier, code, tftype, tempdir, polling_interval, resultfile=None)
+        result_checksum = self.database_client.get_transformation_result(checksum)
+        if result_checksum is not None:
+            return Checksum(result_checksum)
+
+
+    def submit_job(self, jobname, slurm_extra_header, env, code, prepared_transformation):
+        self.prepare_slurm_env(env)
+        env = {k:str(v) for k,v in env.items()}
+        msg = "Submit slurm generic job {}"
         print(msg.format(jobname), file=sys.stderr)
         return submit_job(
             jobname, slurm_extra_header, env, code,
@@ -281,6 +324,7 @@ class SlurmSingularityBackend(SlurmBackend):
     def submit_job(self, jobname, slurm_extra_header, env, code, prepared_transformation):
         singularity_command, message = self.get_singularity_command(env, code, prepared_transformation)
         self.prepare_slurm_env(env)
+        env = {k:str(v) for k,v in env.items()}
         print(message.format(jobname), file=sys.stderr)
         return submit_job(
             jobname, slurm_extra_header, env, singularity_command,
@@ -295,6 +339,8 @@ class SlurmGenericSingularityBackend(SlurmSingularityBackend):
     
     def prepare_slurm_env(self, env):
         env["SEAMLESS_MINIMAL_SINGULARITY_IMAGE"] = self.SINGULARITY_IMAGE_FILE
+        env["SEAMLESS_DATABASE_IP"] = self.SEAMLESS_DATABASE_IP
+        env["SEAMLESS_DATABASE_PORT"] = self.SEAMLESS_DATABASE_PORT
 
     def get_code(self, transformation, prepared_transformation):
         cmd = [            

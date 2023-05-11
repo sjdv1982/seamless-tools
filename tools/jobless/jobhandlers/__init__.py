@@ -16,12 +16,17 @@ Jobs are submitted by checksum. There is also a job status API, which can return
     3: Job result is known; job result checksum is returned, i.e. "return 3, job_checksum"
        NOTE: jobless will then check if the buffer is then actually available from seamless database.
        If not, jobless will invoke Backend.forget(...)
+
+There is also code 4, this is used internally by Jobless to indicate that a previously run  
+transformation (in the current Jobless session) is no longer findable in the database 
+and hence must be restarted.       
 """
 
 import asyncio
 import traceback
 from functools import partial
 from hashlib import sha3_256
+import json
 
 from .util import parse_checksum
 
@@ -50,7 +55,16 @@ class Backend:
         if checksum in self.results:
             if self.results[checksum] is None:
                 return 0, "Unknown error when parsing the results"
-            return 3, self.results[checksum]
+            result_checksum2 = self.database_client.get_transformation_result(checksum)
+            ok = False
+            if result_checksum2 is not None:
+                if result_checksum2.hex() == self.results[checksum]:
+                    ok = True
+            if ok:
+                return 3, self.results[checksum]
+            else:
+                self.forget(checksum)
+                return 4, None
 
         if checksum in self.transformations:
             fut = self.transformations[checksum]
@@ -178,6 +192,9 @@ class JoblessRemoteError(Exception):
 from .bash_transformer_plugin import BashTransformerPlugin
 from .bashdocker_transformer_plugin import BashDockerTransformerPlugin
 from .shell_backend import ShellBashBackend, ShellBashDockerBackend
-from .slurm_backend import SlurmBashBackend, SlurmSingularityBackend, SlurmGenericSingularityBackend
+from .slurm_backend import (
+    SlurmBashBackend, SlurmSingularityBackend, 
+    SlurmGenericSingularityBackend, SlurmGenericBareMetalBackend
+)
 from .generic_transformer_plugin import GenericTransformerPlugin, GenericSingularityTransformerPlugin, GenericBareMetalTransformerPlugin
-from .generic_backend import GenericBackend, GenericSingularityBackend
+from .generic_backend import GenericBackend, GenericSingularityBackend, GenericBareMetalBackend

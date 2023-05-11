@@ -112,6 +112,7 @@ class GenericTransformerPlugin(TransformerPlugin):
                     f.flush()
                     env = os.environ.copy()            
                     self.prepare_conda_env_modify_env(env)
+                    env = {k:str(v) for k,v in env.items()}
                     cmd = [self.CONDA_ENV_MODIFY_COMMAND, d, f.name]
                     cmd2 = " ".join(cmd)  
                     print("conda env modify command:", cmd2)               

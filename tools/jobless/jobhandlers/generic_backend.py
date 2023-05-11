@@ -61,7 +61,8 @@ Generic transformer error
             cmd2 = " ".join(cmd)
             env = os.environ.copy()            
             self.prepare_run_transformation_env(env)
-            print("run transformation command:", cmd2)
+            env = {k:str(v) for k,v in env.items()}
+            print("run transformation command:", cmd2)        
             process = subprocess.run(
                 cmd2, shell=True, check=True, capture_output=True, env=env
             )
@@ -126,6 +127,14 @@ class GenericSingularityBackend(GenericBackend):
     
     def prepare_run_transformation_env(self, env):
         env["SEAMLESS_MINIMAL_SINGULARITY_IMAGE"] = self.SINGULARITY_IMAGE_FILE
+        env["SEAMLESS_DATABASE_IP"] = self.SEAMLESS_DATABASE_IP
+        env["SEAMLESS_DATABASE_PORT"] = self.SEAMLESS_DATABASE_PORT
+
+
+class GenericBareMetalBackend(GenericBackend):
+    def prepare_run_transformation_env(self, env):
+        env["SEAMLESS_DATABASE_IP"] = self.SEAMLESS_DATABASE_IP
+        env["SEAMLESS_DATABASE_PORT"] = self.SEAMLESS_DATABASE_PORT
 
 
 from . import Checksum
