@@ -1,7 +1,6 @@
 
 import os
 os.environ["SEAMLESS_COMMUNION_ID"] = "seamless"
-os.environ["SEAMLESS_COMMUNION_INCOMING"] = "localhost:5533"
 from seamless.highlevel import Context, Cell, Transformer
 
 import seamless
