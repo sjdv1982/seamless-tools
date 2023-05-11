@@ -15,5 +15,5 @@ mamba create --prefix $CONDA_ENV_OUTPUT_DIR --clone $CONDA_ENV_INPUT_DIR --force
 
 #KLUDGE: for some reason, seamless-framework cannot be cloned out of the root environment
 conda activate base
-PKG=$(conda list -n $CONDA_ENV_INPUT_DIR 'seamless-framework|^conda$' --export | grep -v '#')
+PKG=$(conda list --prefix $CONDA_ENV_INPUT_DIR 'seamless-framework|^conda$' --export | grep -v '#')
 mamba install --prefix $CONDA_ENV_OUTPUT_DIR -c rpbs -c conda-forge $PKG -y

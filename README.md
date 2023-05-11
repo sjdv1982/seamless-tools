@@ -41,9 +41,12 @@ Other .yaml files in that directory show:
 - The use of a Slurm backend.
 - The use of Singularity for bashdocker transformations (with Slurm)
 - The use of generic transformers. These can run transformations in any language (bash, Python, compiled, ipython-bridged) with any conda environment specified. Transformations are run inside a `rpbs/seamless-minimal` Docker container, and an external location
-must be provided where jobless can store Conda environments.
+must be provided where jobless can store conda environments.
 - The use of generic transformers plus Singularity. Instead of in a Docker container, these run inside a Singularity container.
+See the `seamless-cli-singularity/' subfolder for more details.
 - Generic transformers plus Singularity plus Slurm.
+- Generic transformers plus bare metal. Instead of a Docker or Singularity container, the transformers are executed in a cloned `seamless-baremetal` conda environment. See the `seamless-cli-baremetal/' subfolder for more details.
+- Generic transformers plus bare metal plus Slurm.
 
 ## Setup
 
@@ -74,14 +77,15 @@ In `config/`, there are several jobless config files that you can test and/or ad
 
 These are available in `jobless/tests`. They use the Transformer.docker_image values "ubuntu", "rpbs/seamless" and "rpbs/autodock". Make sure that these are available as Docker images in the place where the jobs will be run. NOTE: If you are using Jobless with Slurm+Singularity (not available among the test configs), have them as Singularity .sif files instead of as Docker images.
 
-Launch a shell in a Seamless container with `seamless-bash`
+Launch a shell in a Seamless container with `seamless-bash`, or use the `seamless-framework` conda environment.
+
+Make sure that the environment variable SEAMLESS_COMMUNION_PORT is set to the corresponding value in the Jobless .yaml file. SEAMLESS_COMMUNION_IP must point to the Jobless server IP address / hostname as well.
 
 Run the tests `bash.py`, `docker_.py` and `autodock.py` with python3.
-This will connect to a running Jobless instance.
+This will connect to a running Jobless instance. 
 See the .expected-output files in the same folder.
 If the output contains instead `Local computation has been disabled for this Seamless instance` or `Environment power cannot be granted: 'docker'`, then the test has failed, because a connection to Jobless
-could not be made. `CacheMissError` indicates a failure in connecting
-to the Seamless database.
+could not be made. `CacheMissError` indicates a failure in connecting to the Seamless database.
 
 The above tests are for bash/bashdocker transformations and will work for all of the config files in `/jobless/config`. In addition, there are the following tests that require a config file with a generic jobhandler:
 
