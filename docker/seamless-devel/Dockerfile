@@ -1,5 +1,5 @@
 FROM rpbs/seamless-deps
-LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
+LABEL author="Sjoerd de Vries <sjoerd.devries@loria.fr>"
 USER root
 RUN apt install less gcc g++ gfortran -y && conda install black mypy types-requests sphinx recommonmark -y && pip install sphinx_rtd_theme 
 COPY . /usr/local/src/seamless-tools

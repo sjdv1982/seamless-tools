@@ -37,6 +37,7 @@ singularity run \
   --cleanenv \
   --containall \
   --env DOCKER_IMAGE=$SEAMLESS_DOCKER_IMAGE \
+  --env DOCKER_VERSION=$(singularity --version) \
   --env SEAMLESS_DOCKER_HOST_IP=localhost \
   --env SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
   --env SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo TODO
+exit 1
+
 set -e
 
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`

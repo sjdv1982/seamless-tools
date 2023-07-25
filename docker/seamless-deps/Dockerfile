@@ -2,7 +2,7 @@ FROM jupyter/base-notebook@sha256:28be88ef3ea6a49c84d11489b2f9674d65806daa439e8b
 LABEL author="Sjoerd de Vries <sjdv1982@gmail.com>"
 LABEL maintainer="Sjoerd de Vries <sjdv1982@gmail.com>"
 USER root
-RUN apt update && apt install -y curl gdb iputils-ping apt-transport-https gnupg-agent 
+RUN apt update && apt install -y curl gdb iputils-ping apt-transport-https gnupg-agent lshw 
 RUN sudo mkdir -m 0755 -p /etc/apt/keyrings \
    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
    && echo \

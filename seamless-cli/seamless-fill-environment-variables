@@ -3,6 +3,7 @@
 if [ -z "$SEAMLESS_DOCKER_IMAGE" ]; then
   export SEAMLESS_DOCKER_IMAGE=rpbs/seamless
 fi
+export SEAMLESS_DOCKER_VERSION=$(docker --version)
 
 if [ -z "$SEAMLESS_DOCKER_HOST_IP" ]; then
 

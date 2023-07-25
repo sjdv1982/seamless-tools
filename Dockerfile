@@ -1,7 +1,7 @@
-FROM rpbs/seamless-deps:0.11
-LABEL author="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
-LABEL maintainer="Sjoerd de Vries <sjoerd.de-vries@inserm.fr>"
-LABEL version="0.11"
+FROM rpbs/seamless-deps:0.12
+LABEL author="Sjoerd de Vries <sjoerd.devries@loria.fr>"
+LABEL maintainer="Sjoerd de Vries <sjoerd.devries@loria.fr>"
+LABEL version="0.12"
 USER root
 RUN cd /usr/local/src && apt install git -y && git clone https://github.com/sjdv1982/seamless.git --branch stable --depth 1 && rm seamless/.git -rf
 RUN mamba env update --name base --file /usr/local/src/seamless/conda/seamless-exact-environment.yml
