@@ -8,7 +8,7 @@ args = parser.parse_args()
 
 import seamless
 from seamless.core.cache.buffer_cache import buffer_cache
-from seamless.midlevel.vault import load_vault, load_vault_flat
+from seamless.vault import load_vault, load_vault_flat
 seamless.database_sink.connect()
 
 try:

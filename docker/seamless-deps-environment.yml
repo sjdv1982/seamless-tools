@@ -15,7 +15,7 @@ dependencies:
   # from jupyter/base-notebook, recommended (parts of Seamless won't work)
   - ipython=8.10.*
   - ipykernel=6.21.*
-  - aiofiles=22.1.*
+
   - cffi=1.15.*  
   - ipywidgets=8.0.*
   - debugpy=1.6.*

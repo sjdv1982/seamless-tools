@@ -1,0 +1,7 @@
+name: seamless-database
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - aiohttp
+  - peewee
