@@ -97,6 +97,8 @@ class BaseModel(Model):
     
     @classmethod
     def create(cls, **kwargs):
+        if cls not in primary:
+            return super().create(**kwargs)
         try:
             return super().create(**kwargs)
         except IntegrityError:
@@ -160,9 +162,9 @@ class Expression(BaseModel):
                 'input_checksum', 'path', 'celltype', 'hash_pattern',
                 'target_celltype', 'target_hash_pattern'
             ):
-                kwargs2[k] = kwargs[l]
+                kwargs2[k] = kwargs[k]
             instance = cls.get(**kwargs2)
-            instance["result"] = kwargs["result"]
+            instance.result = kwargs["result"]
             instance.save()
 
 class StructuredCellJoin(BaseModel):
@@ -180,7 +182,7 @@ class StructuredCellJoin(BaseModel):
 
 class MetaData(BaseModel):
     # store opaque meta-data (JSON) for transformations:
-    # - executor name (null, seamless-run-transformation, SLURM, ...)
+    # - executor name (seamless-internal, SLURM, ...)
     # - Seamless version (including Docker/Singularity/conda version)
     # - exact environment conda packages (as environment checksum)
     # - hardware (GPU, memory)
