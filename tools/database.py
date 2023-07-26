@@ -170,10 +170,11 @@ class Expression(BaseModel):
 class StructuredCellJoin(BaseModel):
     '''
     Structured cell join:
-    input checksum: checksum of a tuple containing:
+    input checksum: checksum of a dict containing:
     - auth: auth checksum
     - inchannels: dict-of-checksums where key=inchannel and value=checksum
-    - schema: schema checksum
+    - schema: schema checksum (if not empty)
+    - hash_pattern: structured cell hash pattern (if not empty)
     result: value checksum of the structured cell
     '''
     checksum = Checksum(primary_key=True)
