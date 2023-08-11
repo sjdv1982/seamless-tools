@@ -111,11 +111,6 @@ class Transformation(BaseModel):
     checksum = Checksum(primary_key=True)
     result = Checksum(index=True, unique=False)
 
-print("""
-REDESIGN: elisions will give checksums instead of JSON results (requires buffer retrieval)
-  => dict of (celltype, hash_pattern, checksum) entries, see def "get_elision_result"
-""")
-
 class Elision(BaseModel):
     checksum = Checksum(primary_key=True)
     result = Checksum()
