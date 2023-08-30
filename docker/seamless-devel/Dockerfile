@@ -9,10 +9,11 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
     ln -s /seamless/tests /home/jovyan/seamless-tests && \
     ln -s /seamless/examples /home/jovyan/seamless-examples && \
     cp -Lr /usr/local/src/seamless-tools/scripts /home/jovyan/seamless-scripts && \
-    cp -Lr /usr/local/src/seamless-tools/tools /home/jovyan/seamless-tools
+    cp -Lr /usr/local/src/seamless-tools/tools /home/jovyan/seamless-tools && \
+    cp -Lr /usr/local/src/seamless-tools/seamless-cli /home/jovyan/seamless-cli
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
 RUN ln -s /seamless/seamless/graphs /seamless-graphs
 USER jovyan
-RUN echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc && echo 'alias conda=mamba' >> /home/jovyan/.bashrc
+RUN echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc && echo 'alias conda=mamba' >> /home/jovyan/.bashrc && echo 'export PATH=~/seamless-cli:$PATH' >> /home/jovyan/.bashrc
 ENV PYTHONPATH /home/jovyan/software:$PYTHONPATH
 ENV XDG_CONFIG_HOME=/seamless
