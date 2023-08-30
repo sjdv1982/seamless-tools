@@ -53,8 +53,20 @@ if [ -z "$SEAMLESS_SHARESERVER_ADDRESS" ]; then
   export SEAMLESS_SHARESERVER_ADDRESS=0.0.0.0
 fi
 
-if [ -z "$SEAMLESS_BUFFER_SERVERS" ]; then
-  export SEAMLESS_BUFFER_SERVERS='https://buffer.rpbs.univ-paris-diderot.fr'
+if [ -z "$SEAMLESS_READ_BUFFER_FOLDERS" ]; then
+  export SEAMLESS_READ_BUFFER_FOLDERS=''
+fi
+
+if [ -z "$SEAMLESS_HASHSERVER_PORT" ]; then
+  export SEAMLESS_HASHSERVER_PORT=5577
+fi
+
+if [ -z "$SEAMLESS_READ_BUFFER_SERVERS" ]; then
+  export SEAMLESS_READ_BUFFER_SERVERS='http://'$SEAMLESS_DOCKER_HOST_IP':'$SEAMLESS_HASHSERVER_PORT
+fi
+
+if [ -z "$SEAMLESS_WRITE_BUFFER_SERVER" ]; then
+  export SEAMLESS_WRITE_BUFFER_SERVER='http://'$SEAMLESS_DOCKER_HOST_IP':'$SEAMLESS_HASHSERVER_PORT
 fi
 
 if [ -z "$SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK" ]; then
@@ -79,7 +91,7 @@ if [ "$SEAMLESS_DOCKER_IMAGE" == seamless-devel ]; then
   if [ -z "$SEAMLESS_TOOLS_DIR" ]; then
       echo 'SEAMLESS_TOOLS_DIR undefined, using Docker-installed version' > /dev/stderr
   else
-    export SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL=$SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL" -v $SEAMLESS_TOOLS_DIR/tools:/home/jovyan/seamless-tools  -v $SEAMLESS_TOOLS_DIR/scripts:/home/jovyan/seamless-scripts"
+    export SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL=$SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL" -v $SEAMLESS_TOOLS_DIR/tools:/home/jovyan/seamless-tools  -v $SEAMLESS_TOOLS_DIR/scripts:/home/jovyan/seamless-scripts -v $SEAMLESS_TOOLS_DIR/seamless-cli:/home/jovyan/seamless-cli"
   fi
 fi
 

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+
+currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
+source $currdir/seamless-fill-environment-variables
+
+if [ -z "$HASHSERVER_WRITABLE" ]; then
+    export HASHSERVER_WRITABLE=1
+fi
+
+set -u -e
+
+export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
+
+if [ -z "$1" ]; then
+  buffers_dir0=~/.seamless/buffers
+else
+  buffers_dir0=$1
+fi
+buffers_dir=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]))" ${buffers_dir0})
+mkdir -p $buffers_dir
+
+export HASHSERVER_DIRECTORY=$buffers_dir
+export HASHSERVER_HOST=0.0.0.0
+export HASHSERVER_USER_ID=`id -u`
+export HASHSERVER_GROUP_ID=`id -g`
+docker compose -f $currdir/hashserver/compose.yaml up -d --build
