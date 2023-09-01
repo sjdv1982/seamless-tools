@@ -208,7 +208,7 @@ def err(*args, **kwargs):
 class DatabaseError(Exception):
     pass
 
-def is_port_in_use(address, port): # KLUDGE: For some reason, websockets does not test this??
+def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((address, port)) == 0
 
@@ -506,9 +506,10 @@ class DatabaseServer:
                 celltype, subcelltype = request["celltype"], request["subcelltype"]
             except KeyError:
                 raise DatabaseError("Malformed SET semantic-to-syntactic request") from None
-            for semantic_checksum in value:
+            for syntactic_checksum0 in value:
+                syntactic_checksum = parse_checksum(syntactic_checksum0, as_bytes=True)
                 with db.atomic():
-                    SyntacticToSemantic.create(syntactic=checksum, celltype=celltype, subcelltype=subcelltype, semantic=semantic_checksum)
+                    SyntacticToSemantic.create(semantic=checksum, celltype=celltype, subcelltype=subcelltype, syntactic=syntactic_checksum)
         
         elif type == "compilation":
             try:

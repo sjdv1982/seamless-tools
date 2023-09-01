@@ -22,6 +22,13 @@ and SEAMLESS_DATABASE_PORT must have been defined.
 )
 
 parser.add_argument(
+    "--delegate",
+    help="""Delegate all computation and data storage to remote servers.
+Disable all local transformations. Connect to an assistant and get configuration.""",
+    action="store_true"
+)
+
+parser.add_argument(
     "--communion",
     help="""Connect to a Seamless communion peer, e.g. jobless or a jobslave.
 The environmental variables SEAMLESS_COMMUNION_IP 
@@ -83,9 +90,14 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+if args.delegate:
+    args.communion = False
+    args.database = False
+    args.ncores = 0
 
-if args.zipfile is None and not args.database:
-    print("If no zipfile is specified, --database must be enabled", file=sys.stderr)
+
+if args.zipfile is None and not args.database and not args.delegate: 
+    print("If no zipfile is specified, --database or --delegate must be enabled", file=sys.stderr)
     sys.exit(1)
 
 if args.debug:
@@ -113,18 +125,8 @@ if args.no_lru:
 import seamless.shareserver
 from seamless import communion_server
 
-if args.communion:
-    # config below is now already the default
-    # remove upon next release
-    communion_server.configure_master({
-        "buffer": True,
-        "buffer_status": True,
-        "buffer_info": True,
-        "transformation_job": True,
-        "transformation_status": True,
-        "semantic_to_syntactic": True,
-    })
-
+if args.communion or args.delegate:
+    pass
     """
     # will not work until load_graph will be much smarter
     if args.database:
@@ -140,9 +142,10 @@ if args.communion:
         })
     """
 
+if args.communion:
     communion_server.start()
 
-if args.ncores is not None:
+if args.ncores is not None and not args.delegate:
     seamless.set_ncores(args.ncores)
 
 if not args.no_shares:
@@ -159,9 +162,12 @@ if args.database:
     seamless.database_sink.connect()
     seamless.database_cache.connect()
 
+if args.delegate:
+    seamless.config.delegate()    
+
 from seamless.highlevel import load_graph, Context
 graph = json.load(args.graph)
-if args.communion and args.ncores is not None and int(args.ncores) == 0:
+if (args.communion or args.delegate) and args.ncores is not None and int(args.ncores) == 0:
     for node in graph.get("nodes", []):
         if node.get("type") == "transformer":
             meta = node.get("meta")
@@ -181,7 +187,7 @@ ctx.translate()
 if args.status_graph:
     from seamless.metalevel.bind_status_graph import bind_status_graph
     status_graph = json.load(args.status_graph)
-    if args.communion and (args.ncores is None or int(args.ncores)):
+    if (args.communion or args.delegate) and (args.ncores is None or int(args.ncores)):
         for node in status_graph.get("nodes", []):
             if node.get("type") == "transformer":
                 meta = node.get("meta", {})
