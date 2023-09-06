@@ -33,7 +33,7 @@ ctx.compute()
 print(ctx.result.value)
 print(ctx.tf.status)
 print(ctx.tf.exception)
-print(ctx.tf.get_transformation())
+print(ctx.tf.get_transformation_checksum())
 
 '''
 ctx.tf.meta = {"duration" : "short"}
