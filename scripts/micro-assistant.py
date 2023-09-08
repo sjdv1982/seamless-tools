@@ -103,10 +103,16 @@ if __name__ == "__main__":
     )
     parser.add_argument("--direct-print", dest="direct_print", action="store_true")
     parser.add_argument(
+        "--verbose",
+        help="Serve graph in verbose mode, setting the Seamless logger to INFO",
+        action="store_true"
+    )
+    parser.add_argument(
         "--debug",
         help="Serve graph in debugging mode. Turns on asyncio debugging, and sets the Seamless logger to DEBUG",
         action="store_true"
     )
+
     args = parser.parse_args()
     if args.port == -1:
         raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
@@ -116,6 +122,10 @@ if __name__ == "__main__":
         import logging
         logging.basicConfig()
         logging.getLogger("seamless").setLevel(logging.DEBUG)
+    elif args.verbose:
+        import logging
+        logging.basicConfig()
+        logging.getLogger("seamless").setLevel(logging.INFO)
 
     import seamless
 
