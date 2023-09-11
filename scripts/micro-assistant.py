@@ -56,7 +56,7 @@ class JobSlaveServer:
             try:
                 result = await asyncio.wait_for(asyncio.shield(task), timeout=10.0)
             except asyncio.TimeoutError:
-                return web.Response(status=204) # just send it again, later
+                return web.Response(status=202) # just send it again, later
 
             #print("RESULT!", result.hex() if result is not None else None)
             if result is not None:
