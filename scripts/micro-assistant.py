@@ -5,7 +5,7 @@ import socket
 import sys
 import traceback
 from aiohttp import web
-from seamless import parse_checksum
+from seamless.highlevel import Checksum
 
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -51,8 +51,13 @@ class JobSlaveServer:
             data = await request.read()
             data = data.decode()
             #print("DATA", data)
-            checksum = parse_checksum(data, as_bytes=True)
-            result = await seamless.run_transformation_async(checksum, fingertip=True)
+            checksum = Checksum(data)
+            task = asyncio.create_task(seamless.run_transformation_async(checksum.bytes(), fingertip=True))
+            try:
+                result = await asyncio.wait_for(asyncio.shield(task), timeout=10.0)
+            except asyncio.TimeoutError:
+                return web.Response(status=204) # just send it again, later
+
             #print("RESULT!", result.hex() if result is not None else None)
             if result is not None:
                 result = result.hex()
