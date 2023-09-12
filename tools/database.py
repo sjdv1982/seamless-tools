@@ -3,8 +3,10 @@ import asyncio, json, socket
 import signal
 import json
 import traceback
-from peewee import SqliteDatabase, Model, BlobField, CharField, TextField, IntegerField, CompositeKey, DoesNotExist, IntegrityError
-Checksum = lambda *args, **kwargs: BlobField(*args, **kwargs)
+from peewee import SqliteDatabase, Model, BlobField, CharField, TextField, FixedCharField, CompositeKey, DoesNotExist, IntegrityError
+from playhouse.sqlite_ext import JSONField
+
+Checksum = lambda *args, **kwargs: FixedCharField(max_length=64, *args, **kwargs)
 
 db = SqliteDatabase(None)
 
@@ -101,8 +103,10 @@ class BaseModel(Model):
             return super().create(**kwargs)
         try:
             return super().create(**kwargs)
-        except IntegrityError:
+        except IntegrityError as exc:
             prim = primary[cls]
+            if prim == "id" and prim not in kwargs:
+                raise exc from None
             instance = cls.get(**{prim: kwargs[prim]})
             instance.update(**kwargs)
             instance.save()
@@ -121,10 +125,10 @@ class BufferInfo(BaseModel):
     buffer_info = TextField()
 
 class SyntacticToSemantic(BaseModel):
-    syntactic = Checksum(primary_key=True)
+    syntactic = Checksum(index=True)
     celltype = TextField()
     subcelltype = TextField()
-    semantic = Checksum()
+    semantic = Checksum(index=True)
 
 class Compilation(BaseModel):
     checksum = Checksum(primary_key=True)
@@ -177,7 +181,7 @@ class StructuredCellJoin(BaseModel):
 
 
 class MetaData(BaseModel):
-    # store opaque meta-data (JSON) for transformations:
+    # store meta-data for transformations:
     # - executor name (seamless-internal, SLURM, ...)
     # - Seamless version (including Docker/Singularity/conda version)
     # - exact environment conda packages (as environment checksum)
@@ -185,9 +189,15 @@ class MetaData(BaseModel):
     # - execution time (also if failed)
     # - last recorded progress (if failed)
     checksum = Checksum(primary_key=True)
-    metadata = TextField()
+    metadata = JSONField()
 
-model_classes = [Transformation, Elision, BufferInfo, SyntacticToSemantic, Compilation, Expression, StructuredCellJoin, MetaData]
+class ContestedTransformation(BaseModel):
+    result = Checksum(index=True, unique=False)
+    checksum = Checksum(index=True, unique=False)
+    metadata = JSONField()
+
+
+model_classes = [Transformation, Elision, BufferInfo, SyntacticToSemantic, Compilation, Expression, StructuredCellJoin, MetaData, ContestedTransformation]
 primary = {}
 for model_class in model_classes:
     if model_class is Expression:
@@ -214,9 +224,8 @@ def is_port_in_use(address, port):
 
 types = (
     "protocol",
-    "delete_key",
-    "delete_semantic_to_syntactic",
     "buffer_info",
+    "syntactic_to_semantic",
     "semantic_to_syntactic",
     "compilation",
     "transformation",
@@ -224,6 +233,7 @@ types = (
     "metadata",
     "expression",
     "structured_cell_join",
+    "contest"
 )
 
 key_types = {
@@ -290,7 +300,7 @@ class DatabaseServer:
             data = await request.read()
             #print("NEW GET REQUEST", data)
             status = 200
-            type = None
+            type_ = None
             try:
                 try:
                     rq = json.loads(data)
@@ -298,28 +308,30 @@ class DatabaseServer:
                     raise DatabaseError("Malformed request") from None
                 #print("NEW GET REQUEST DATA", rq)
                 try:
-                    type = rq["type"]
-                    if type not in types:
+                    type_ = rq["type"]
+                    if type_ not in types:
                         raise KeyError
-                    if type != "protocol":
+                    if type_ != "protocol":
                         checksum = rq["checksum"]
                 except KeyError:
                     raise DatabaseError("Malformed request") from None
 
-                if type == "protocol":
+                if type_ == "protocol":
                     response = list(self.PROTOCOL)
                 else:
                     try:
-                        checksum = parse_checksum(checksum, as_bytes=True)
+                        checksum = parse_checksum(checksum, as_bytes=False)
                     except ValueError:
                         #import traceback; traceback.print_exc()
                         raise DatabaseError("Malformed request") from None
-                    response = await self._get(type, checksum, rq)
+                    response = await self._get(type_, checksum, rq)
             except DatabaseError as exc:
                 status = 400
                 if exc.args[0] == "Unknown key":
                     status = 404
                 response = "ERROR: " + exc.args[0]
+            if isinstance(response, web.Response):
+                return response
             status2, response = format_response(response, none_as_404=True)
             if status == 200 and status2 is not None:
                 status = status2
@@ -350,8 +362,8 @@ class DatabaseServer:
 
                 #print("NEW PUT REQUEST DATA", rq)
                 try:
-                    type = rq["type"]
-                    if type not in types:
+                    type_ = rq["type"]
+                    if type_ not in types:
                         raise KeyError
                     checksum = rq["checksum"]
                 except KeyError:
@@ -359,12 +371,12 @@ class DatabaseServer:
                     raise DatabaseError("Malformed request") from None
                  
                 try:
-                    checksum = parse_checksum(checksum, as_bytes=True)
+                    checksum = parse_checksum(checksum, as_bytes=False)
                 except ValueError:
                     #import traceback; traceback.print_exc()
                     raise DatabaseError("Malformed request") from None
 
-                response = await self._set(type, checksum, rq)
+                response = await self._set(type_, checksum, rq)
             except DatabaseError as exc:
                 status = 400
                 response = "ERROR: " + exc.args[0]
@@ -380,15 +392,15 @@ class DatabaseServer:
             #print("END PUT REQUEST", hex(id(request)))
             pass
 
-    async def _get(self, type, checksum, request):
-        if type == "buffer_info":
+    async def _get(self, type_, checksum, request):
+        if type_ == "buffer_info":
             try:
                 return json.loads(BufferInfo[checksum].buffer_info)
             except DoesNotExist:
                 raise DatabaseError("Unknown key") from None
             
 
-        elif type == "semantic_to_syntactic":
+        elif type_ == "semantic_to_syntactic":
             try:
                 celltype, subcelltype = request["celltype"], request["subcelltype"]
             except KeyError:
@@ -402,31 +414,46 @@ class DatabaseServer:
                 return [parse_checksum(result.syntactic) for result in results]
             raise DatabaseError("Unknown key")
 
-        elif type == "compilation":
+        elif type_ == "syntactic_to_semantic":
+            try:
+                celltype, subcelltype = request["celltype"], request["subcelltype"]
+            except KeyError:
+                raise DatabaseError("Malformed syntactic-to-semantic request")
+            results = SyntacticToSemantic.select().where(
+                SyntacticToSemantic.syntactic==checksum,
+                SyntacticToSemantic.celltype==celltype,
+                SyntacticToSemantic.subcelltype==subcelltype
+            ).execute()
+            if results:
+                return [parse_checksum(result.semantic) for result in results]
+            raise DatabaseError("Unknown key")
+
+
+        elif type_ == "compilation":
             try:
                 return parse_checksum(Compilation[checksum].result)
             except DoesNotExist:
                 return None # None is also a valid response
             
-        elif type == "transformation":
+        elif type_ == "transformation":
             try:
                 return parse_checksum(Transformation[checksum].result)
             except DoesNotExist:
                 return None # None is also a valid response
 
-        elif type == "elision":
+        elif type_ == "elision":
             try:
                 return parse_checksum(Elision[checksum].result)
             except DoesNotExist:
                 return None # None is also a valid response
 
-        elif type == "metadata":
+        elif type_ == "metadata":
             try:
                 return json.loads(MetaData[checksum].metadata)
             except DoesNotExist:
                 return None # None is also a valid response
 
-        elif type == "expression":
+        elif type_ == "expression":
             try:
                 celltype = request["celltype"]
                 path = json.dumps(request["path"])
@@ -447,7 +474,7 @@ class DatabaseServer:
                 return None
             return parse_checksum(result[0].result)
 
-        elif type == "structured_cell_join":
+        elif type_ == "structured_cell_join":
             try:
                 return parse_checksum(StructuredCellJoin[checksum].result)
             except DoesNotExist:
@@ -456,36 +483,9 @@ class DatabaseServer:
         else:
             raise DatabaseError("Unknown request type")
 
-    async def _set(self, type, checksum, request):
-        if type == "delete_key":
-            key_type = request["key_type"]
-            try:
-                key_type_class = key_types[key_type]
-            except KeyError:
-                raise DatabaseError("Malformed SET delete key request: invalid key_type") from None
-            try:
-                key_type_class[checksum].delete_instance()
-                deleted = True
-            except DoesNotExist:
-                deleted = False
-            return deleted
+    async def _set(self, type_, checksum, request):
 
-        elif type == "delete_syntactic_to_semantic":
-            # TODO: test
-            try:
-                celltype, subcelltype, semantic = request["celltype"], request["subcelltype"], request["semantic"]
-            except KeyError:
-                raise DatabaseError("Malformed semantic-to-syntactic request") from None
-            query = SyntacticToSemantic.delete().where(
-                SyntacticToSemantic.syntactic==checksum,
-                SyntacticToSemantic.celltype==celltype,
-                SyntacticToSemantic.subcelltype==subcelltype,
-                SyntacticToSemantic.semantic==semantic,
-            )
-            ndeleted = query.execute()
-            return ndeleted
-
-        elif type == "buffer_info":
+        if type_ == "buffer_info":
             try:
                 value = request["value"]
                 if not isinstance(value, dict):
@@ -496,7 +496,7 @@ class DatabaseServer:
                 raise DatabaseError("Malformed SET buffer info request") from None            
             BufferInfo.create(checksum=checksum, buffer_info=value)
 
-        elif type == "semantic_to_syntactic":
+        elif type_ == "semantic_to_syntactic":
             try:
                 value = request["value"]
                 assert isinstance(value, list)
@@ -507,34 +507,34 @@ class DatabaseServer:
             except KeyError:
                 raise DatabaseError("Malformed SET semantic-to-syntactic request") from None
             for syntactic_checksum0 in value:
-                syntactic_checksum = parse_checksum(syntactic_checksum0, as_bytes=True)
+                syntactic_checksum = parse_checksum(syntactic_checksum0, as_bytes=False)
                 with db.atomic():
                     SyntacticToSemantic.create(semantic=checksum, celltype=celltype, subcelltype=subcelltype, syntactic=syntactic_checksum)
         
-        elif type == "compilation":
+        elif type_ == "compilation":
             try:
-                value = parse_checksum(request["value"], as_bytes=True)
+                value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
                 raise DatabaseError("Malformed SET compilation result request: value must be a checksum") from None
             Compilation.create(checksum=checksum, result=value)
         
-        elif type == "transformation":
+        elif type_ == "transformation":
             try:
-                value = parse_checksum(request["value"], as_bytes=True)
+                value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
                 raise DatabaseError("Malformed SET transformation result request: value must be a checksum") from None
             Transformation.create(checksum=checksum, result=value)
 
-        elif type == "elision":
+        elif type_ == "elision":
             try:
-                value = parse_checksum(request["value"], as_bytes=True)
+                value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
                 raise DatabaseError("Malformed SET elision result request: value must be a checksum") from None
             Elision.create(checksum=checksum, result=value)
 
-        elif type == "expression":
+        elif type_ == "expression":
             try:
-                value = parse_checksum(request["value"], as_bytes=True)
+                value = parse_checksum(request["value"], as_bytes=False)
                 celltype = request["celltype"]
                 path = json.dumps(request["path"])
                 hash_pattern = json.dumps(request.get("hash_pattern", ""))
@@ -563,21 +563,50 @@ class DatabaseServer:
                 result=value
             )
 
-        elif type == "structured_cell_join":
+        elif type_ == "structured_cell_join":
             try:
-                value = parse_checksum(request["value"], as_bytes=True)
+                value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
                 raise DatabaseError("Malformed SET structured_cell_join request: value must be a checksum") from None
             StructuredCellJoin.create(checksum=checksum, result=value)
 
-        elif type == "metadata":
+        elif type_ == "metadata":
             try:
                 value = request["value"]
+                value = json.loads(value)
             except (KeyError, ValueError):
                 raise DatabaseError("Malformed SET metadata request") from None
-            value = json.dumps(value, sort_keys=True, indent=2)
             MetaData.create(checksum=checksum, metadata=value)
 
+        elif type_ == "contest":
+            try:
+                result = parse_checksum(request["result"], as_bytes=False)
+            except (KeyError, ValueError):
+                raise DatabaseError("Malformed 'contest' request") from None            
+            in_transformations = False
+            try:
+                tf = Transformation[checksum]
+                tf_result = parse_checksum(tf.result, as_bytes=False)
+                in_transformations = True                
+            except DoesNotExist:
+                pass
+            if in_transformations:
+                if tf_result != result:
+                    return web.Response(
+                        status=404, 
+                        reason="Transformation does not have the contested result"
+                    )
+            try:
+                metadata = MetaData[checksum].metadata
+            except DoesNotExist:
+                metadata = ""
+            ContestedTransformation.create(
+                checksum=checksum,
+                result=result,
+                metadata=metadata              
+            )
+            if in_transformations:
+                tf.delete_instance()
         else:
             raise DatabaseError("Unknown request type")
         return "OK"
@@ -597,7 +626,7 @@ If it doesn't exist, a new file is created.""")
     db.connect()
     db.create_tables(model_classes, safe=True)
 
-    def raise_system_exit(*args, **kwargs): 
+    def raise_system_exit(*args, **kwargs):
         raise SystemExit
     signal.signal(signal.SIGTERM, raise_system_exit)
     signal.signal(signal.SIGHUP, raise_system_exit)
