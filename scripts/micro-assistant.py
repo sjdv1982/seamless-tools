@@ -160,8 +160,9 @@ if __name__ == "__main__":
     server = JobSlaveServer(args.host, args.port)
     server.start()
 
-    from seamless.core.transformation import get_global_info
+    from seamless.core.transformation import get_global_info, execution_metadata0
     get_global_info()
+    execution_metadata0["Executor"] = "micro-assistant"
 
     if not args.interactive:
         print("Press Ctrl+C to end")
