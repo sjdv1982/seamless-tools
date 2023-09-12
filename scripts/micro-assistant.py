@@ -46,13 +46,14 @@ class JobSlaveServer:
             status=200
         )
 
-    async def _put_job(self, request):
+    async def _put_job(self, request:web.Request):
         try:
-            data = await request.read()
-            data = data.decode()
+            data = await request.json()
+
             #print("DATA", data)
-            checksum = Checksum(data)
-            task = asyncio.create_task(seamless.run_transformation_async(checksum.bytes(), fingertip=True))
+            checksum = Checksum(data["checksum"])
+            dunder = data["dunder"]
+            task = asyncio.create_task(seamless.run_transformation_async(checksum.bytes(), fingertip=True, tf_dunder=dunder))
             try:
                 result = await asyncio.wait_for(asyncio.shield(task), timeout=10.0)
             except asyncio.TimeoutError:
