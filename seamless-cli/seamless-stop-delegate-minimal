@@ -1,0 +1,9 @@
+set -e
+currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
+cd $currdir
+source ./seamless-fill-environment-variables
+set -u -e
+export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
+export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
+cd delegate-minimal
+docker compose stop

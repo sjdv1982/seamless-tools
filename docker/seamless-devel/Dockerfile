@@ -14,6 +14,7 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
 RUN ln -s /seamless/seamless/graphs /seamless-graphs
 USER jovyan
+RUN mamba install -c rpbs silk -y
 RUN echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc && echo 'alias conda=mamba' >> /home/jovyan/.bashrc && echo 'export PATH=~/seamless-cli:$PATH' >> /home/jovyan/.bashrc
 ENV PYTHONPATH /home/jovyan/software:$PYTHONPATH
 ENV XDG_CONFIG_HOME=/seamless

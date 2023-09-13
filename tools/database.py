@@ -129,6 +129,19 @@ class SyntacticToSemantic(BaseModel):
     celltype = TextField()
     subcelltype = TextField()
     semantic = Checksum(index=True)
+    class Meta:
+            database = db
+            legacy_table_names = False
+            primary_key = CompositeKey(
+                'syntactic', 'celltype', 'subcelltype', 'semantic',
+            )
+    @classmethod
+    def create(cls, **kwargs):
+        try:
+            return super().create(**kwargs)
+        except IntegrityError as exc:
+            if exc.args[0].split()[0] != "UNIQUE":
+                raise exc from None 
 
 class Compilation(BaseModel):
     checksum = Checksum(primary_key=True)
@@ -200,7 +213,7 @@ class ContestedTransformation(BaseModel):
 model_classes = [Transformation, Elision, BufferInfo, SyntacticToSemantic, Compilation, Expression, StructuredCellJoin, MetaData, ContestedTransformation]
 primary = {}
 for model_class in model_classes:
-    if model_class is Expression:
+    if model_class is Expression or model_class is SyntacticToSemantic:
         continue
     for fieldname, field in model_class._meta.fields.items():
         if field.primary_key:
@@ -622,6 +635,7 @@ If it doesn't exist, a new file is created.""")
     args = p.parse_args()
     
     database_file = args.database_file
+    print("DATABASE FILE", database_file)
     db.init(database_file)
     db.connect()
     db.create_tables(model_classes, safe=True)
