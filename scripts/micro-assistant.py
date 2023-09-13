@@ -162,6 +162,9 @@ if __name__ == "__main__":
     server.start()
 
     from seamless.core.transformation import get_global_info, execution_metadata0
+    from seamless.core.cache.transformation_cache import transformation_cache
+    transformation_cache.stateless = True
+    
     get_global_info()
     execution_metadata0["Executor"] = "micro-assistant"
 
