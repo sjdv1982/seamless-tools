@@ -4,13 +4,13 @@ if [ -z "$PYTHONPATH" ]; then
   export PYTHONPATH=""
 fi
 set -u -e
-echo "SEAMLESSDIR: location of the "seamless" Git repo"
+echo "SEAMLESSDIR: location of the "seamless" Git repo (https://github.com/sjdv1982/seamless.git)"
 echo "SEAMLESSDIR=$SEAMLESSDIR"
 echo
-echo "SEAMLESS_TOOLS_DIR: location of the "seamless-tools" Git repo"
+echo "SEAMLESS_TOOLS_DIR: location of the "seamless-tools" Git repo (https://github.com/sjdv1982/seamless-tools.git)"
 echo "SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR"
 echo
-echo "SILKDIR: location of the "silk" Git repo"
+echo "SILKDIR: location of the "silk" Git repo (https://github.com/sjdv1982/silk.git)"
 echo "SILKDIR=$SILKDIR"
 echo
 echo 'Building "seamless-delegated-development" conda environment...'
