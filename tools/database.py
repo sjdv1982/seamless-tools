@@ -389,7 +389,7 @@ class DatabaseServer:
                     #import traceback; traceback.print_exc()
                     raise DatabaseError("Malformed request") from None
 
-                response = await self._set(type_, checksum, rq)
+                response = await self._put(type_, checksum, rq)
             except DatabaseError as exc:
                 status = 400
                 response = "ERROR: " + exc.args[0]
@@ -496,7 +496,7 @@ class DatabaseServer:
         else:
             raise DatabaseError("Unknown request type")
 
-    async def _set(self, type_, checksum, request):
+    async def _put(self, type_, checksum, request):
 
         if type_ == "buffer_info":
             try:
@@ -506,7 +506,7 @@ class DatabaseServer:
                 SeamlessBufferInfo(checksum, value)
                 value = json.dumps(value, sort_keys=True, indent=2)
             except Exception:
-                raise DatabaseError("Malformed SET buffer info request") from None            
+                raise DatabaseError("Malformed PUT buffer info request") from None            
             BufferInfo.create(checksum=checksum, buffer_info=value)
 
         elif type_ == "semantic_to_syntactic":
@@ -514,11 +514,11 @@ class DatabaseServer:
                 value = request["value"]
                 assert isinstance(value, list)
             except Exception:
-                raise DatabaseError("Malformed SET semantic-to-syntactic request")
+                raise DatabaseError("Malformed PUT semantic-to-syntactic request")
             try:
                 celltype, subcelltype = request["celltype"], request["subcelltype"]
             except KeyError:
-                raise DatabaseError("Malformed SET semantic-to-syntactic request") from None
+                raise DatabaseError("Malformed PUT semantic-to-syntactic request") from None
             for syntactic_checksum0 in value:
                 syntactic_checksum = parse_checksum(syntactic_checksum0, as_bytes=False)
                 with db.atomic():
@@ -528,21 +528,22 @@ class DatabaseServer:
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed SET compilation result request: value must be a checksum") from None
+                raise DatabaseError("Malformed PUT compilation result request: value must be a checksum") from None
             Compilation.create(checksum=checksum, result=value)
         
         elif type_ == "transformation":
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed SET transformation result request: value must be a checksum") from None
+                raise DatabaseError("Malformed PUT transformation result request: value must be a checksum") from None
             Transformation.create(checksum=checksum, result=value)
+
 
         elif type_ == "elision":
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed SET elision result request: value must be a checksum") from None
+                raise DatabaseError("Malformed PUT elision result request: value must be a checksum") from None
             Elision.create(checksum=checksum, result=value)
 
         elif type_ == "expression":
@@ -580,7 +581,7 @@ class DatabaseServer:
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed SET structured_cell_join request: value must be a checksum") from None
+                raise DatabaseError("Malformed PUT structured_cell_join request: value must be a checksum") from None
             StructuredCellJoin.create(checksum=checksum, result=value)
 
         elif type_ == "metadata":
@@ -588,7 +589,7 @@ class DatabaseServer:
                 value = request["value"]
                 value = json.loads(value)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed SET metadata request") from None
+                raise DatabaseError("Malformed PUT metadata request") from None
             MetaData.create(checksum=checksum, metadata=value)
 
         elif type_ == "contest":
@@ -611,8 +612,10 @@ class DatabaseServer:
                     )
             try:
                 metadata = MetaData[checksum].metadata
+                in_metadata = True
             except DoesNotExist:
                 metadata = ""
+                in_metadata = False
             ContestedTransformation.create(
                 checksum=checksum,
                 result=result,
@@ -620,6 +623,8 @@ class DatabaseServer:
             )
             if in_transformations:
                 tf.delete_instance()
+            if in_metadata:
+                MetaData[checksum].delete_instance()
         else:
             raise DatabaseError("Unknown request type")
         return "OK"
