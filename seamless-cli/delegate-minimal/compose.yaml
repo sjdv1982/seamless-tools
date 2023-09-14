@@ -37,6 +37,10 @@ services:
         - ${SEAMLESS_TOOLS_DIR:?}/scripts:/home/jovyan/seamless-scripts
         - ${SEAMLESS_TOOLS_DIR:?}/seamless-cli:/home/jovyan/seamless-cli
         - ${SILKDIR:?}:/silk
+        - /var/run/docker.sock:/var/run/docker.sock # Docker access
+        - /tmp:/tmp  # temp dir to execute Docker transformers in
+      group_add: 
+        - ${DOCKER_GROUP_ID:?}
       environment:
         - PYTHONPATH=/silk:/seamless
         - SEAMLESS_DATABASE_IP=$SEAMLESS_DOCKER_HOST_IP   
@@ -45,6 +49,8 @@ services:
         - SEAMLESS_WRITE_BUFFER_SERVER=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
         - ASSISTANT_HOST=0.0.0.0
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - DOCKER_IMAGE=seamless-devel
+        - DOCKER_VERSION=${DOCKER_VERSION:-""}
   micro-assistant:
       build:
         context: ../../scripts

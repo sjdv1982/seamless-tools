@@ -11,6 +11,8 @@ touch $SEAMLESS_CONFIG_DIRECTORY/database/seamless.db
 
 export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
+export DOCKER_GROUP_ID=$(getent group docker | cut -d: -f3)
+export DOCKER_VERSION=$(docker --version)
 cd delegate-minimal
 docker compose up database hashserver micro-assistant-devel --build -d
 echo TODO: select micro-assistant-devel or micro-assistant service
