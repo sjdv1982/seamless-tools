@@ -22,6 +22,7 @@ dependencies:
       - cson==0.8.*
       - speg
       - aiohttp_cors==0.7.*
+      - bashlex
       # recommended (parts of Seamless won't work)
       - makefun
       # extra
