@@ -78,7 +78,80 @@ python $SEAMLESS_TOOLS_DIR/scripts/run-transformation.py \
             os.unlink(tf.name)
 
 def execute_in_docker(checksum, dunder, env, docker_conf):
-    raise NotImplementedError
+    docker_image = docker_conf["name"]
+    if docker_image.find("seamless-devel") > -1:
+        return execute_in_docker_devel(checksum, dunder, env, docker_conf)
+    try:
+        dundermount = ""
+        if dunder is not None:
+            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf.write(json.dumps(dunder))
+            tf.close()
+            dunderfile = tf.name
+            dundermount = f"-v {dunderfile}:{dunderfile}"
+            dundercmd = f"--dunder {dunderfile}"
+        docker_image = docker_conf["name"]
+        command = f"""
+docker run --rm \
+-e SEAMLESS_DATABASE_IP \
+-e SEAMLESS_DATABASE_PORT \
+-e SEAMLESS_READ_BUFFER_SERVERS \
+-e SEAMLESS_WRITE_BUFFER_SERVER \
+-e DOCKER_IMAGE={docker_image} \
+-e DOCKER_VERSION="$SEAMLESS_DOCKER_VERSION" \
+-v {global_info_file.name}:{global_info_file.name} \
+-u `id -u` \
+--group-add users \
+{dundermount} \
+{docker_image} \
+start.sh python /scripts/run-transformation.py \
+    {checksum} {dundercmd} \
+    --global_info {global_info_file.name} \
+    --fingertip
+"""    
+        run_command(command)
+    finally:
+        if dunder is not None:
+            os.unlink(tf.name)
+
+def execute_in_docker_devel(checksum, dunder, env, docker_conf):
+    try:
+        dundermount = ""
+        if dunder is not None:
+            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf.write(json.dumps(dunder))
+            tf.close()
+            dunderfile = tf.name
+            dundermount = f"-v {dunderfile}:{dunderfile}"
+            dundercmd = f"--dunder {dunderfile}"
+        docker_image = docker_conf["name"]
+        command = f"""
+docker run --rm \
+-e SEAMLESS_DATABASE_IP \
+-e SEAMLESS_DATABASE_PORT \
+-e SEAMLESS_READ_BUFFER_SERVERS \
+-e SEAMLESS_WRITE_BUFFER_SERVER \
+-v $SEAMLESS_TOOLS_DIR/scripts:/scripts \
+-v $SEAMLESSDIR:/seamless \
+-v $SILKDIR:/silk \
+-e DOCKER_IMAGE={docker_image} \
+-e DOCKER_VERSION="$SEAMLESS_DOCKER_VERSION" \
+-e PYTHONPATH=/silk:/seamless \
+-v {global_info_file.name}:{global_info_file.name} \
+-u `id -u` \
+--group-add users \
+{dundermount} \
+{docker_image} \
+start.sh python /scripts/run-transformation.py \
+    {checksum} {dundercmd} \
+    --global_info {global_info_file.name} \
+    --fingertip
+"""    
+        run_command(command)
+    finally:
+        if dunder is not None:
+            os.unlink(tf.name)
+
 
 def _run_job(checksum, data):
     from seamless.core.direct.run import fingertip
@@ -284,7 +357,7 @@ Note that non-bash transformers must have Seamless in their environment.
     
     from seamless.core.transformation import get_global_info
     
-    global_info = get_global_info()
+    global_info = get_global_info({})
     global_info_file = tempfile.NamedTemporaryFile("w+t")
     json.dump(global_info, global_info_file)
     global_info_file.flush()
