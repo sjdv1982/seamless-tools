@@ -110,12 +110,12 @@ if __name__ == "__main__":
     parser.add_argument("--direct-print", dest="direct_print", action="store_true")
     parser.add_argument(
         "--verbose",
-        help="Serve graph in verbose mode, setting the Seamless logger to INFO",
+        help="Verbose mode, setting the Seamless logger to INFO",
         action="store_true"
     )
     parser.add_argument(
         "--debug",
-        help="Serve graph in debugging mode. Turns on asyncio debugging, and sets the Seamless logger to DEBUG",
+        help="Debugging mode. Turns on asyncio debugging, and sets the Seamless logger to DEBUG",
         action="store_true"
     )
 

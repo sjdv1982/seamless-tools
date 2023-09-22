@@ -6,5 +6,5 @@ set -u -e
 export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
 export DOCKER_GROUP_ID="-1"
-cd delegate-minimal
+cd delegate
 docker compose stop

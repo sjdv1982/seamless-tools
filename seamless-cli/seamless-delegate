@@ -1,0 +1,45 @@
+set -e
+
+assistant=$1
+
+python3 -c '''
+assistants = [
+    "micro-assistant", "micro-assistant-devel",
+    "mini-assistant", "mini-assistant-devel"
+]
+
+import sys
+if len(sys.argv) == 1:
+    assistant = ""
+    err = "Please select an assistant."
+else:
+    assistant = sys.argv[1]
+    err = "Unknown assistant."
+if assistant not in assistants:
+    print("""ERROR: {}
+Syntax: seamless-delegate <assistant>
+
+Available assistants:
+
+{}
+""".format(err, ", ".join(assistants)), file=sys.stderr)
+    exit(1)
+''' $assistant
+
+currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
+cd $currdir
+source ./seamless-fill-environment-variables
+set -u -e
+
+mkdir -p $SEAMLESS_CONFIG_DIRECTORY
+mkdir -p $SEAMLESS_CONFIG_DIRECTORY/buffers
+mkdir -p $SEAMLESS_CONFIG_DIRECTORY/database
+touch $SEAMLESS_CONFIG_DIRECTORY/database/seamless.db
+
+export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
+export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
+export DOCKER_GROUP_ID=$(getent group docker | cut -d: -f3)
+export DOCKER_VERSION=$(docker --version)
+cd delegate
+docker compose up database hashserver $assistant --build -d
+sleep 5
