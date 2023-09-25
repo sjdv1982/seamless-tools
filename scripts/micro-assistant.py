@@ -50,8 +50,15 @@ class JobSlaveServer:
         try:
             data = await request.json()
 
-            #print("DATA", data)
             checksum = Checksum(data["checksum"])
+
+            '''
+            from seamless.core.direct.run import fingertip
+            import json
+            print("RQ", json.loads(fingertip(checksum.hex()).decode()))
+            print("DUNDER", data["dunder"])
+            '''
+
             dunder = data["dunder"]
             task = asyncio.create_task(seamless.run_transformation_async(checksum.bytes(), fingertip=True, tf_dunder=dunder))
             try:
