@@ -14,7 +14,11 @@ import conda.cli.python_api
 import tempfile
 
 import os
-SEAMLESS_TOOLS_DIR = os.environ["SEAMLESS_TOOLS_DIR"]
+if os.environ.get("DOCKER_IMAGE"): # we are running inside a Docker image
+    SEAMLESS_SCRIPTS = "/home/jovyan/seamless-scripts"
+else:    
+    SEAMLESS_TOOLS_DIR = os.environ["SEAMLESS_TOOLS_DIR"]
+    SEAMLESS_SCRIPTS = SEAMLESS_TOOLS_DIR + "/scripts" 
 CONDA_ROOT = os.environ.get("CONDA_ROOT", None)
 
 def is_port_in_use(address, port):
@@ -48,7 +52,7 @@ def execute_in_existing_conda(checksum, dunder, conda_env_name):
         command = f"""
 source {CONDA_ROOT}/etc/profile.d/conda.sh
 conda activate {conda_env_name}
-python $SEAMLESS_TOOLS_DIR/scripts/run-transformation.py \
+python {SEAMLESS_SCRIPTS}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
     --fingertip
@@ -67,7 +71,7 @@ def execute(checksum, dunder):
             dunderfile = tf.name
             dundercmd = f"--dunder {dunderfile}"
         command = f"""
-python $SEAMLESS_TOOLS_DIR/scripts/run-transformation.py \
+python {SEAMLESS_SCRIPTS}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
     --fingertip
@@ -357,7 +361,7 @@ Note that non-bash transformers must have Seamless in their environment.
     
     from seamless.core.transformation import get_global_info
     
-    global_info = get_global_info({})
+    global_info = get_global_info()
     global_info_file = tempfile.NamedTemporaryFile("w+t")
     json.dump(global_info, global_info_file)
     global_info_file.flush()

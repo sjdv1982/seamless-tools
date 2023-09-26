@@ -122,5 +122,6 @@ for l in sys.stdin.readlines():
   ll = l.split("=")
   if len(ll) == 2 and not len(ll[1].strip()):
     continue
-  if ll[0].find("SEAMLESS") > -1: print(l,end="",file=sys.stderr)
+  if ll[0].find("SEAMLESS") > -1 and ll[0].find("__CONDA") == -1: 
+    print(l,end="",file=sys.stderr)
 '''
