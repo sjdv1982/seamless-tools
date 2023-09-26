@@ -43,7 +43,7 @@ services:
         - ${DOCKER_GROUP_ID:?}
       environment:
         - PYTHONPATH=/silk:/seamless
-        - SEAMLESS_DATABASE_IP=$SEAMLESS_DOCKER_HOST_IP   
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DOCKER_HOST_IP:?}
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
         - SEAMLESS_READ_BUFFER_SERVERS=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
         - SEAMLESS_WRITE_BUFFER_SERVER=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
@@ -59,7 +59,7 @@ services:
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
       environment:
-        - SEAMLESS_DATABASE_IP=$SEAMLESS_DOCKER_HOST_IP   
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DOCKER_HOST_IP:?}
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
         - SEAMLESS_READ_BUFFER_SERVERS=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
         - SEAMLESS_WRITE_BUFFER_SERVER=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
@@ -85,7 +85,7 @@ services:
       environment:
         - SEAMLESS_TOOLS_DIR
         - PYTHONPATH=/silk:/seamless
-        - SEAMLESS_DATABASE_IP=$SEAMLESS_DOCKER_HOST_IP   
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DOCKER_HOST_IP:?}
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
         - SEAMLESS_READ_BUFFER_SERVERS=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
         - SEAMLESS_WRITE_BUFFER_SERVER=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
@@ -101,9 +101,37 @@ services:
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
       environment:
-        - SEAMLESS_DATABASE_IP=$SEAMLESS_DOCKER_HOST_IP   
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DOCKER_HOST_IP:?}
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
         - SEAMLESS_READ_BUFFER_SERVERS=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
         - SEAMLESS_WRITE_BUFFER_SERVER=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
         - ASSISTANT_HOST=0.0.0.0
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+  mini-dask-assistant-devel:
+      build:
+        context: ../../scripts
+        dockerfile: mini-dask-assistant-devel.Dockerfile
+      user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
+      ports:
+        - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
+      volumes:
+        - ${SEAMLESSDIR:?}:/seamless
+        - ${SEAMLESS_TOOLS_DIR:?}/tools:/home/jovyan/seamless-tools
+        - ${SEAMLESS_TOOLS_DIR:?}/scripts:/home/jovyan/seamless-scripts
+        - ${SEAMLESS_TOOLS_DIR:?}/seamless-cli:/home/jovyan/seamless-cli
+        - ${SILKDIR:?}:/silk
+        - /var/run/docker.sock:/var/run/docker.sock # Docker access
+        - /tmp:/tmp  # temp dir to execute Docker transformers in
+      group_add: 
+        - ${DOCKER_GROUP_ID:?}
+      environment:
+        - DASK_SCHEDULER_ADDRESS=${DASK_SCHEDULER_ADDRESS:?}
+        - PYTHONPATH=/silk:/seamless
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DOCKER_HOST_IP:?}
+        - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
+        - SEAMLESS_READ_BUFFER_SERVERS=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
+        - SEAMLESS_WRITE_BUFFER_SERVER=http://$SEAMLESS_DOCKER_HOST_IP:${HASHSERVER_PORT:?}
+        - ASSISTANT_HOST=0.0.0.0
+        - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - DOCKER_IMAGE=seamless-devel
+        - DOCKER_VERSION=${DOCKER_VERSION:-""}

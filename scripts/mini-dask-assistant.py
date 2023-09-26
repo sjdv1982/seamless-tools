@@ -3,16 +3,12 @@ import os
 import socket
 import traceback
 from aiohttp import web
-import anyio
 from seamless import CacheMissError
 from seamless.highlevel import Checksum
 from seamless.core.cache.buffer_remote import can_read_buffer
 import dask
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
-
-import os
-SEAMLESS_TOOLS_DIR = os.environ["SEAMLESS_TOOLS_DIR"]
 
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -26,11 +22,13 @@ class SeamlessWorkerPlugin(WorkerPlugin):
             import seamless
             from seamless.core.transformation import get_global_info, execution_metadata0
             from seamless.core.cache.transformation_cache import transformation_cache
-            from seamless.util import set_unforked_process 
+            from seamless.util import set_unforked_process
+            from seamless.metalevel.unbashify import get_bash_checksums 
         except ImportError:
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
     
         set_unforked_process()
+        get_bash_checksums()
         seamless.delegate(level=3)
         transformation_cache.stateless = True
         get_global_info()
@@ -130,7 +128,7 @@ Transformations are executed by repeatedly launching run-transformation.py in a 
 Transformations are directly forwarded to a remote Dask scheduler.                                    
 
 The Dask scheduler must have started up in a Seamless-compatible way,
-see seamless-tools/dask-create-example-cluster.py .
+see seamless-tools/dask-deployment/example.py .
                                      
 Dask clusters are homogeneous in environment.
 No support for using transformer environment definitions (conda YAML) 
