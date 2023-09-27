@@ -4,9 +4,6 @@ assistant=$1
 
 python3 -c '''
 assistants = [
-    "none",
-    "micro-assistant", "micro-assistant-devel",
-    "mini-assistant", "mini-assistant-devel",
     "mini-dask-assistant-devel"
 ]
 
@@ -19,7 +16,7 @@ else:
     err = "Unknown assistant."
 if assistant not in assistants:
     print("""ERROR: {}
-Syntax: seamless-delegate <assistant>
+Syntax: seamless-delegate-remote <assistant>
 
 Available assistants:
 
@@ -28,22 +25,7 @@ Available assistants:
     exit(1)
 ''' $assistant
 
-set +u
-if [ -z "$DASK_SCHEDULER_ADDRESS" ]; then
-    if [[ $assistant == mini-dask-assistant* ]] ; then
-        echo 'Undefined DASK_SCHEDULER_ADDRESS' > /dev/stderr
-        echo 'If you wish to run a local Dask deployment:'
-        echo '- Run first "seamless-delegate none"'
-        echo '- Launch a local Dask scheduler'
-        echo '- Define DASK_SCHEDULER_ADDRESS'
-        exit 1
-    else
-        export DASK_SCHEDULER_ADDRESS=-1
-    fi
-fi
-if [[ $assistant == none ]] ; then
-  assistant=''
-fi
+
 set -u
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 cd $currdir
@@ -51,16 +33,10 @@ set +u -e
 source ./seamless-fill-environment-variables
 set -u -e
 
-mkdir -p $SEAMLESS_CONFIG_DIRECTORY
-mkdir -p $SEAMLESS_CONFIG_DIRECTORY/buffers
-mkdir -p $SEAMLESS_CONFIG_DIRECTORY/database
-touch $SEAMLESS_CONFIG_DIRECTORY/database/seamless.db
-
 export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
 export DOCKER_GROUP_ID=$(getent group docker | cut -d: -f3)
 export DOCKER_VERSION=$(docker --version)
-ls hashserver/.git > /dev/null
 
 function mapping() {
 python -c 'import sys
@@ -78,7 +54,7 @@ export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERV
 export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
 
 cd delegate
-docker compose up database hashserver $assistant --build -d
+docker compose up $assistant --build -d
 if [[ $assistant != '' ]] ; then
     sleep 5
 fi    

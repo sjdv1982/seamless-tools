@@ -28,8 +28,8 @@ class SeamlessWorkerPlugin(WorkerPlugin):
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
     
         set_unforked_process()
-        get_bash_checksums()
         seamless.delegate(level=3)
+        get_bash_checksums()
         transformation_cache.stateless = True
         get_global_info()
         execution_metadata0["Executor"] = "mini-dask-assistant-worker"

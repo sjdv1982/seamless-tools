@@ -1,5 +1,8 @@
 """
-Criteria for starting Dask in a Seamless-compatible manner
+Launches a Dask scheduler to be used with Seamless by setting up a LocalCluster.
+
+General criteria for starting Dask in a Seamless-compatible manner:
+
 - The current process contains the scheduler, it must be kept alive.
 - The scheduler address must be printed out so that it can be used 
   by the Seamless assistant or mini-dask assistant. 
@@ -21,7 +24,10 @@ Criteria for starting Dask in a Seamless-compatible manner
   Dask.distributed.
 """
 
+import dask
+import sys
 import os
+import argparse
 
 # Check that delegation works
 os.environ["SEAMLESS_DATABASE_IP"]
@@ -29,16 +35,25 @@ os.environ["SEAMLESS_DATABASE_PORT"]
 os.environ["SEAMLESS_READ_BUFFER_SERVERS"]
 os.environ["SEAMLESS_WRITE_BUFFER_SERVER"]
 
-import sys
-import dask
+parser = argparse.ArgumentParser()
+parser.add_argument("--host", default="0.0.0.0", required=False)
+parser.add_argument("--port", default=0, type=int, required=False)
+args = parser.parse_args()
+
 dask.config.set({'distributed.worker.multiprocessing-method': 'fork'})
 dask.config.set({'distributed.worker.daemon': False})
 
+# This import must happen AFTER dask.config!!!
 from dask.distributed import LocalCluster
-cluster = LocalCluster(scheduler_kwargs={"host": "0.0.0.0"})
 
+scheduler_kwargs={"host":args.host}
+if args.port > 0:
+    scheduler_kwargs["port"] = args.port
+cluster = LocalCluster(scheduler_kwargs=scheduler_kwargs)
+
+print("Dask scheduler address:")
 print(cluster.scheduler_address)
 sys.stdout.flush()
 
 import time
-time.sleep(9999999)
+time.sleep(99999999)

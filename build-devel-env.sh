@@ -1,4 +1,6 @@
-#!/bin/bash -i
+#!/bin/bash
+source $CONDA_PREFIX/etc/profile.d/conda.sh
+
 set -e
 if [ -z "$PYTHONPATH" ]; then
   export PYTHONPATH=""

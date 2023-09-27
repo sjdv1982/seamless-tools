@@ -1,16 +1,14 @@
 #!/bin/bash
 
-set +u
 if [ -z "$SEAMLESS_DOCKER_IMAGE" ]; then
   export SEAMLESS_DOCKER_IMAGE=rpbs/seamless
 fi
-set -u
-set +e +u
+
 docker && export SEAMLESS_DOCKER_VERSION=$(docker --version)
 
 if [ -z "$SEAMLESS_DOCKER_HOST_IP" ]; then
 
-  docker && export SEAMLESS_DOCKER_HOST_IP=$(docker network inspect bridHASHSERVERge \
+  docker && export SEAMLESS_DOCKER_HOST_IP=$(docker network inspect bridge \
   | python3 -c '''
 import json, sys
 bridge = json.load(sys.stdin)
@@ -18,9 +16,7 @@ print(bridge[0]["IPAM"]["Config"][0]["Gateway"])
 ''')
 
 fi
-set -e -u
 
-set +u
 if [ -z "$SEAMLESS_DEBUGGING_DIRECTORY" ]; then 
   export SEAMLESS_DEBUGGING_DIRECTORY=/tmp/seamless-debug
   mkdir -p ${SEAMLESS_DEBUGGING_DIRECTORY}
@@ -73,7 +69,6 @@ fi
 if [ -z "$SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK" ]; then
   export SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK='--network=bridge'
 fi
-set -u
 
 export SEAMLESS_DOCKER_RUN_PARAMS_X_TRUSTED="""-v /var/run/docker.sock:/var/run/docker.sock \
 --group-add $(getent group docker | cut -d: -f3)"""
@@ -98,11 +93,10 @@ if [ "$SEAMLESS_DOCKER_IMAGE" == seamless-devel ]; then
 fi
 
 export SEAMLESS_DOCKER_RUN_PARAMS_X_NAME=''
-set +u
+
 if [ -n "$SEAMLESS_DOCKER_CONTAINER_NAME" ]; then
     export SEAMLESS_DOCKER_RUN_PARAMS_X_NAME="--name $SEAMLESS_DOCKER_CONTAINER_NAME"
 fi
-set -u
 
 if [ -z ${SEAMLESS_DOCKER_PUBLISH_SHARESERVER_PORTS+x} ]; then
   export SEAMLESS_DOCKER_PUBLISH_SHARESERVER_PORTS="""-p 5813:5813 \
@@ -117,11 +111,9 @@ if [ -z ${SEAMLESS_DOCKER_PUBLISH_DEBUG_PORTS+x} ]; then
   export SEAMLESS_DOCKER_PUBLISH_DEBUG_PORTS="-p 5679-5685:5679-5685"
 fi
 
-set +u
 if [ -z "$SEAMLESS_DOCKER_CUSTOM_PARAMS" ]; then
   export SEAMLESS_DOCKER_CUSTOM_PARAMS=""
 fi
-set -u
 
 export HOST_USER_ID=`id -u`
 export HOST_GROUP_ID=`id -g`
