@@ -24,7 +24,12 @@ fi
 
 source $CONDA_PREFIX/etc/profile.d/conda.sh
 
+set -e
+if [ -z "$PYTHONPATH" ]; then
+  export PYTHONPATH=""
+fi
 set -u -e
+
 environment_name=$1
 echo 'Check that mamba is installed'
 mamba -V > /dev/null
@@ -36,7 +41,7 @@ echo "SEAMLESS_TOOLS_DIR: location of the "seamless-tools" Git repo (https://git
 echo "SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR"
 ls $SEAMLESS_TOOLS_DIR/.git > /dev/null
 echo
-echo 'The following file must exist; if not, do "git pull --recurse-submodules https://github.com/sjdv1982/seamless-tools.git"'
+echo 'The following file must exist; if not, go to SEAMLESS_TOOLS_DIR and do "git submodule update --init"'
 ls $SEAMLESS_TOOLS_DIR/seamless-cli/hashserver/.git
 echo "SILKDIR: location of the "silk" Git repo (https://github.com/sjdv1982/silk.git)"
 echo "SILKDIR=$SILKDIR"
