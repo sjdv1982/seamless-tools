@@ -45,12 +45,22 @@ export DASK_SCHEDULER_PORT=$(random_port)
 export SEAMLESS_READ_BUFFER_SERVERS=http://localhost:$SEAMLESS_HASHSERVER_PORT
 export SEAMLESS_WRITE_BUFFER_SERVER=http://localhost:$SEAMLESS_HASHSERVER_PORT
 
-echo '#########################################################################'
-echo 'export SEAMLESS_DATABASE_IP='$ip
-echo 'export SEAMLESS_DATABASE_PORT='$SEAMLESS_DATABASE_PORT
-echo 'export SEAMLESS_READ_BUFFER_SERVERS='http://$ip:$SEAMLESS_HASHSERVER_PORT
-echo 'export SEAMLESS_WRITE_BUFFER_SERVER='http://$ip:$SEAMLESS_HASHSERVER_PORT
-echo 'export DASK_SCHEDULER_ADDRESS='tcp://$ip:$DASK_SCHEDULER_PORT
-echo '#########################################################################'
+echo ' # For direct connection:'
+echo ' #########################################################################'
+echo ' export SEAMLESS_DATABASE_IP='$ip
+echo ' export SEAMLESS_DATABASE_PORT='$SEAMLESS_DATABASE_PORT
+echo ' export SEAMLESS_READ_BUFFER_SERVERS='http://$ip:$SEAMLESS_HASHSERVER_PORT
+echo ' export SEAMLESS_WRITE_BUFFER_SERVER='http://$ip:$SEAMLESS_HASHSERVER_PORT
+echo ' export DASK_SCHEDULER_ADDRESS='tcp://$ip:$DASK_SCHEDULER_PORT
+echo ' #########################################################################'
+echo 
+echo ' # For seamless-delegate-ssh:'
+echo ' #########################################################################'
+echo ' export SEAMLESS_SSH_HOST='$HOSTNAME
+echo ' export SEAMLESS_SSH_DATABASE_PORT='$SEAMLESS_DATABASE_PORT
+echo ' export SEAMLESS_SSH_HASHSERVER_PORT='$SEAMLESS_HASHSERVER_PORT
+echo ' export SEAMLESS_SSH_DASK_SCHEDULER_PORT='$DASK_SCHEDULER_PORT
+echo ' #########################################################################'
+echo ''
 
 python3 local.py --host $host --port $DASK_SCHEDULER_PORT

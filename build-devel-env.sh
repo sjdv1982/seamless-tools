@@ -1,4 +1,9 @@
 #!/bin/bash
+if [ -z "$CONDA_PREFIX" ]; then
+  echo 'conda needs to be activated' > /dev/stderr
+  exit 1
+fi
+
 source $CONDA_PREFIX/etc/profile.d/conda.sh
 
 set -e
@@ -18,13 +23,17 @@ echo "SILKDIR=$SILKDIR"
 echo
 echo "Building \"$environment_name\" conda environment..."
 mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
+for i in `seq 10`; do
+conda deactivate
+done
 conda activate $environment_name
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
   SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR \
   SILKDIR=$SILKDIR \
   PATH=${SEAMLESS_TOOLS_DIR}/seamless-cli:$SEAMLESSDIR/bin:${PATH} \
-  PYTHONPATH=${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH}
+  PYTHONPATH=${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH} \
+  SEAMLESS_DOCKER_IMAGE=seamless-devel
 mkdir -p $CONDA_PREFIX/etc/conda/activate.d
 mkdir -p $CONDA_PREFIX/etc/conda/deactivate.d
 cp ${SEAMLESSDIR}/bin/activate-seamless-mode.sh $CONDA_PREFIX/etc/conda/activate.d/

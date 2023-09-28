@@ -16,6 +16,12 @@
 #   The launch script should print out a number of environment variables to copy.
 #   These are to be defined where Seamless is imported to launch jobs.
 
+#!/bin/bash
+if [ -z "$CONDA_PREFIX" ]; then
+  echo 'conda needs to be activated' > /dev/stderr
+  exit 1
+fi
+
 source $CONDA_PREFIX/etc/profile.d/conda.sh
 
 set -u -e

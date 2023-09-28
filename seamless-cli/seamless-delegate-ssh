@@ -1,0 +1,55 @@
+#!/bin/bash
+
+set -e
+
+assistant=$1
+
+python3 -c '''
+assistants = [
+    "mini-dask-assistant-devel"
+]
+
+import sys
+if len(sys.argv) == 1:
+    assistant = ""
+    err = "Please select an assistant."
+else:
+    assistant = sys.argv[1]
+    err = "Unknown assistant."
+if assistant not in assistants:
+    print("""ERROR: {}
+Syntax: seamless-delegate-ssh <assistant>
+
+Available assistants:
+
+{}
+""".format(err, ", ".join(assistants)), file=sys.stderr)
+    exit(1)
+''' $assistant
+
+currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
+source $currdir/seamless-fill-environment-variables
+
+set -u -e
+
+ssh -L '*:'$SEAMLESS_DATABASE_PORT:localhost:$SEAMLESS_SSH_DATABASE_PORT -N $SEAMLESS_SSH_HOST &
+pid_ssh_db=$!
+trap "echo exiting $pid_ssh_db; kill $pid_ssh_db" EXIT
+sleep 1
+
+ssh -L '*:'$SEAMLESS_HASHSERVER_PORT:localhost:$SEAMLESS_SSH_HASHSERVER_PORT -N $SEAMLESS_SSH_HOST &
+pid_ssh_hashserver=$!
+trap "echo exiting $pid_ssh_db $pid_ssh_hashserver; kill $pid_ssh_db $pid_ssh_hashserver" EXIT
+sleep 1
+
+export DASK_SCHEDULER_PORT=5599
+ssh -L '*:'$DASK_SCHEDULER_PORT:localhost:$SEAMLESS_SSH_DASK_SCHEDULER_PORT -N $SEAMLESS_SSH_HOST &
+pid_ssh_dask_scheduler=$!
+trap "echo exiting $pid_ssh_db $pid_ssh_hashserver $pid_ssh_dask_scheduler; kill $pid_ssh_db $pid_ssh_hashserver $pid_ssh_dask_scheduler" EXIT
+sleep 1
+
+export DASK_SCHEDULER_ADDRESS=tcp://$SEAMLESS_DOCKER_HOST_IP:$DASK_SCHEDULER_PORT
+$currdir/seamless-delegate-remote $assistant
+
+echo 'Delegation over SSH is active. Press Ctrl-C to end'
+wait
