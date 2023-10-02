@@ -56,9 +56,11 @@ echo ' #########################################################################
 echo 
 echo ' # For seamless-delegate-ssh:'
 echo ' #########################################################################'
-echo ' export SEAMLESS_SSH_HOST='$HOSTNAME
+echo ' export SEAMLESS_SSH_DATABASE_HOST='$HOSTNAME
 echo ' export SEAMLESS_SSH_DATABASE_PORT='$SEAMLESS_DATABASE_PORT
+echo ' export SEAMLESS_SSH_HASHSERVER_HOST='$HOSTNAME
 echo ' export SEAMLESS_SSH_HASHSERVER_PORT='$SEAMLESS_HASHSERVER_PORT
+echo ' export SEAMLESS_SSH_DASK_SCHEDULER_HOST='$HOSTNAME
 echo ' export SEAMLESS_SSH_DASK_SCHEDULER_PORT='$DASK_SCHEDULER_PORT
 echo ' #########################################################################'
 echo ''
