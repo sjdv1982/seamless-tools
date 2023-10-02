@@ -23,8 +23,8 @@ echo
 echo 'Building "seamless-delegated-development" conda environment...'
 mamba env remove -n seamless-delegated-development
 mamba env create --file seamless-delegated-development.yaml
-for i in `seq 10`; do
-conda deactivate
+for i in $(seq ${CONDA_SHLVL}); do
+    conda deactivate
 done
 conda activate seamless-delegated-development
 conda env config vars set \

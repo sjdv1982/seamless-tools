@@ -23,8 +23,8 @@ echo "SILKDIR=$SILKDIR"
 echo
 echo "Building \"$environment_name\" conda environment..."
 mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
-for i in `seq 10`; do
-conda deactivate
+for i in $(seq ${CONDA_SHLVL}); do
+    conda deactivate
 done
 conda activate $environment_name
 conda env config vars set \
