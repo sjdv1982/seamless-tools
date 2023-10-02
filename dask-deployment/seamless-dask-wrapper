@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Sets up a wrapper around a Seamless+Dask deployment script
+#
+#   Syntax: seamless-dask-wrapper <deployment script>
+#   Example: seamless-dask-wrapper run-local.sh
+#
+# Requirements:
+#
+# - This script requires the Seamless hashserver and database to have been previously launched 
+#   by a script like slurm-db-hashserver.sh, which stores its configuration in a file.
+#   The configuration must have been stored as environment variables in ENVIRONMENT_OUTPUT_FILE.
+#    (the default value of ENVIRONMENT_OUTPUT_FILE is ~/.seamless/seamless-env.sh, the 
+#       same as slurm-db-hashserver-devel uses).
+#
+# - It requires a Dask+Seamless development conda environment to have been setup.
+#   You can build such an environment using ./build-devel-env.sh
+#   The name of the environment must be specified as SEAMLESS_DASK_CONDA_ENVIRONMENT.
+#
+# - It also requires a port range to be available 
+#   towards the exterior, e.g 60001-61000. This port range must be defined as 
+#   the variables RANDOM_PORT_START and RANDOM_PORT_END
+#
+# Once this script has started, it will rewrite $ENVIRONMENT_OUTPUT_FILE, 
+#  adding variables for the Seamless assistant and the Dask scheduler.
+#
+# Source this file on your own machine, where Seamless will launch jobs.
+#
+# Once the script ends, $ENVIRONMENT_OUTPUT_FILE will be restored to its old value.
+
+set +u -e
+
+if [ -z "$CONDA_PREFIX" ]; then
+  echo 'conda needs to be activated' > /dev/stderr
+  exit 1
+fi
+
+source $CONDA_PREFIX/etc/profile.d/conda.sh
+
+if [ -z "$ENVIRONMENT_OUTPUT_FILE" ]; then
+    ENVIRONMENT_OUTPUT_FILE=$HOME/slurm-db-hashserver-env.sh
+    echo "ENVIRONMENT_OUTPUT_FILE not defined. Using default: " $ENVIRONMENT_OUTPUT_FILE > /dev/stderr
+fi
+
+set -u -e
+
+if [ -e "$ENVIRONMENT_OUTPUT_FILE" ]; then
+    echo "ENVIRONMENT_OUTPUT_FILE ($ENVIRONMENT_OUTPUT_FILE) found" > /dev/stderr
+    source $ENVIRONMENT_OUTPUT_FILE
+    OLD_ENVIRONMENT_OUTPUT=$(cat $ENVIRONMENT_OUTPUT_FILE)
+else
+    echo "ENVIRONMENT_OUTPUT_FILE ($ENVIRONMENT_OUTPUT_FILE) does not exist" > /dev/stderr
+    echo "The Seamless database and hashserver are not running?" > /dev/stderr
+    exit 1
+fi
+
+x=$RANDOM_PORT_START
+x=$RANDOM_PORT_END
+DEPLOYMENT_SCRIPT=$1
+
+export SEAMLESS_ASSISTANT_HOST=0.0.0.0  # listen on all IP addresses
+
+for i in $(seq ${CONDA_SHLVL}); do
+    conda deactivate
+done
+conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT
+
+function random_port {
+    echo $(python -c '
+import sys
+start, end = [int(v) for v in sys.argv[1:]]
+import random
+print(random.randint(start, end))
+' $RANDOM_PORT_START $RANDOM_PORT_END)
+}
+
+ip=$(hostname -I | awk '{print $1}')
+
+export SEAMLESS_DATABASE_IP=localhost
+export DASK_SCHEDULER_PORT=$(random_port)
+export SEAMLESS_READ_BUFFER_SERVERS=http://localhost:$SEAMLESS_SSH_HASHSERVER_PORT
+export SEAMLESS_WRITE_BUFFER_SERVER=http://localhost:$SEAMLESS_SSH_HASHSERVER_PORT
+
+cat /dev/null > $ENVIRONMENT_OUTPUT_FILE 
+echo ' # For direct connection:' >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_DATABASE_IP='$ip >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_DATABASE_PORT='$SEAMLESS_DATABASE_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_READ_BUFFER_SERVERS='http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_WRITE_BUFFER_SERVER='http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export DASK_SCHEDULER_ADDRESS='tcp://$ip:$DASK_SCHEDULER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
+echo  >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' # For seamless-delegate-ssh:' >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_HASHSERVER_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_HASHSERVER_PORT='$SEAMLESS_SSH_HASHSERVER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_DATABASE_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_DATABASE_PORT='$SEAMLESS_DATABASE_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_DASK_SCHEDULER_PORT='$DASK_SCHEDULER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
+echo ''
+
+function rewrite_environment_output_file() {
+    if [ -e "$ENVIRONMENT_OUTPUT_FILE" ]; then
+        echo "$OLD_ENVIRONMENT_OUTPUT" > $ENVIRONMENT_OUTPUT_FILE
+    fi    
+}
+
+trap 'rewrite_environment_output_file' EXIT
+./$DEPLOYMENT_SCRIPT

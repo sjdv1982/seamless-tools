@@ -65,4 +65,10 @@ echo ' export SEAMLESS_SSH_DASK_SCHEDULER_PORT='$DASK_SCHEDULER_PORT
 echo ' #########################################################################'
 echo ''
 
-python3 local.py --host $host --port $DASK_SCHEDULER_PORT
+python3 local.py --host $host --port $DASK_SCHEDULER_PORT &
+pid=$!
+pgid=$(ps -o pgid -p $pid | awk  'NR==2{print $1}')
+trap 'kill -INT -$pgid; sleep 5; kill -- -$pgid' EXIT
+wait -n
+wait -n
+wait -n

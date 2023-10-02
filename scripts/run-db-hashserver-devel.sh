@@ -1,22 +1,32 @@
 #!/bin/bash
-# Sets up a database and hashserver using a Slurm job
-# inside a Dask+Seamless conda environment
+# Run a database and hashserver inside a Dask+Seamless conda environment
+# This script is meant to be launched before seamless-dask-wrapper,
+#  potentially on a different machine or as/inside a different Slurm job.
+# (For a script that is to be sourced inside a full deployment script, 
+#  see setup-db-hashserver*.sh instead)
 #
 # Note: this is a DEVELOPMENT version, requiring SEAMLESS_TOOLS_DIR to be defined
 #
 # It requires conda environments for the hashserver and the database to have been setup.
+# The conda environment names are in HASHSERVER_CONDA_ENVIRONMENT and DATABASE_CONDA_ENVIRONMENT
+# If these variables do not exist, their names are "hashserver" and "seamless-database".
+# Make sure that these environments exist!
 # See hashserver/environment.yml and tools/database.Dockerfile for the required packages 
 #
 # It also requires a port range to be available on the node 
-#  towards the exterior, e.g 60001-61000
+# towards the exterior, e.g 60001-61000
+# This port range must be defined as the variables 
+# RANDOM_PORT_START and RANDOM_PORT_END
 #
-# Syntax: ./slurm-db-hashserver.sh 60001 61000
+# The database file "seamless.db" is stored in DATABASE_DIR (small)
+# Hashserver buffers are stored in HASHSERVER_BUFFER_DIR (can be enormous!)
 #
-# It is possible to give a third argument "host", indicating the IP address where
-# the server will listen. By default, this is 0.0.0.0
 #
-# Once it has started, it will generate a file (by default, ~/.seamless/seamless-env.sh)
+# Syntax: ./run-db-hashserver.sh
+# Once it has started, it will generate a file $ENVIRONMENT_OUTPUT_FILE
+#  (by default, ~/.seamless/seamless-env.sh)
 # containing the network configuration of the Seamless hashserver and database.
+#
 # This file can then be included by:
 # - Assistant scripts, e.g. a Slurm-based Seamless+Dask deployment script
 # - Seamless clients that don't need an assistant (level 3 delegation or lower)
@@ -36,11 +46,12 @@
 
 set -u -e
 
-RANDOM_PORT_START=$1
-RANDOM_PORT_END=$2
-host="${3:-0.0.0.0}"
 
+x=$RANDOM_PORT_START
+x=$RANDOM_PORT_END
 x=$SEAMLESS_TOOLS_DIR
+
+host=0.0.0.0
 
 set +u -e
 
@@ -117,6 +128,7 @@ conda activate $HASHSERVER_CONDA_ENVIRONMENT
 cd $SEAMLESS_TOOLS_DIR/seamless-cli/hashserver
 python3 -u hashserver.py $HASHSERVER_BUFFER_DIR --writable --port $SEAMLESS_HASHSERVER_PORT --host $host \
   >& $HASHSERVER_BUFFER_DIR/slurm-hashserver.log &
+pid_hs=$!
 conda deactivate
 
 
@@ -124,6 +136,7 @@ conda activate $DATABASE_CONDA_ENVIRONMENT
 cd $SEAMLESS_TOOLS_DIR/tools
 python3 -u database.py $DATABASE_DIR/seamless.db --port $SEAMLESS_DATABASE_PORT --host $host \
   >& $DATABASE_DIR/slurm-db.log &
+pid_db=$!
 conda deactivate
 
 
@@ -147,7 +160,7 @@ echo ' export SEAMLESS_SSH_DATABASE_PORT='$SEAMLESS_DATABASE_PORT >> $ENVIRONMEN
 echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
 echo '' >> $ENVIRONMENT_OUTPUT_FILE 
 
-trap "rm -f $ENVIRONMENT_OUTPUT_FILE" EXIT
+trap "rm -f $ENVIRONMENT_OUTPUT_FILE; kill $pid_hs $pid_db" EXIT
 
 echo 'Database and hashserver are running...' > /dev/stderr
 wait
