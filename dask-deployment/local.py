@@ -6,6 +6,8 @@ General criteria for starting Dask in a Seamless-compatible manner:
 - The current process contains the scheduler, it must be kept alive.
 - The scheduler address must be printed out so that it can be used 
   by the Seamless assistant or mini-dask assistant. 
+  Alternatively, the scheduler port may be pre-defined using --port,
+  so that the scheduler address is already known.
 - If the deployment is *fully local* (i.e. on the same machine as the
   database AND the buffer server AND the client script that will use Seamless)
   then it is sufficient to do "export DASK_SCHEDULER_ADDRESS=..." 
