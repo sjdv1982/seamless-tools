@@ -3,7 +3,7 @@
 # Sets up a wrapper around a Seamless+Dask deployment script
 #
 #   Syntax: seamless-dask-wrapper <deployment script>
-#   Example: seamless-dask-wrapper wrap-local.sh
+#   Example: seamless-dask-wrapper ./wrap-local.sh
 #
 # Requirements:
 #
@@ -29,6 +29,10 @@
 # Once the script ends, $ENVIRONMENT_OUTPUT_FILE will be restored to its old value.
 
 set +u -e
+
+if [ -e "$TEMPDIR" ]; then
+  mkdir -p $TEMPDIR
+fi
 
 if [ -z "$CONDA_PREFIX" ]; then
   echo 'conda needs to be activated' > /dev/stderr
@@ -63,6 +67,8 @@ export SEAMLESS_ASSISTANT_HOST=0.0.0.0  # listen on all IP addresses
 for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
+conda deactivate
+conda activate base
 conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT
 
 function random_port {
@@ -76,12 +82,14 @@ print(random.randint(start, end))
 
 ip=$(hostname -I | awk '{print $1}')
 
-export SEAMLESS_DATABASE_IP=localhost
+export SEAMLESS_DATABASE_IP=$ip
 export DASK_SCHEDULER_PORT=$(random_port)
-export SEAMLESS_READ_BUFFER_SERVERS=http://localhost:$SEAMLESS_SSH_HASHSERVER_PORT
-export SEAMLESS_WRITE_BUFFER_SERVER=http://localhost:$SEAMLESS_SSH_HASHSERVER_PORT
+export SEAMLESS_READ_BUFFER_SERVERS=http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT
+export SEAMLESS_WRITE_BUFFER_SERVER=http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT
 
 cat /dev/null > $ENVIRONMENT_OUTPUT_FILE 
+echo ' # This file has been auto-generated and modified by seamless-dask-wrapper' >> $ENVIRONMENT_OUTPUT_FILE 
+echo '' >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' # For direct connection:' >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_DATABASE_IP='$ip >> $ENVIRONMENT_OUTPUT_FILE 
@@ -108,4 +116,4 @@ function rewrite_environment_output_file() {
 }
 
 trap 'rewrite_environment_output_file' EXIT
-./$DEPLOYMENT_SCRIPT
+bash $DEPLOYMENT_SCRIPT
