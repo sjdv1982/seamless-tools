@@ -1,9 +1,12 @@
 #!/bin/bash
 # Run a database and hashserver inside a Dask+Seamless conda environment
+#
+# This script contains Slurm directives, but can also be launched independently
+#
 # This script is meant to be launched before seamless-dask-wrapper,
 #  potentially on a different machine or as/inside a different Slurm job.
-# (For a script that is to be sourced inside a full deployment script, 
-#  see setup-db-hashserver*.sh instead)
+# (For a script that is to be sourced *inside* a full deployment script, 
+#  see setup-db-hashserver*.sh instead).
 #
 # Note: this is a DEVELOPMENT version, requiring SEAMLESS_TOOLS_DIR to be defined
 #
@@ -31,9 +34,9 @@
 # - Assistant scripts, e.g. a Slurm-based Seamless+Dask deployment script
 # - Seamless clients that don't need an assistant (level 3 delegation or lower)
 
-#SBATCH --job-name=slurm-db-hashserver
-#SBATCH -o slurm-db-hashserver.out
-#SBATCH -e slurm-db-hashserver.err
+#SBATCH --job-name=run-db-hashserver
+#SBATCH -o run-db-hashserver.out
+#SBATCH -e run-db-hashserver.err
 
 # 3 cores: can probably do with less
 #SBATCH -c 3
@@ -86,7 +89,7 @@ mkdir -p $DATABASE_DIR
 
 
 if [ -z "$ENVIRONMENT_OUTPUT_FILE" ]; then
-    ENVIRONMENT_OUTPUT_FILE=$HOME/slurm-db-hashserver-env.sh
+    ENVIRONMENT_OUTPUT_FILE=$HOME/run-db-hashserver-env.sh
     echo "ENVIRONMENT_OUTPUT_FILE not defined. Using default: " $ENVIRONMENT_OUTPUT_FILE > /dev/stderr
 fi
 
@@ -127,7 +130,7 @@ conda deactivate
 conda activate $HASHSERVER_CONDA_ENVIRONMENT
 cd $SEAMLESS_TOOLS_DIR/seamless-cli/hashserver
 python3 -u hashserver.py $HASHSERVER_BUFFER_DIR --writable --port $SEAMLESS_HASHSERVER_PORT --host $host \
-  >& $HASHSERVER_BUFFER_DIR/slurm-hashserver.log &
+  >& $HASHSERVER_BUFFER_DIR/run-hashserver.log &
 pid_hs=$!
 conda deactivate
 
@@ -135,7 +138,7 @@ conda deactivate
 conda activate $DATABASE_CONDA_ENVIRONMENT
 cd $SEAMLESS_TOOLS_DIR/tools
 python3 -u database.py $DATABASE_DIR/seamless.db --port $SEAMLESS_DATABASE_PORT --host $host \
-  >& $DATABASE_DIR/slurm-db.log &
+  >& $DATABASE_DIR/run-db.log &
 pid_db=$!
 conda deactivate
 

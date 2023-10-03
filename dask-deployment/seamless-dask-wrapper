@@ -3,7 +3,7 @@
 # Sets up a wrapper around a Seamless+Dask deployment script
 #
 #   Syntax: seamless-dask-wrapper <deployment script>
-#   Example: seamless-dask-wrapper run-local.sh
+#   Example: seamless-dask-wrapper wrap-local.sh
 #
 # Requirements:
 #
