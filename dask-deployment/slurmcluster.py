@@ -50,7 +50,7 @@ conda_shlvl = int(os.environ["CONDA_SHLVL"])
 if conda_shlvl == 1:
     CONDA_PREFIX = os.environ["CONDA_PREFIX"]
 else:
-    CONDA_PREFIX = os.environ["CONDA_PREFIX_{}".format(conda_shlvl-1)]
+    CONDA_PREFIX = os.environ["CONDA_PREFIX_1"]
 
 exported_vars = [
     "SEAMLESS_DASK_CONDA_ENVIRONMENT",
@@ -65,11 +65,16 @@ print()
 
 cluster = SLURMCluster(
     #queue='regular',
-    #account="myaccount",
-    cores=12,
-    processes=6,
+    
+    # processes should be 1, otherwise you get trouble
+    processes=1, 
+    
+    # The scheduler will send this many tasks to each job
+    cores=6,
     memory="6 GB",
     python="python",
+
+    # TODO: devise a way to set seamless.ncores ewqalc to SLURMCluster.cores
     job_script_prologue=[
         "#SBATCH --export={}".format(",".join(exported_vars)),
         "set -u -e",
@@ -80,14 +85,21 @@ cluster = SLURMCluster(
         "export DASK_DISTRIBUTED__WORKER__DAEMON=False",
     ],
 
-    worker_extra_args=["--worker-port={}:{}".format(
-        os.environ["RANDOM_PORT_START"],
-        os.environ["RANDOM_PORT_END"]
-    )],
+    worker_extra_args=[
+        "--worker-port={}:{}".format(
+            os.environ["RANDOM_PORT_START"],
+            os.environ["RANDOM_PORT_END"]
+        ),
+        "--nanny-port={}:{}".format(
+            os.environ["RANDOM_PORT_START"],
+            os.environ["RANDOM_PORT_END"]
+        )
+    ],
     scheduler_options=scheduler_kwargs
 )
-cluster.scale(1)
-#cluster.adapt(maximum_jobs=10)   # NOT WORKING
+
+cluster.adapt(minimum_jobs=0, maximum_jobs=20)
+
 print(cluster.job_script())
 
 print("Dask scheduler address:")

@@ -34,15 +34,32 @@ if [ -e "$TEMPDIR" ]; then
   mkdir -p $TEMPDIR
 fi
 
-if [ -z "$CONDA_PREFIX" ]; then
-  echo 'conda needs to be activated' > /dev/stderr
+if [ -z "$CONDA_EXE" ] || [ -z "$CONDA_SHLVL" ]; then
+  echo 'conda must be installed' > /dev/stderr
   exit 1
 fi
 
-source $CONDA_PREFIX/etc/profile.d/conda.sh
+CONDA_DIR=$(python3 -c '
+import os, pathlib
+conda_shlvl = int(os.environ["CONDA_SHLVL"])
+if conda_shlvl == 0:
+    CONDA_DIR = str(pathlib.Path(os.environ["CONDA_EXE"]).parent.parent)
+elif conda_shlvl == 1:
+    CONDA_DIR = os.environ["CONDA_PREFIX"]
+else:
+    CONDA_DIR = os.environ["CONDA_PREFIX_1"]
+print(CONDA_DIR)
+')
+
+source $CONDA_DIR/etc/profile.d/conda.sh
+
+for i in $(seq ${CONDA_SHLVL}); do
+    conda deactivate
+done
+conda activate
 
 if [ -z "$ENVIRONMENT_OUTPUT_FILE" ]; then
-    ENVIRONMENT_OUTPUT_FILE=$HOME/slurm-db-hashserver-env.sh
+    ENVIRONMENT_O5UTPUT_FILE=$HOME/slurm-db-hashserver-env.sh
     echo "ENVIRONMENT_OUTPUT_FILE not defined. Using default: " $ENVIRONMENT_OUTPUT_FILE > /dev/stderr
 fi
 
@@ -64,11 +81,6 @@ DEPLOYMENT_SCRIPT=$1
 
 export SEAMLESS_ASSISTANT_HOST=0.0.0.0  # listen on all IP addresses
 
-for i in $(seq ${CONDA_SHLVL}); do
-    conda deactivate
-done
-conda deactivate
-conda activate base
 conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT
 
 function random_port {
@@ -105,6 +117,7 @@ echo ' export SEAMLESS_SSH_HASHSERVER_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FIL
 echo ' export SEAMLESS_SSH_HASHSERVER_PORT='$SEAMLESS_SSH_HASHSERVER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_SSH_DATABASE_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_SSH_DATABASE_PORT='$SEAMLESS_DATABASE_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_DASK_SCHEDULER_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_SSH_DASK_SCHEDULER_PORT='$DASK_SCHEDULER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
 echo ''
