@@ -104,6 +104,9 @@ class JobSlaveServer:
             print("ERROR: %s port %d already in use" % (self.host, self.port))
             raise Exception
 
+        from anyio import to_thread
+        to_thread.current_default_thread_limiter().total_tokens = 1000
+
         app = web.Application(client_max_size=10e9)
         app.add_routes([
             web.get('/config', self._get_config),
@@ -128,13 +131,17 @@ class JobSlaveServer:
             status=200
         )
 
-    async def _put_job(self, request:web.Request):        
+    async def _put_job(self, request:web.Request):     
+        global JOBCOUNTER   
         try:
             data = await request.json()
 
             checksum = Checksum(data["checksum"])
 
             '''
+            global JOBCOUNTER
+            JOBCOUNTER += 1
+            print("JOB", JOBCOUNTER, checksum)
             from seamless.core.direct.run import fingertip
             import json
             print("RQ", json.loads(fingertip(checksum.hex()).decode()))
