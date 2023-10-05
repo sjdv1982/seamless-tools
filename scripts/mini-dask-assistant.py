@@ -2,6 +2,7 @@ import asyncio
 import os
 import socket
 import traceback
+import anyio
 from aiohttp import web
 from seamless import CacheMissError
 from seamless.highlevel import Checksum
@@ -35,11 +36,16 @@ class SeamlessWorkerPlugin(WorkerPlugin):
         execution_metadata0["Executor"] = "mini-dask-assistant-worker"
 
 def run_transformation(checksum, tf_dunder):
+    from seamless import CacheMissError
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     checksum = Checksum(checksum)
-    return seamless.run_transformation(checksum.hex(), fingertip=True, tf_dunder=tf_dunder)
-
+    for trials in range(10):
+        try:
+            return seamless.run_transformation(checksum.hex(), fingertip=True, tf_dunder=tf_dunder)
+        except CacheMissError:
+            continue
+    
 ### /remote code
 
 def run_job(client, checksum, tf_dunder):
@@ -109,7 +115,8 @@ class JobSlaveServer:
             '''
 
             tf_dunder = data["dunder"]
-            return run_job(self.client, checksum, tf_dunder)
+            response = await anyio.to_thread.run_sync(run_job, self.client, checksum, tf_dunder)
+            return response
         
         except Exception as exc:
             traceback.print_exc()
@@ -124,7 +131,6 @@ if __name__ == "__main__":
     import argparse
     env = os.environ
     parser = argparse.ArgumentParser(description="""Mini-dask assistant.
-Transformations are executed by repeatedly launching run-transformation.py in a subprocess.
 Transformations are directly forwarded to a remote Dask scheduler.                                    
 
 The Dask scheduler must have started up in a Seamless-compatible way,
