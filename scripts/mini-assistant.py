@@ -215,6 +215,34 @@ Please create it, or provide a conda environment definition that will be used as
     
     return execute(checksum, dunder)
 
+_jobs = {}
+
+async def launch_job(data):
+    checksum = Checksum(data["checksum"]).hex()
+    job = None
+    if checksum in _jobs:
+        job, curr_data = _jobs[checksum]
+        if curr_data != data:
+            job.cancel()
+            _jobs.pop(checksum)
+            job = None
+    if job is None:
+        coro = anyio.to_thread.run_sync(run_job, data)
+        job = asyncio.create_task(coro)
+        _jobs[checksum] = job, data
+    
+    remove_job = True
+    try:
+        return await asyncio.wait_for(asyncio.shield(job), timeout=10.0)
+    except asyncio.TimeoutError:
+        result = web.Response(status=202) # just send it again, later
+        remove_job = False
+        return result
+    finally:
+        if remove_job:
+            _jobs.pop(checksum, None)
+
+
 def run_job(data):
     checksum = Checksum(data["checksum"])
     try:
@@ -288,7 +316,7 @@ class JobSlaveServer:
             data = await request.json()
             #print("DATA", data)
             try:
-                response = await anyio.to_thread.run_sync(run_job, data)
+                response = await launch_job(data)
                 return response
             except RuntimeError as exc:
                 body = traceback.format_exception_only(exc)[-1]

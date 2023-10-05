@@ -48,6 +48,33 @@ def run_transformation(checksum, tf_dunder):
     
 ### /remote code
 
+_jobs = {}
+
+async def launch_job(client, checksum, tf_dunder):
+    checksum = Checksum(checksum).hex()
+    job = None
+    if checksum in _jobs:
+        job, curr_dunder = _jobs[checksum]
+        if curr_dunder != tf_dunder:
+            job.cancel()
+            _jobs.pop(checksum)
+            job = None
+    if job is None:
+        coro = anyio.to_thread.run_sync(run_job, client, Checksum(checksum), tf_dunder)
+        job = asyncio.create_task(coro)
+        _jobs[checksum] = job, tf_dunder
+    
+    remove_job = True
+    try:
+        return await asyncio.wait_for(asyncio.shield(job), timeout=10.0)
+    except asyncio.TimeoutError:
+        result = web.Response(status=202) # just send it again, later
+        remove_job = False
+        return result
+    finally:
+        if remove_job:
+            _jobs.pop(checksum, None)
+
 def run_job(client, checksum, tf_dunder):
     result = client.submit(run_transformation, checksum, tf_dunder=tf_dunder, key=checksum.hex())
     checksum = result.result()
@@ -115,7 +142,7 @@ class JobSlaveServer:
             '''
 
             tf_dunder = data["dunder"]
-            response = await anyio.to_thread.run_sync(run_job, self.client, checksum, tf_dunder)
+            response = await launch_job(self.client, checksum, tf_dunder)
             return response
         
         except Exception as exc:
