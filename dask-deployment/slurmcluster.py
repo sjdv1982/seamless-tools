@@ -98,7 +98,7 @@ cluster = SLURMCluster(
     scheduler_options=scheduler_kwargs
 )
 
-cluster.adapt(minimum_jobs=0, maximum_jobs=40)
+cluster.adapt(minimum_jobs=0, maximum_jobs=50)
 
 print(cluster.job_script())
 
@@ -106,5 +106,6 @@ print("Dask scheduler address:")
 print(cluster.scheduler_address)
 sys.stdout.flush()
 
-import time
-time.sleep(99999999)
+if not sys.__stdin__.isatty():
+    import time
+    time.sleep(99999999)

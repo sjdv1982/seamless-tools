@@ -57,5 +57,6 @@ print("Dask scheduler address:")
 print(cluster.scheduler_address)
 sys.stdout.flush()
 
-import time
-time.sleep(99999999)
+if not sys.__stdin__.isatty():
+    import time
+    time.sleep(99999999)
