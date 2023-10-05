@@ -28,6 +28,11 @@ Available assistants:
     exit(1)
 ''' $assistant
 
+unset SEAMLESS_DATABASE_IP
+unset SEAMLESS_DATABASE_PORT
+unset SEAMLESS_HASHSERVER_PORT
+unset SEAMLESS_READ_BUFFER_SERVERS
+unset SEAMLESS_WRITE_BUFFER_SERVER
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 source $currdir/seamless-fill-environment-variables
 
