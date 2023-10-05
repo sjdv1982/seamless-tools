@@ -70,11 +70,11 @@ cluster = SLURMCluster(
     processes=1, 
     
     # The scheduler will send this many tasks to each job
-    cores=6,
-    memory="6 GB",
+    cores=8,
+    memory="16 GB",
     python="python",
 
-    # TODO: devise a way to set seamless.ncores ewqalc to SLURMCluster.cores
+    # TODO: devise a way to set seamless.ncores equal to SLURMCluster.cores
     job_script_prologue=[
         "#SBATCH --export={}".format(",".join(exported_vars)),
         "set -u -e",
@@ -98,7 +98,7 @@ cluster = SLURMCluster(
     scheduler_options=scheduler_kwargs
 )
 
-cluster.adapt(minimum_jobs=0, maximum_jobs=20)
+cluster.adapt(minimum_jobs=0, maximum_jobs=40)
 
 print(cluster.job_script())
 
