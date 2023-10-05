@@ -52,18 +52,37 @@ set -u -e
 
 x=$RANDOM_PORT_START
 x=$RANDOM_PORT_END
-x=$SEAMLESS_TOOLS_DIR
+SEAMLESS_TOOLS_DIR_OLD=$SEAMLESS_TOOLS_DIR
 
 host=0.0.0.0
 
 set +u -e
 
-if [ -z "$CONDA_PREFIX" ]; then
-  echo 'conda needs to be activated' > /dev/stderr
+if [ -z "$CONDA_EXE" ] || [ -z "$CONDA_SHLVL" ]; then
+  echo 'conda must be installed' > /dev/stderr
   exit 1
 fi
 
-source $CONDA_PREFIX/etc/profile.d/conda.sh
+CONDA_DIR=$(python3 -c '
+import os, pathlib
+conda_shlvl = int(os.environ["CONDA_SHLVL"])
+if conda_shlvl == 0:
+    CONDA_DIR = str(pathlib.Path(os.environ["CONDA_EXE"]).parent.parent)
+elif conda_shlvl == 1:
+    CONDA_DIR = os.environ["CONDA_PREFIX"]
+else:
+    CONDA_DIR = os.environ["CONDA_PREFIX_1"]
+print(CONDA_DIR)
+')
+
+source $CONDA_DIR/etc/profile.d/conda.sh
+
+for i in $(seq ${CONDA_SHLVL}); do
+    conda deactivate
+done
+conda activate
+
+source $CONDA_DIR/etc/profile.d/conda.sh
 
 if [ -z "$HASHSERVER_CONDA_ENVIRONMENT" ]; then
     HASHSERVER_CONDA_ENVIRONMENT='hashserver'
@@ -128,6 +147,7 @@ python -c 'import peewee, aiohttp'
 conda deactivate
 
 conda activate $HASHSERVER_CONDA_ENVIRONMENT
+SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR_OLD
 cd $SEAMLESS_TOOLS_DIR/seamless-cli/hashserver
 python3 -u hashserver.py $HASHSERVER_BUFFER_DIR --writable --port $SEAMLESS_HASHSERVER_PORT --host $host \
   >& $HASHSERVER_BUFFER_DIR/run-hashserver.log &
@@ -136,6 +156,7 @@ conda deactivate
 
 
 conda activate $DATABASE_CONDA_ENVIRONMENT
+SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR_OLD
 cd $SEAMLESS_TOOLS_DIR/tools
 python3 -u database.py $DATABASE_DIR/seamless.db --port $SEAMLESS_DATABASE_PORT --host $host \
   >& $DATABASE_DIR/run-db.log &

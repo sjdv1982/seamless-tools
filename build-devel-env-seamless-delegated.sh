@@ -1,10 +1,27 @@
 #!/bin/bash
-if [ -z "$CONDA_PREFIX" ]; then
-  echo 'conda needs to be activated' > /dev/stderr
+if [ -z "$CONDA_EXE" ] || [ -z "$CONDA_SHLVL" ]; then
+  echo 'conda must be installed' > /dev/stderr
   exit 1
 fi
 
-source $CONDA_PREFIX/etc/profile.d/conda.sh
+CONDA_DIR=$(python3 -c '
+import os, pathlib
+conda_shlvl = int(os.environ["CONDA_SHLVL"])
+if conda_shlvl == 0:
+    CONDA_DIR = str(pathlib.Path(os.environ["CONDA_EXE"]).parent.parent)
+elif conda_shlvl == 1:
+    CONDA_DIR = os.environ["CONDA_PREFIX"]
+else:
+    CONDA_DIR = os.environ["CONDA_PREFIX_1"]
+print(CONDA_DIR)
+')
+
+source $CONDA_DIR/etc/profile.d/conda.sh
+
+for i in $(seq ${CONDA_SHLVL}); do
+    conda deactivate
+done
+conda activate
 
 set -e
 if [ -z "$PYTHONPATH" ]; then
@@ -35,8 +52,8 @@ conda env config vars set \
   PYTHONPATH=${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH} \
   SEAMLESS_DOCKER_IMAGE=seamless-devel
 
-mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-mkdir -p $CONDA_PREFIX/etc/conda/deactivate.d
-cp ${SEAMLESSDIR}/bin/activate-seamless-mode.sh $CONDA_PREFIX/etc/conda/activate.d/
+mkdir -p $CONDA_DIR/etc/conda/activate.d
+mkdir -p $CONDA_DIR/etc/conda/deactivate.d
+cp ${SEAMLESSDIR}/bin/activate-seamless-mode.sh $CONDA_DIR/etc/conda/activate.d/
 conda deactivate
 echo 'Done'
