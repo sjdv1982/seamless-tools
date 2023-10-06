@@ -40,6 +40,7 @@ echo "SILKDIR=$SILKDIR"
 echo
 echo "Building \"$environment_name\" conda environment..."
 mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
+mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-delegated-development.yaml
 for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
@@ -51,6 +52,7 @@ conda env config vars set \
   PATH=${SEAMLESS_TOOLS_DIR}/seamless-cli:$SEAMLESSDIR/bin:${PATH} \
   PYTHONPATH=${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH} \
   SEAMLESS_DOCKER_IMAGE=seamless-devel
+
 mkdir -p $CONDA_DIR/etc/conda/activate.d
 mkdir -p $CONDA_DIR/etc/conda/deactivate.d
 cp ${SEAMLESSDIR}/bin/activate-seamless-mode.sh $CONDA_DIR/etc/conda/activate.d/
