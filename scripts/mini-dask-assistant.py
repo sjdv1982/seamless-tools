@@ -213,7 +213,10 @@ Meta information is also ignored. No support for Dask resources.
     seamless.config.delegate(level=3)
 
     client = Client(args.scheduler_address)
-    client.register_plugin(SeamlessWorkerPlugin())
+    try:
+        client.register_plugin(SeamlessWorkerPlugin())
+    except AttributeError:
+        client.register_worker_plugin(SeamlessWorkerPlugin())
 
     server = JobSlaveServer(client, args.host, args.port)
     server.start()
