@@ -40,6 +40,7 @@ services:
         - /var/run/docker.sock:/var/run/docker.sock # Docker access
         - /tmp:/tmp  # temp dir to execute Docker transformers in
       group_add: 
+        - users
         - ${DOCKER_GROUP_ID:?}
       environment:
         - PYTHONPATH=/silk:/seamless
@@ -81,6 +82,7 @@ services:
         - /var/run/docker.sock:/var/run/docker.sock # Docker access
         - /tmp:/tmp  # temp dir to execute Docker transformers in
       group_add: 
+        - users
         - ${DOCKER_GROUP_ID:?}
       environment:
         - SEAMLESS_TOOLS_DIR
@@ -94,7 +96,9 @@ services:
         - DOCKER_IMAGE=seamless-devel
         - DOCKER_VERSION=${DOCKER_VERSION:-""}
   mini-assistant:
-      build:
+    group_add:
+      - users
+    build:
         context: ../../scripts
         dockerfile: mini-assistant.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
@@ -108,6 +112,8 @@ services:
         - ASSISTANT_HOST=0.0.0.0
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
   mini-dask-assistant-devel:
+      group_add:
+        - users
       build:
         context: ../../scripts
         dockerfile: mini-dask-assistant-devel.Dockerfile
