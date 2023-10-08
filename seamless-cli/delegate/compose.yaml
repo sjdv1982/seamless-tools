@@ -96,9 +96,9 @@ services:
         - DOCKER_IMAGE=seamless-devel
         - DOCKER_VERSION=${DOCKER_VERSION:-""}
   mini-assistant:
-    group_add:
+      group_add:
       - users
-    build:
+      build:
         context: ../../scripts
         dockerfile: mini-assistant.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
