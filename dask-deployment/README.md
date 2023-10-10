@@ -67,7 +67,7 @@ The instructions below are terse. See `scripts/run-db-hashserver-devel.sh` for m
 
 - You must build and define `$HASHSERVER_CONDA_ENVIRONMENT` and `$DATABASE_CONDA_ENVIRONMENT`.
 
-- Define at least $RANDOM_PORT_START and $RANDOM_PORT_END.
+- Define at least `$RANDOM_PORT_START` and `$RANDOM_PORT_END`.
 
 - Activate conda.
 
@@ -88,10 +88,10 @@ Now comes the project-specific part:
 - Submit `seamless-dask-wrapper <wrap-script>` under `sbatch`. This will launch a Dask scheduler and workers inside the Seamless+Dask environment. For now, there are
 two wrap scripts: `wrap-local.sh` for deployment of workers on a single node (like the first three methods) and `wrap-slurmcluster.sh`. The latter uses SLURMCluster from the dask-jobqueue project in order to launch new Dask workers dynamically using Slurm.
 
-- TODO: make Cluster.adaptive work. Otherwise, when all your workers get killed,
-it's over. Bug report?
+Example: `sbatch --time 72:00:00 ~/seamless-tools/dask-deployment/seamless-dask-wrapper ~/seamless-tools/dask-deployment/wrap-slurmcluster.sh`
 
-Example: `sbatch --time 72:00:00 ~/seamless-tools/dask-deployment seamless-dask-wrapper ~/seamless-tools/dask-deployment/wrap-slurmcluster.sh`
+You can also launch `seamless-dask-wrapper <wrap-script>` on a cluster front-end.
+In that case, an interactive Python session (not IPython, unfortunately; IPython gives trouble with asyncio) is opened, where you can manipulate the `cluster` object.
 
 - Copy the contents of `$ENVIRONMENT_OUTPUT_FILE`.
 

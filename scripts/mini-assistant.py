@@ -287,6 +287,9 @@ class JobSlaveServer:
             print("ERROR: %s port %d already in use" % (self.host, self.port))
             raise Exception
 
+        from anyio import to_thread
+        to_thread.current_default_thread_limiter().total_tokens = 1000
+
         app = web.Application(client_max_size=10e9)
         app.add_routes([
             web.get('/config', self._get_config),
