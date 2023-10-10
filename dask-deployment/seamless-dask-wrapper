@@ -59,7 +59,7 @@ done
 conda activate
 
 if [ -z "$ENVIRONMENT_OUTPUT_FILE" ]; then
-    ENVIRONMENT_O5UTPUT_FILE=$HOME/slurm-db-hashserver-env.sh
+    ENVIRONMENT_OUTPUT_FILE=$HOME/slurm-db-hashserver-env.sh
     echo "ENVIRONMENT_OUTPUT_FILE not defined. Using default: " $ENVIRONMENT_OUTPUT_FILE > /dev/stderr
 fi
 
@@ -113,10 +113,10 @@ echo ' #########################################################################
 echo  >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' # For seamless-delegate-ssh:' >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
-echo ' export SEAMLESS_SSH_HASHSERVER_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_HASHSERVER_HOST='$SEAMLESS_SSH_HASHSERVER_HOST >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_SSH_HASHSERVER_PORT='$SEAMLESS_SSH_HASHSERVER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
-echo ' export SEAMLESS_SSH_DATABASE_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FILE 
-echo ' export SEAMLESS_SSH_DATABASE_PORT='$SEAMLESS_DATABASE_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_DATABASE_HOST='$SEAMLESS_SSH_DATABASE_HOST >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_SSH_DATABASE_PORT='$SEAMLESS_SSH_DATABASE_PORT >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_SSH_DASK_SCHEDULER_HOST='$HOSTNAME >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_SSH_DASK_SCHEDULER_PORT='$DASK_SCHEDULER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
