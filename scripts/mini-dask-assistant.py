@@ -28,6 +28,7 @@ class SeamlessWorkerPlugin(WorkerPlugin):
         except ImportError:
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
     
+        seamless.config.set_ncores(worker.state.nthreads)
         set_unforked_process()
         seamless.delegate(level=3)
         get_bash_checksums()
@@ -76,7 +77,19 @@ async def launch_job(client, checksum, tf_dunder):
             _jobs.pop(checksum, None)
 
 def run_job(client, checksum, tf_dunder):
-    result = client.submit(run_transformation, checksum, tf_dunder=tf_dunder, key=checksum.hex())
+    known_resources = ("ncores",)
+    resources = {}
+    if tf_dunder is not None:
+        meta = tf_dunder.get("__meta__", {})
+    else:
+        meta = {}
+    for res in known_resources:
+        if res in meta:
+            resources[res] = meta[res]
+    with dask.annotate(resources=resources):
+        result = client.submit(
+            run_transformation, checksum, tf_dunder=tf_dunder, key=checksum.hex()
+        )
     checksum = result.result()
 
     result = Checksum(checksum).hex()
