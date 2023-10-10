@@ -40,6 +40,7 @@ os.environ["SEAMLESS_WRITE_BUFFER_SERVER"]
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="0.0.0.0", required=False)
 parser.add_argument("--port", default=0, type=int, required=False)
+parser.add_argument("--ncores", type=int, required=False)
 args = parser.parse_args()
 
 dask.config.set({'distributed.worker.multiprocessing-method': 'fork'})
@@ -47,16 +48,37 @@ dask.config.set({'distributed.worker.daemon': False})
 
 # This import must happen AFTER dask.config!!!
 from dask.distributed import LocalCluster
+from dask.system import CPU_COUNT
 
 scheduler_kwargs={"host":args.host}
 if args.port > 0:
     scheduler_kwargs["port"] = args.port
-cluster = LocalCluster(scheduler_kwargs=scheduler_kwargs)
+
+ncores = args.ncores
+if ncores is None:
+    ncores = CPU_COUNT
+with dask.config.set({"distributed.worker.resources.ncores": ncores}):
+    cluster = LocalCluster(
+        n_workers=1,
+        threads_per_worker=ncores,
+        scheduler_kwargs=scheduler_kwargs,
+        resources = {"ncores": ncores},
+    )
 
 print("Dask scheduler address:")
 print(cluster.scheduler_address)
 sys.stdout.flush()
 
-if not sys.__stdin__.isatty():
+def is_interactive():
+    if sys.flags.interactive:
+        return True
+    try:
+        from IPython import get_ipython
+        return (get_ipython() is not None)
+    except ImportError:
+        return False
+
+if not is_interactive():
+    print("Press Ctrl+C to stop")
     import time
     time.sleep(99999999)

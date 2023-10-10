@@ -63,6 +63,7 @@ for var in exported_vars:
     print("{}={}".format(var, os.environ[var]))
 print()
 
+ncores=8
 cluster = SLURMCluster(
     #queue='regular',
     
@@ -70,7 +71,7 @@ cluster = SLURMCluster(
     processes=1, 
     
     # The scheduler will send this many tasks to each job
-    cores=8,
+    cores=ncores,
     memory="16 GB",
     python="python",
 
@@ -93,7 +94,8 @@ cluster = SLURMCluster(
         "--nanny-port={}:{}".format(
             os.environ["RANDOM_PORT_START"],
             os.environ["RANDOM_PORT_END"]
-        )
+        ),
+        f"--resources \"ncores={ncores}\"",
     ],
     scheduler_options=scheduler_kwargs
 )
@@ -106,6 +108,16 @@ print("Dask scheduler address:")
 print(cluster.scheduler_address)
 sys.stdout.flush()
 
-if not sys.__stdin__.isatty():
+def is_interactive():
+    if sys.flags.interactive:
+        return True
+    try:
+        from IPython import get_ipython
+        return (get_ipython() is not None)
+    except ImportError:
+        return False
+
+if not is_interactive():
+    print("Press Ctrl+C to stop")
     import time
     time.sleep(99999999)
