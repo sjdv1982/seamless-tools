@@ -57,13 +57,13 @@ if args.port > 0:
 ncores = args.ncores
 if ncores is None:
     ncores = CPU_COUNT
-with dask.config.set({"distributed.worker.resources.ncores": ncores}):
-    cluster = LocalCluster(
-        n_workers=1,
-        threads_per_worker=ncores,
-        scheduler_kwargs=scheduler_kwargs,
-        resources = {"ncores": ncores},
-    )
+dask.config.set({"distributed.worker.resources.ncores": ncores})
+cluster = LocalCluster(
+    n_workers=1,
+    threads_per_worker=ncores,
+    scheduler_kwargs=scheduler_kwargs,
+    resources = {"ncores": ncores},
+)
 
 print("Dask scheduler address:")
 print(cluster.scheduler_address)

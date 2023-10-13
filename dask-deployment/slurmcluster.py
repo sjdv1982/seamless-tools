@@ -64,6 +64,8 @@ for var in exported_vars:
 print()
 
 ncores=8
+
+dask.config.set({"distributed.worker.resources.ncores": ncores})
 cluster = SLURMCluster(
     #queue='regular',
     
