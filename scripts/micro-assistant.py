@@ -11,6 +11,46 @@ def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((address, port)) == 0
 
+_jobs = {}
+
+async def launch_job(checksum, tf_dunder):
+    checksum = Checksum(checksum).hex()
+    job = None
+    if checksum in _jobs:
+        job, curr_dunder = _jobs[checksum]
+        if curr_dunder != tf_dunder:
+            job.cancel()
+            _jobs.pop(checksum)
+            job = None
+    if job is None:
+        coro = seamless.run_transformation_async(bytes.fromhex(checksum), fingertip=True, tf_dunder=tf_dunder)
+        job = asyncio.create_task(coro)
+        _jobs[checksum] = job, tf_dunder
+    
+    remove_job = True
+    try:
+        result = await asyncio.wait_for(asyncio.shield(job), timeout=10.0)
+        if result is None:
+            return web.Response(
+                status=400,
+                body="ERROR: Unknown error"
+            )            
+
+        result = Checksum(result).hex()
+
+        return web.Response(
+            status=200,
+            body=result
+        )
+    except asyncio.TimeoutError:
+        result = web.Response(status=202) # just send it again, later
+        remove_job = False
+        return result
+    finally:
+        if remove_job:
+            _jobs.pop(checksum, None)
+
+
 class JobSlaveServer:
     future = None
     def __init__(self, host, port):
@@ -60,23 +100,9 @@ class JobSlaveServer:
             '''
 
             dunder = data["dunder"]
-            task = asyncio.create_task(seamless.run_transformation_async(checksum.bytes(), fingertip=True, tf_dunder=dunder))
-            try:
-                result = await asyncio.wait_for(asyncio.shield(task), timeout=10.0)
-            except asyncio.TimeoutError:
-                return web.Response(status=202) # just send it again, later
+            response =  await launch_job(checksum, tf_dunder=dunder)
+            return response
 
-            #print("RESULT!", result.hex() if result is not None else None)
-            if result is not None:
-                result = result.hex()
-                return web.Response(
-                    status=200,
-                    body=result
-                )
-            return web.Response(
-                status=400,
-                body="ERROR: Unknown error"
-            )            
         except Exception as exc:
             traceback.print_exc()
             return web.Response(
