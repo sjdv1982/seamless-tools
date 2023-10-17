@@ -18,4 +18,4 @@ docker run --rm \
   --group-add users \
   -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
-  $SEAMLESS_DOCKER_IMAGE start.sh python3 /home/jovyan/seamless-scripts/add-vault.py $zipfile_dir $*
+  $SEAMLESS_DOCKER_IMAGE start.sh python3 /home/jovyan/seamless-scripts/upload-vault.py $zipfile_dir $*

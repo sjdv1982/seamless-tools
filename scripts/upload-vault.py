@@ -1,3 +1,5 @@
+#!/usr/bin/env -S python3 -u
+
 import argparse
 import os
 import sys
@@ -7,9 +9,14 @@ parser.add_argument("--flat", action="store_true", help="Directory is a flat dir
 args = parser.parse_args()
 
 import seamless
+from seamless.config import AssistantConnectionError
+try:
+    seamless.delegate()
+except AssistantConnectionError:
+    seamless.delegate(level=2)
+
 from seamless.core.cache.buffer_cache import buffer_cache
 from seamless.vault import load_vault, load_vault_flat
-seamless.database_sink.connect()
 
 try:
     vault = args.vault_directory

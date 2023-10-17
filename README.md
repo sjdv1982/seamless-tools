@@ -110,7 +110,7 @@ You can use Seamless's generic `seamless-serve-graph` command together with jobl
 
 ```bash
 graph_dir=/home/jovyan/seamless-tests/highlevel
-seamless-add-zip $graph_dir/share-pdb.zip
+seamless-upload-zip $graph_dir/share-pdb.zip
 seamless-serve-graph $graph_dir/share-pdb.seamless --database --communion --ncores 0
 ```
 
