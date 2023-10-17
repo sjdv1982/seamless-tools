@@ -45,11 +45,13 @@ for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
 conda activate $environment_name
+mamba install -c conda-forge black mypy types-requests sphinx recommonmark -y
+pip install sphinx_rtd_theme
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
   SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR \
   SILKDIR=$SILKDIR \
-  PATH=${SEAMLESS_TOOLS_DIR}/seamless-cli:$SEAMLESSDIR/bin:${PATH} \
+  PATH=$SEAMLESSDIR/bin:${SEAMLESS_TOOLS_DIR}/seamless-cli:${PATH} \
   PYTHONPATH=${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH} \
   SEAMLESS_DOCKER_IMAGE=seamless-devel
 
