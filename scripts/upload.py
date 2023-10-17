@@ -82,12 +82,11 @@ paths = [path.rstrip(os.sep) for path in args.files_and_directories]
 directories = [path for path in paths if os.path.isdir(path)]
     
 try:
-    file_checksum_dict, _, directory_indices = files_to_checksums(
+    file_checksum_dict, directory_indices = files_to_checksums(
         paths,        
         max_upload_size=max_upload_size,
         max_upload_files=max_upload_files,
         directories=directories,
-        direct_checksum_directories=None,
         auto_confirm=args.auto_confirm,
     )
 except SeamlessSystemExit as exc:
