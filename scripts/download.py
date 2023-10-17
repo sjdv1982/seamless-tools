@@ -1,5 +1,11 @@
 #!/usr/bin/env -S python3 -u
 
+# TODO: document
+# in particular, point out that:
+# - .INDEX file may contain comments and whitespace
+#    and if empty of anything else, 
+#    the index is built from the .CHECKSUM file.
+
 import shutil
 import sys, os
 import json
@@ -96,7 +102,7 @@ for path in paths:
             data = f.read()
         data = strip_textdata(data)
         index_buffer = data.encode() + b'\n'
-        if not len(index_buffer.strip(b'\n')):
+        if not index_buffer.strip(b'\n'):
             checksum_file = os.path.splitext(path)[0] + ".CHECKSUM"
             if not os.path.exists(checksum_file):
                 err(f"Index file '{path}' is empty, {checksum_file} does not exist")
