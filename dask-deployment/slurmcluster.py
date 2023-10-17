@@ -63,7 +63,8 @@ for var in exported_vars:
     print("{}={}".format(var, os.environ[var]))
 print()
 
-ncores=8
+
+ncores=4
 
 dask.config.set({"distributed.worker.resources.ncores": ncores})
 cluster = SLURMCluster(
