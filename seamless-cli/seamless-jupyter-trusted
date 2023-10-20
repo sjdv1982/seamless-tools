@@ -7,7 +7,7 @@ source $currdir/seamless-fill-environment-variables
 
 export JUPYTER_ENABLE_LAB=${JUPYTER_ENABLE_LAB}
 
-$currdir/seamless-detect-used-ports 5813 5138 8888
+$currdir/seamless-detect-used-ports 5813 5138 $SEAMLESS_JUPYTER_PORT
 
 set -u -e
 
@@ -43,6 +43,7 @@ containerID=$(docker run --rm -d \
   --group-add users \
   $SEAMLESS_DOCKER_CUSTOM_PARAMS \
   $SEAMLESS_DOCKER_IMAGE start-notebook.sh \
+  --port $SEAMLESS_JUPYTER_PORT \
   --NotebookApp.token='' --NotebookApp.password='' \
   $*)
 
