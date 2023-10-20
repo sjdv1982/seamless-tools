@@ -1,9 +1,8 @@
-raise NotImplementedError #add database / assistant by default. save_vault only if no writeserver. /datasets to contain checksum files.
-
 import sys, os, shutil, json
 from seamless.highlevel import Context
 import argparse
-import json
+
+print("TODO: add database / assistant by default. save_vault only if no writeserver. /datasets to contain checksum files.", file=sys.stderr)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
