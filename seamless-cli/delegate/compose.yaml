@@ -59,6 +59,8 @@ services:
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
+      group_add: 
+        - users
       environment:
         - SEAMLESS_DATABASE_IP=${SEAMLESS_DATABASE_IP_MAPPED:?}
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
