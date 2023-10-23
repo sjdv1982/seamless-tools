@@ -74,6 +74,7 @@ else
     echo "The Seamless database and hashserver are not running?" > /dev/stderr
     exit 1
 fi
+dip=$SEAMLESS_DATABASE_IP
 
 x=$RANDOM_PORT_START
 x=$RANDOM_PORT_END
@@ -94,20 +95,17 @@ print(random.randint(start, end))
 
 ip=$(hostname -I | awk '{print $1}')
 
-export SEAMLESS_DATABASE_IP=$ip
 export DASK_SCHEDULER_PORT=$(random_port)
-export SEAMLESS_READ_BUFFER_SERVERS=http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT
-export SEAMLESS_WRITE_BUFFER_SERVER=http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT
 
 cat /dev/null > $ENVIRONMENT_OUTPUT_FILE 
 echo ' # This file has been auto-generated and modified by seamless-dask-wrapper' >> $ENVIRONMENT_OUTPUT_FILE 
 echo '' >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' # For direct connection:' >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
-echo ' export SEAMLESS_DATABASE_IP='$ip >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_DATABASE_IP='$SEAMLESS_DATABASE_IP >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export SEAMLESS_DATABASE_PORT='$SEAMLESS_DATABASE_PORT >> $ENVIRONMENT_OUTPUT_FILE 
-echo ' export SEAMLESS_READ_BUFFER_SERVERS='http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
-echo ' export SEAMLESS_WRITE_BUFFER_SERVER='http://$ip:$SEAMLESS_SSH_HASHSERVER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_READ_BUFFER_SERVERS='$SEAMLESS_READ_BUFFER_SERVERS >> $ENVIRONMENT_OUTPUT_FILE 
+echo ' export SEAMLESS_WRITE_BUFFER_SERVER='$SEAMLESS_WRITE_BUFFER_SERVER >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' export DASK_SCHEDULER_ADDRESS='tcp://$ip:$DASK_SCHEDULER_PORT >> $ENVIRONMENT_OUTPUT_FILE 
 echo ' #########################################################################' >> $ENVIRONMENT_OUTPUT_FILE 
 echo  >> $ENVIRONMENT_OUTPUT_FILE 
