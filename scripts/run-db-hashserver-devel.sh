@@ -42,7 +42,8 @@
 #SBATCH -c 3
 
 # 500 MB of memory, should be plenty (?)
-#SBATCH --mem=500MB
+# => NO. Currently, it loads the whole file in memory...
+#SBATCH --mem=4GB
 
 # If possible, run indefinitely
 #SBATCH --time=0
