@@ -91,6 +91,11 @@ def run_job(client, checksum, tf_dunder):
             run_transformation, checksum, tf_dunder=tf_dunder, key=checksum.hex()
         )
     checksum = result.result()
+    if checksum is None:
+        return web.Response(
+            status=400,
+            body=f"Unknown failure"
+        )
 
     result = Checksum(checksum).hex()
     if not can_read_buffer(result):
