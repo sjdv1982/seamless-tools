@@ -246,7 +246,9 @@ types = (
     "metadata",
     "expression",
     "structured_cell_join",
-    "contest"
+    "contest",  # only PUT
+    "rev_expression",  # only GET
+    "rev_join",  # only GET
 )
 
 key_types = {
@@ -486,6 +488,34 @@ class DatabaseServer:
             if not result:
                 return None
             return parse_checksum(result[0].result)
+
+        elif type_ == "rev_expression":
+            expressions = Expression.select().where(
+                Expression.result == checksum,
+            ).execute()
+            if not expressions:
+                return None
+            result = []
+            for expression in expressions:
+                expr = {
+                    "checksum": expression.input_checksum,
+                    "path": json.loads(expression.path),
+                    "celltype": expression.celltype,
+                    "hash_pattern": json.loads(expression.hash_pattern),
+                    "target_celltype": expression.target_celltype,
+                    "target_hash_pattern": json.loads(expression.target_hash_pattern),
+                    "result": checksum,
+                }
+                result.append(expr)
+
+        elif type_ == "rev_join":
+            joins = StructuredCellJoin.select().where(
+                StructuredCellJoin.result == checksum,
+            ).execute()
+            if not joins:
+                return None
+            result = [join.checksum for join in joins]
+            return result
 
         elif type_ == "structured_cell_join":
             try:
