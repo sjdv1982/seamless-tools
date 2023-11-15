@@ -507,6 +507,7 @@ class DatabaseServer:
                     "result": checksum,
                 }
                 result.append(expr)
+            return result
 
         elif type_ == "rev_join":
             joins = StructuredCellJoin.select().where(
