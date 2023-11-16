@@ -28,6 +28,7 @@ Disable all local transformations. Connect to an assistant and get configuration
     action="store_true"
 )
 
+raise NotImplementedError
 parser.add_argument(
     "--communion",
     help="""Connect to a Seamless communion peer, e.g. jobless or a jobslave.
@@ -158,6 +159,7 @@ if not args.no_shares:
 
 import seamless.highlevel.stdlib
 
+raise NotImplementedError
 if args.database:
     seamless.database_sink.connect()
     seamless.database_cache.connect()
