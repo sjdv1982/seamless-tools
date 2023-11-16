@@ -464,7 +464,7 @@ class DatabaseServer:
 
         elif type_ == "metadata":
             try:
-                return json.loads(MetaData[checksum].metadata)
+                return MetaData[checksum].metadata
             except DoesNotExist:
                 return None # None is also a valid response
 
