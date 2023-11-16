@@ -20,8 +20,6 @@ seamless-ipython
 seamless-ipython-no-shareserver
 seamless-ipython-trusted
 seamless-ipython-no-shareserver-trusted
-seamless-jobslave
-seamless-jobslave-trusted
 seamless-jupyter-connect
 seamless-jupyter
 seamless-jupyter-trusted
