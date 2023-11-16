@@ -68,7 +68,8 @@ mamba create -n $environment_name 'python=3.10'
 conda activate $environment_name
 echo 'python=3.10' > $CONDA_PREFIX/conda-meta/pinned
 mamba env update --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
-mamba install -c conda-forge dask peewee fastapi uvicorn dask-jobqueue
+mamba install -c conda-forge gcc gxx gfortran cython -y
+mamba install -c conda-forge dask peewee fastapi uvicorn dask-jobqueue -y
 pip install docker
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
