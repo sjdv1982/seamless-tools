@@ -5,6 +5,7 @@ import socket
 import sys
 import traceback
 from aiohttp import web
+import seamless
 from seamless.highlevel import Checksum
 
 def is_port_in_use(address, port):
@@ -23,7 +24,7 @@ async def launch_job(checksum, tf_dunder):
             _jobs.pop(checksum)
             job = None
     if job is None:
-        coro = seamless.run_transformation_async(bytes.fromhex(checksum), fingertip=True, tf_dunder=tf_dunder)
+        coro = seamless.run_transformation_async(bytes.fromhex(checksum), fingertip=True, tf_dunder=tf_dunder, scratch=False)
         job = asyncio.create_task(coro)
         _jobs[checksum] = job, tf_dunder
     
