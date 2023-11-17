@@ -41,6 +41,7 @@ echo
 echo "Building \"$environment_name\" conda environment..."
 mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
 mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython -y
+mamba install -n $environment_name -c conda-forge commentjson
 mamba install -c conda-forge black mypy types-requests sphinx recommonmark -y
 mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-delegated-development.yaml
 for i in $(seq ${CONDA_SHLVL}); do
