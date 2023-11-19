@@ -39,11 +39,11 @@ echo "SILKDIR: location of the "silk" Git repo (https://github.com/sjdv1982/silk
 echo "SILKDIR=$SILKDIR"
 echo
 echo "Building \"$environment_name\" conda environment..."
-mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
-mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython -y
-mamba install -n $environment_name -c conda-forge commentjson
+mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml -y
+mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython scipy wurlitzer -y
+mamba install -n $environment_name -c conda-forge commentjson -y
 mamba install -c conda-forge black mypy types-requests sphinx recommonmark -y
-mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-delegated-development.yaml
+mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-delegated-development.yaml -y
 for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
