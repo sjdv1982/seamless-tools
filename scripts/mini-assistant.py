@@ -388,7 +388,7 @@ Note that non-bash transformers must have Seamless in their environment.
         raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
 
     import seamless
-    seamless.config.delegate(level=3)
+    seamless.delegate(level=3)
     
     from seamless.core.transformation import get_global_info
     

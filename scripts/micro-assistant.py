@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     import seamless
 
-    seamless.config.delegate(level=3)
+    seamless.delegate(level=3)
 
     if args.ncores is not None and args.ncores > 0:
         seamless.set_ncores(args.ncores)

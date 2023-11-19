@@ -165,7 +165,7 @@ if args.database:
     seamless.database_cache.connect()
 
 if args.delegate:
-    seamless.config.delegate()    
+    seamless.delegate()    
 
 from seamless.highlevel import load_graph, Context
 graph = json.load(args.graph)

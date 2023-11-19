@@ -228,7 +228,7 @@ Meta information is also ignored. No support for Dask resources.
         raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
 
     import seamless
-    seamless.config.delegate(level=3)
+    seamless.delegate(level=3)
 
     client = Client(args.scheduler_address)
     try:
