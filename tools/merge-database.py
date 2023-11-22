@@ -1,14 +1,15 @@
 import sqlite3
 
-def merge_databases(db1, db2):
+def merge_databases(db1, db2, all):
     con3 = sqlite3.connect(db1)
 
     con3.execute("ATTACH '" + db2 +  "' as db2")
 
     con3.execute("BEGIN")
     for table in con3.execute("SELECT * FROM db2.sqlite_master WHERE type='table'"):
+        if not all and table[1] == "rev_transformation":
+            continue
         print("TABLE", table[1])
-
         combine=f"""INSERT or IGNORE INTO {table[1]} SELECT * FROM db2.{table[1]}"""    
         con3.execute(combine)
     con3.commit()
@@ -19,7 +20,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=argparse.FileType(), help="Seamless database to take data from", required=True)
     parser.add_argument("--dest", type=argparse.FileType(), help="Seamless database to add data to", required=True)
+    parser.add_argument("--all", action="store_true", help="Merge all tables. Without this option, the rev_transformation table is not merged since it has a potential security risk.")
     args = parser.parse_args()
 
-    merge_databases(args.dest.name, args.source.name)
+    merge_databases(args.dest.name, args.source.name, args.all)
 

@@ -115,6 +115,10 @@ class Transformation(BaseModel):
     checksum = Checksum(primary_key=True)
     result = Checksum(index=True, unique=False)
 
+class RevTransformation(BaseModel):
+    result = Checksum(index=True, unique=False)
+    checksum = Checksum(unique=False)
+
 class Elision(BaseModel):
     checksum = Checksum(primary_key=True)
     result = Checksum()
@@ -210,10 +214,10 @@ class ContestedTransformation(BaseModel):
     metadata = JSONField()
 
 
-model_classes = [Transformation, Elision, BufferInfo, SyntacticToSemantic, Compilation, Expression, StructuredCellJoin, MetaData, ContestedTransformation]
+model_classes = [Transformation, RevTransformation, Elision, BufferInfo, SyntacticToSemantic, Compilation, Expression, StructuredCellJoin, MetaData, ContestedTransformation]
 primary = {}
 for model_class in model_classes:
-    if model_class is Expression or model_class is SyntacticToSemantic:
+    if model_class is Expression or model_class is SyntacticToSemantic or model_class is RevTransformation:
         continue
     for fieldname, field in model_class._meta.fields.items():
         if field.primary_key:
@@ -249,6 +253,7 @@ types = (
     "contest",  # only PUT
     "rev_expression",  # only GET
     "rev_join",  # only GET
+    "rev_transformations",  # only GET
 )
 
 key_types = {
@@ -518,6 +523,15 @@ class DatabaseServer:
             result = [join.checksum for join in joins]
             return result
 
+        elif type_ == "rev_transformations":
+            transformations = RevTransformation.select().where(
+                RevTransformation.result == checksum,
+            ).execute()
+            if not transformations:
+                return None
+            result = [transformation.checksum for transformation in transformations]
+            return result
+
         elif type_ == "structured_cell_join":
             try:
                 return parse_checksum(StructuredCellJoin[checksum].result)
@@ -568,6 +582,7 @@ class DatabaseServer:
             except (KeyError, ValueError):
                 raise DatabaseError("Malformed PUT transformation result request: value must be a checksum") from None
             Transformation.create(checksum=checksum, result=value)
+            RevTransformation.create(checksum=checksum, result=value)
 
 
         elif type_ == "elision":
