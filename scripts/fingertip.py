@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description="""Seamless fingertipper.
 Obtain a buffer from a checksum and return it as output.
 
 Note that arbitrary computation may be carried out.
-This computation is carried out locally, without delegation to an assistant.""")
+Unless --delegate is specified, this computation is carried out locally, without delegation to an assistant.""")
     
 parser.add_argument("checksum_or_checksum_file")
 
@@ -24,10 +24,20 @@ parser.add_argument(
     action="store_true"
 )
 
+parser.add_argument(
+    "--delegate",
+    help="Delegate the fingertip task to the assistant",
+    action="store_true"
+)
+
 args = parser.parse_args()
 
 import seamless
-seamless.delegate(level=3)
+if args.delegate:
+    seamless.delegate()
+else:
+    seamless.delegate(level=3)
+
 
 from seamless.core.direct.run import fingertip
 from seamless import Checksum, CacheMissError
