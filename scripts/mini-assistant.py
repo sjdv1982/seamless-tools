@@ -32,7 +32,7 @@ def run_command(command):
         command_tf.write(command)
         command_tf.close()
         os.chmod(command_tf.name, 0o777)
-        subprocess.check_output(
+        return subprocess.check_output(
             command_tf.name,
             shell=True,
             executable="/bin/bash", 
@@ -41,7 +41,31 @@ def run_command(command):
     finally:
         os.unlink(command_tf.name)
 
-def execute_in_existing_conda(checksum, dunder, conda_env_name):
+def run_command_with_outputfile(command):
+    command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    command_tf2 = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    outfile = command_tf2.name
+    try:
+        command_tf.write("set -u -e\n")
+        command_tf.write(command + " --output " + outfile)
+        command_tf.close()
+        command_tf2.close()
+        os.chmod(command_tf.name, 0o777)
+        subprocess.check_output(
+            command_tf.name,
+            shell=True,
+            executable="/bin/bash", 
+            stderr=subprocess.STDOUT,
+        )
+        if not os.path.exists(outfile):
+            raise Exception("Empty outputfile")
+        with open(outfile, "rb") as f:
+            return f.read()
+    finally:
+        os.unlink(command_tf.name)
+        os.unlink(command_tf2.name)
+
+def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, scratch):
     try:
         if dunder is not None:
             tf = tempfile.NamedTemporaryFile("w+t",delete=False)
@@ -49,20 +73,25 @@ def execute_in_existing_conda(checksum, dunder, conda_env_name):
             tf.close()
             dunderfile = tf.name
             dundercmd = f"--dunder {dunderfile}"
+        fingertipstr = "--fingertip" if fingertip else "" 
+        scratchstr = "--scratch" if scratch else ""
         command = f"""
 source {CONDA_ROOT}/etc/profile.d/conda.sh
 conda activate {conda_env_name}
 python {SEAMLESS_SCRIPTS}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    --fingertip
-"""    
-        run_command(command)
+    {fingertipstr} {scratchstr}"""
+        if fingertip and scratch:
+            result = run_command_with_outputfile(command)
+            return result
+        else: 
+            result = run_command(command)
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
-def execute(checksum, dunder):
+def execute(checksum, dunder, *, fingertip, scratch):
     try:
         if dunder is not None:
             tf = tempfile.NamedTemporaryFile("w+t",delete=False)
@@ -70,21 +99,27 @@ def execute(checksum, dunder):
             tf.close()
             dunderfile = tf.name
             dundercmd = f"--dunder {dunderfile}"
+        fingertipstr = "--fingertip" if fingertip else "" 
+        scratchstr = "--scratch" if scratch else ""
         command = f"""
 python {SEAMLESS_SCRIPTS}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    --fingertip
-"""    
-        run_command(command)
+    {fingertipstr} {scratchstr}"""    
+        if fingertip and scratch:
+            result = run_command_with_outputfile(command)
+            return result
+        else: 
+            result = run_command(command)
+
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
-def execute_in_docker(checksum, dunder, env, docker_conf):
+def execute_in_docker(checksum, dunder, env, docker_conf, *, fingertip, scratch):
     docker_image = docker_conf["name"]
     if docker_image.find("seamless-devel") > -1:
-        return execute_in_docker_devel(checksum, dunder, env, docker_conf)
+        return execute_in_docker_devel(checksum, dunder, env, docker_conf, scratch=scratch)
     try:
         dundermount = ""
         if dunder is not None:
@@ -95,6 +130,8 @@ def execute_in_docker(checksum, dunder, env, docker_conf):
             dundermount = f"-v {dunderfile}:{dunderfile}"
             dundercmd = f"--dunder {dunderfile}"
         docker_image = docker_conf["name"]
+        fingertipstr = "--fingertip" if fingertip else ""
+        scratchstr = "--scratch" if scratch else ""
         command = f"""
 docker run --rm \
 -e SEAMLESS_DATABASE_IP \
@@ -111,14 +148,17 @@ docker run --rm \
 start.sh python /scripts/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    --fingertip
-"""    
-        run_command(command)
+    {fingertipstr} {scratchstr}"""    
+        if fingertip and scratch:
+            result = run_command_with_outputfile(command)
+            return result
+        else: 
+            result = run_command(command)
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
-def execute_in_docker_devel(checksum, dunder, env, docker_conf):
+def execute_in_docker_devel(checksum, dunder, env, docker_conf, *, fingertip, scratch):
     try:
         dundermount = ""
         if dunder is not None:
@@ -129,6 +169,8 @@ def execute_in_docker_devel(checksum, dunder, env, docker_conf):
             dundermount = f"-v {dunderfile}:{dunderfile}"
             dundercmd = f"--dunder {dunderfile}"
         docker_image = docker_conf["name"]
+        fingertipstr = "--fingertip" if fingertip else "" 
+        scratchstr = "--scratch" if scratch else ""
         command = f"""
 docker run --rm \
 -e SEAMLESS_DATABASE_IP \
@@ -149,9 +191,12 @@ docker run --rm \
 start.sh python /scripts/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    --fingertip
-"""    
-        run_command(command)
+    {fingertipstr} {scratchstr}"""
+        if fingertip and scratch:
+            result = run_command_with_outputfile(command)
+            return result
+        else: 
+            result = run_command(command)
     finally:
         if dunder is not None:
             os.unlink(tf.name)
@@ -170,6 +215,8 @@ def _run_job(checksum, data):
     elif "bashcode" in transformation and "pins_" in transformation:
         is_bash = True
     dunder = data["dunder"]
+    scratch = bool(data.get("scratch", False))
+    fingertip = bool(data.get("fingertip", False))
     env = {}
     env_checksum = dunder.get("__env__")
     if env_checksum is not None:
@@ -187,7 +234,7 @@ def _run_job(checksum, data):
         except docker.errors.ImageNotFound:
             ok = False
         if ok:
-            return execute_in_docker(checksum, dunder, env, docker_conf)
+            return execute_in_docker(checksum, dunder, env, docker_conf, fingertip=fingertip, scratch=scratch)
 
     conda_env_name = env.get("conda_env_name")
     if conda_env_name is not None:
@@ -197,7 +244,7 @@ def _run_job(checksum, data):
         existing_envs = json.loads(info)["envs"]
         existing_envs = [os.path.split(eenv)[1] for eenv in existing_envs]
         if conda_env_name in existing_envs:
-            return execute_in_existing_conda(checksum, dunder, conda_env_name)
+            return execute_in_existing_conda(checksum, dunder, conda_env_name, fingertip=fingertip, scratch=scratch)
     
     if env.get("conda") is not None:
         if conda_env_name is not None:
@@ -213,7 +260,7 @@ Please create it, or provide a conda environment definition that will be used as
             raise RuntimeError("""Non-existing Docker image or conda environment specified.
 Please create it, or provide a conda environment definition that will be used as recipe.""")
     
-    return execute(checksum, dunder)
+    return execute(checksum, dunder, fingertip=fingertip, scratch=scratch)
 
 _jobs = {}
 
@@ -246,7 +293,7 @@ async def launch_job(data):
 def run_job(data):
     checksum = Checksum(data["checksum"])
     try:
-        _run_job(checksum, data)
+        result = _run_job(checksum, data)
     except subprocess.CalledProcessError as exc:
         output = exc.output
         try:
@@ -255,19 +302,23 @@ def run_job(data):
             pass
         raise RuntimeError(output) from None
 
-    result = seamless.config.database.get_transformation_result(checksum.bytes())
-    if result is None:
-        return web.Response(
-            status=400,
-            body="ERROR: Unknown error"
-        )            
+    if result is not None:
+        assert data.get("scratch") and data.get("fingertip")
+    else:
+        result = seamless.config.database.get_transformation_result(checksum.bytes())
 
-    result = Checksum(result).hex()
-    if not can_read_buffer(result):
-        return web.Response(
-            status=404,
-            body=f"CacheMissError: {result}"
-        )
+        if result is None:
+            return web.Response(
+                status=400,
+                body="ERROR: Unknown error"
+            )            
+
+        result = Checksum(result).hex()
+        if not can_read_buffer(result):
+            return web.Response(
+                status=404,
+                body=f"CacheMissError: {result}"
+            )
 
     return web.Response(
         status=200,

@@ -1,6 +1,7 @@
 import argparse
 import json
 import asyncio
+import sys
 parser = argparse.ArgumentParser()
 parser.add_argument("checksum")
 parser.add_argument("--ncores",type=int,default=None)
@@ -19,8 +20,24 @@ parser.add_argument(
 
 parser.add_argument(
     "--fingertip",
-    help="Make sure that the result is available as buffer, not just as checksum.",
+    help="""Make sure that the result is available as buffer, not just as checksum.
+NOTE: if --scratch is also present, run-transformation will return the result buffer 
+instead of the result checksum""",
     action="store_true"
+)
+
+parser.add_argument(
+    "--scratch",
+    help="""Don't write the computed result buffer.
+NOTE: if --fingertip is also present, run-transformation will return the result buffer 
+instead of the result checksum""",
+    default=False,
+    action="store_true",
+)
+
+parser.add_argument(
+    "--output",
+    help="Output file (default: stdout)",
 )
 
 parser.add_argument(
@@ -41,20 +58,20 @@ Providing this information saves 5-10 seconds."""
 args = parser.parse_args()
 
 import seamless
-from seamless import Checksum
+from seamless import Checksum, CacheMissError
+from seamless.core.direct.run import fingertip as do_fingertip
 
 checksum = Checksum(args.checksum)
 
+import logging
+logging.basicConfig()
 if args.debug:
     asyncio.get_event_loop().set_debug(True)
-    import logging
-    logging.basicConfig()
     logging.getLogger("seamless").setLevel(logging.DEBUG)
 elif args.verbose:
-    import logging
-    logging.basicConfig()
     logging.getLogger("seamless").setLevel(logging.INFO)
-
+else:
+    logging.getLogger("seamless").setLevel(logging.ERROR)
 seamless.delegate(level=3)
 
 if args.ncores is not None and args.ncores > 0:
@@ -78,12 +95,39 @@ fingertip = False
 if args.fingertip:
     fingertip = True
 
+scratch = False
+if args.scratch:
+    scratch = True
+
+if fingertip and scratch:
+    if not args.output:
+        raise Exception("With --fingertip and --scratch, the output is a buffer, and --output is mandatory")
+
 from seamless.core.transformation import get_global_info, execution_metadata0
 get_global_info(global_info)
 execution_metadata0["Executor"] = "run-transformation"
 
-result = seamless.run_transformation(checksum.bytes(), fingertip=fingertip, tf_dunder=dunder)
+transformation_buffer = do_fingertip(checksum.bytes())
+if transformation_buffer is None:
+    raise CacheMissError(checksum)
+transformation = json.loads(transformation_buffer.decode())
+for k,v in transformation.items():
+    if not k.startswith("__"):
+        _, _, pin_checksum = v
+        do_fingertip(pin_checksum)
 
+result = seamless.run_transformation(checksum.bytes(), fingertip=fingertip, tf_dunder=dunder, scratch=scratch)
 if result is not None:
-    result = Checksum(result).hex()
-print(result)
+    if fingertip and scratch:
+        result_buffer = do_fingertip(result)
+        if result_buffer is None:
+            raise CacheMissError(result)
+        with open(args.output, "wb") as f:
+            f.write(result_buffer)
+    else:
+        result = Checksum(result).hex()
+        if args.output:
+            with open(args.output, "w") as f:
+                print(result, file=f)
+        else:            
+            print(result)
