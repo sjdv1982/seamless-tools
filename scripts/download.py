@@ -30,14 +30,6 @@ from seamless.highlevel import Checksum
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-m",
-    "-mv",
-    "--move",
-    dest="move",
-    help="""After successful upload, delete the original files and directories""",
-    action="store_true",
-)
 
 parser.add_argument(
     "-y",
@@ -107,11 +99,11 @@ for path in paths:
             if not os.path.exists(checksum_file):
                 err(f"Index file '{path}' is empty, {checksum_file} does not exist")
             index_checksum = read_checksum_file(checksum_file)
-            index_checksum = Checksum(index_checksum)
             if index_checksum is None:
                 err(
                     f"Index file '{path}' is empty, {checksum_file} does not contain a checksum"
                 )
+            index_checksum = Checksum(index_checksum)
             msg(1, f"Index file '{path}' is empty, downloading from checksum")
             index_buffer = buffer_cache.get_buffer(index_checksum.bytes())
             if index_buffer is None:
@@ -152,11 +144,11 @@ for path in paths:
         path = os.path.splitext(path)[0]
     checksum_file = path + ".CHECKSUM"
     checksum = read_checksum_file(checksum_file)
-    checksum = Checksum(checksum)
     if checksum is None:
         err(
             f"File '{checksum_file}' does not contain a checksum"
         )
+    checksum = Checksum(checksum)
     to_download[path] = checksum.hex()
     files.append(path)
 
