@@ -3,9 +3,26 @@ import json
 import asyncio
 import sys
 import os
-parser = argparse.ArgumentParser()
+import traceback
+parser = argparse.ArgumentParser(description="""Seamless fingertipper.
+
+Obtain a buffer from a checksum and return it as output.
+
+Note that arbitrary computation may be carried out.
+This computation is carried out locally, without delegation to an assistant.""")
+    
 parser.add_argument("checksum_or_checksum_file")
 
+parser.add_argument(
+    "--output",
+    help="Output file (default: stdout)",
+)
+
+parser.add_argument(
+    "--verbose",
+    help="Verbose mode, printing out error messages",
+    action="store_true"
+)
 
 args = parser.parse_args()
 
@@ -35,9 +52,16 @@ except Exception:
 try:
     result_buffer = fingertip(checksum.bytes())
 except CacheMissError:
+    if args.verbose:
+        traceback.print_exc()
     result_buffer = None
+
 if result_buffer is None:
     print("Fingertipping failed", file=sys.stderr)
     exit(1)
-sys.stdout.flush()
-sys.stdout.buffer.write(result_buffer)
+if args.output:
+    with open(args.output, "wb") as f:
+        f.write(result_buffer)
+else:
+    sys.stdout.flush()
+    sys.stdout.buffer.write(result_buffer)
