@@ -5,7 +5,9 @@ import socket
 import sys
 import traceback
 from aiohttp import web
+import json
 import seamless
+from seamless import CacheMissError
 from seamless.highlevel import Checksum
 
 def is_port_in_use(address, port):
@@ -14,7 +16,22 @@ def is_port_in_use(address, port):
 
 _jobs = {}
 
-async def launch_job(checksum, tf_dunder):
+async def run_transformation(checksum, tf_dunder, fingertip, scratch):
+    transformation_buffer = await _dummy_manager.cachemanager.fingertip(checksum)
+    if transformation_buffer is None:
+        raise CacheMissError(bytes.fromhex(checksum))
+    transformation = json.loads(transformation_buffer.decode())
+    for k,v in transformation.items():
+        if not k.startswith("__"):
+            _, _, pin_checksum = v
+            await _dummy_manager.cachemanager.fingertip(pin_checksum)
+    result_checksum = await seamless.run_transformation_async(checksum, tf_dunder=tf_dunder, fingertip=fingertip, scratch=scratch)
+    if scratch and fingertip:
+        return await _dummy_manager.cachemanager.fingertip(result_checksum)
+    else:
+        return result_checksum
+
+async def launch_job(checksum, tf_dunder, *, fingertip, scratch):
     checksum = Checksum(checksum).hex()
     job = None
     if checksum in _jobs:
@@ -23,8 +40,8 @@ async def launch_job(checksum, tf_dunder):
             job.cancel()
             _jobs.pop(checksum)
             job = None
-    if job is None:
-        coro = seamless.run_transformation_async(bytes.fromhex(checksum), fingertip=True, tf_dunder=tf_dunder, scratch=False)
+    if job is None:        
+        coro = run_transformation(bytes.fromhex(checksum), fingertip=fingertip, tf_dunder=tf_dunder, scratch=scratch)
         job = asyncio.create_task(coro)
         _jobs[checksum] = job, tf_dunder
     
@@ -37,7 +54,8 @@ async def launch_job(checksum, tf_dunder):
                 body="ERROR: Unknown error"
             )            
 
-        result = Checksum(result).hex()
+        if not (scratch and fingertip):
+            result = Checksum(result).hex()
 
         return web.Response(
             status=200,
@@ -92,6 +110,8 @@ class JobSlaveServer:
             data = await request.json()
 
             checksum = Checksum(data["checksum"])
+            scratch = bool(data.get("scratch", False))
+            fingertip = bool(data.get("fingertip", False))
 
             '''
             from seamless.core.direct.run import fingertip
@@ -101,7 +121,7 @@ class JobSlaveServer:
             '''
 
             dunder = data["dunder"]
-            response =  await launch_job(checksum, tf_dunder=dunder)
+            response =  await launch_job(checksum, tf_dunder=dunder, scratch=scratch, fingertip=fingertip)
             return response
 
         except Exception as exc:
@@ -191,6 +211,9 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, raise_system_exit)
     signal.signal(signal.SIGHUP, raise_system_exit)
     signal.signal(signal.SIGINT, raise_system_exit)
+
+    from seamless.core.manager import Manager
+    _dummy_manager = Manager()
 
     server = JobSlaveServer(args.host, args.port)
     server.start()
