@@ -36,14 +36,37 @@ class SeamlessWorkerPlugin(WorkerPlugin):
         get_global_info()
         execution_metadata0["Executor"] = "mini-dask-assistant-worker"
 
-def run_transformation(checksum, tf_dunder):
+def run_transformation(checksum, tf_dunder, fingertip, scratch):
+    import json
+    import seamless
+    from seamless.core.direct.run import fingertip as do_fingertip
     from seamless import CacheMissError
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    
     checksum = Checksum(checksum)
+
     for trials in range(10):
         try:
-            return seamless.run_transformation(checksum.hex(), fingertip=True, tf_dunder=tf_dunder)
+            transformation_buffer = do_fingertip(checksum.bytes())
+            if transformation_buffer is None:
+                raise CacheMissError(checksum)
+
+            transformation = json.loads(transformation_buffer.decode())
+            for k,v in transformation.items():
+                if not k.startswith("__"):
+                    _, _, pin_checksum = v
+                    do_fingertip(pin_checksum)
+
+            result_checksum = seamless.run_transformation(
+                checksum.hex(), tf_dunder=tf_dunder,
+                fingertip=fingertip, scratch=scratch
+            )
+            if scratch and fingertip:
+                return do_fingertip(result_checksum)
+            else:
+                return result_checksum
+
         except CacheMissError:
             continue
     
@@ -51,7 +74,7 @@ def run_transformation(checksum, tf_dunder):
 
 _jobs = {}
 
-async def launch_job(client, checksum, tf_dunder):
+async def launch_job(client, checksum, tf_dunder, *, fingertip, scratch):
     checksum = Checksum(checksum).hex()
     job = None
     if checksum in _jobs:
@@ -61,7 +84,7 @@ async def launch_job(client, checksum, tf_dunder):
             _jobs.pop(checksum)
             job = None
     if job is None:
-        coro = anyio.to_thread.run_sync(run_job, client, Checksum(checksum), tf_dunder)
+        coro = anyio.to_thread.run_sync(run_job, client, Checksum(checksum), tf_dunder, fingertip, scratch)
         job = asyncio.create_task(coro)
         _jobs[checksum] = job, tf_dunder
     
@@ -76,7 +99,7 @@ async def launch_job(client, checksum, tf_dunder):
         if remove_job:
             _jobs.pop(checksum, None)
 
-def run_job(client, checksum, tf_dunder):
+def run_job(client, checksum, tf_dunder, fingertip, scratch):
     known_resources = ("ncores",)
     resources = {}
     if tf_dunder is not None:
@@ -88,22 +111,26 @@ def run_job(client, checksum, tf_dunder):
             resources[res] = meta[res]
     with dask.annotate(resources=resources):
         result = client.submit(
-            run_transformation, checksum, tf_dunder=tf_dunder, key=checksum.hex()
+            run_transformation, checksum, tf_dunder=tf_dunder, key=checksum.hex(),
+            fingertip=fingertip, scratch=scratch
         )
-    checksum = result.result()
-    if checksum is None:
+    result_value = result.result()
+    if result_value is None:
         return web.Response(
             status=400,
             body=f"Unknown failure"
         )
 
-    result = Checksum(checksum).hex()
-    if not can_read_buffer(result):
-        return web.Response(
-            status=404,
-            body=f"CacheMissError: {result}"
-        )
-
+    if not (scratch and fingertip):
+        result = Checksum(result_value).hex()
+        if not can_read_buffer(result):
+            return web.Response(
+                status=404,
+                body=f"CacheMissError: {result}"
+            )
+    else:
+        result = result_value
+        
     return web.Response(
         status=200,
         body=result
@@ -155,6 +182,8 @@ class JobSlaveServer:
             data = await request.json()
 
             checksum = Checksum(data["checksum"])
+            scratch = bool(data.get("scratch", False))
+            fingertip = bool(data.get("fingertip", False))
 
             '''
             global JOBCOUNTER
@@ -167,7 +196,7 @@ class JobSlaveServer:
             '''
 
             tf_dunder = data["dunder"]
-            response = await launch_job(self.client, checksum, tf_dunder)
+            response = await launch_job(client, checksum, tf_dunder=tf_dunder, scratch=scratch, fingertip=fingertip)
             return response
         
         except Exception as exc:

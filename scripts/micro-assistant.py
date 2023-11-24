@@ -16,7 +16,10 @@ def is_port_in_use(address, port):
 
 _jobs = {}
 
+_dummy_manager = None
+
 async def run_transformation(checksum, tf_dunder, fingertip, scratch):
+    assert _dummy_manager is not None
     transformation_buffer = await _dummy_manager.cachemanager.fingertip(checksum)
     if transformation_buffer is None:
         raise CacheMissError(bytes.fromhex(checksum))
