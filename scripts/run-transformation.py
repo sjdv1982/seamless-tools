@@ -19,6 +19,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--delegate",
+    help="Delegate the transformation task to the assistant",
+    action="store_true"
+)
+
+parser.add_argument(
     "--fingertip",
     help="""Make sure that the result is available as buffer, not just as checksum.
 NOTE: if --scratch is also present, run-transformation will return the result buffer 
@@ -72,7 +78,11 @@ elif args.verbose:
     logging.getLogger("seamless").setLevel(logging.INFO)
 else:
     logging.getLogger("seamless").setLevel(logging.ERROR)
-seamless.delegate(level=3)
+
+if args.delegate:
+    seamless.delegate()
+else:
+    seamless.delegate(level=3)
 
 if args.ncores is not None and args.ncores > 0:
     seamless.set_ncores(args.ncores)
@@ -102,6 +112,11 @@ if args.scratch:
 if fingertip and scratch:
     if not args.output:
         raise Exception("With --fingertip and --scratch, the output is a buffer, and --output is mandatory")
+
+# To hold on fingertipped buffers for longer
+from seamless.core.cache.buffer_cache import buffer_cache
+buffer_cache.LIFETIME_TEMP = 600.0
+buffer_cache.LIFETIME_TEMP_SMALL = 1200.0
 
 from seamless.core.transformation import get_global_info, execution_metadata0
 get_global_info(global_info)
