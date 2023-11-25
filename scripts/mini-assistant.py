@@ -202,10 +202,10 @@ start.sh python /scripts/run-transformation.py \
             os.unlink(tf.name)
 
 
-def _run_job(checksum, data):
-    from seamless.core.direct.run import fingertip
+def _run_job(checksum, dunder, scratch, fingertip):
+    from seamless.core.direct.run import fingertip as do_fingertip
 
-    transformation_buffer = fingertip(checksum.bytes())
+    transformation_buffer = do_fingertip(checksum.bytes())
     if transformation_buffer is None:
         raise CacheMissError(checksum.hex())
     transformation = json.loads(transformation_buffer.decode())
@@ -214,13 +214,10 @@ def _run_job(checksum, data):
         is_bash = True
     elif "bashcode" in transformation and "pins_" in transformation:
         is_bash = True
-    dunder = data["dunder"]
-    scratch = bool(data.get("scratch", False))
-    fingertip = bool(data.get("fingertip", False))
     env = {}
     env_checksum = dunder.get("__env__")
     if env_checksum is not None:
-        env_buffer = fingertip(env_checksum)
+        env_buffer = do_fingertip(env_checksum)
         env = json.loads(env_buffer.decode())
     docker_conf = env.get("docker")
     if is_bash:
@@ -292,8 +289,11 @@ async def launch_job(data):
 
 def run_job(data):
     checksum = Checksum(data["checksum"])
+    dunder = data.get("dunder", {})
+    scratch = bool(data.get("scratch", False))
+    fingertip = bool(data.get("fingertip", False))
     try:
-        result = _run_job(checksum, data)
+        result = _run_job(checksum, dunder, scratch, fingertip)
     except subprocess.CalledProcessError as exc:
         output = exc.output
         try:
@@ -314,7 +314,7 @@ def run_job(data):
             )            
 
         result = Checksum(result).hex()
-        if not can_read_buffer(result):
+        if not scratch and not can_read_buffer(result):
             return web.Response(
                 status=404,
                 body=f"CacheMissError: {result}"
@@ -332,7 +332,6 @@ class JobSlaveServer:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-
     async def _start(self):
         if is_port_in_use(self.host, self.port):
             print("ERROR: %s port %d already in use" % (self.host, self.port))
@@ -365,10 +364,9 @@ class JobSlaveServer:
             status=200
         )
 
-    async def _put_job(self, request:web.Request):        
+    async def _put_job(self, request:web.Request):  
         try:
             data = await request.json()
-            #print("DATA", data)
             try:
                 response = await launch_job(data)
                 return response
