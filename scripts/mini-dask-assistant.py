@@ -26,9 +26,14 @@ class SeamlessWorkerPlugin(WorkerPlugin):
             from seamless.util import set_unforked_process
             from seamless.metalevel.unbashify import get_bash_checksums 
             from seamless.core.direct.run import set_dummy_manager
+            from seamless.core.cache.buffer_cache import buffer_cache
         except ImportError:
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
-    
+
+        # To hold on fingertipped buffers for longer
+        buffer_cache.LIFETIME_TEMP = 600.0
+        buffer_cache.LIFETIME_TEMP_SMALL = 1200.0
+   
         seamless.config.set_ncores(worker.state.nthreads)
         set_unforked_process()
         seamless.delegate(level=3)
@@ -125,7 +130,7 @@ def run_job(client, checksum, tf_dunder, fingertip, scratch):
 
     if not (scratch and fingertip):
         result = Checksum(result_value).hex()
-        if not can_read_buffer(result):
+        if not scratch and not can_read_buffer(result):
             return web.Response(
                 status=404,
                 body=f"CacheMissError: {result}"
