@@ -74,7 +74,7 @@ max_upload_size = os.environ.get("SEAMLESS_MAX_UPLOAD_SIZE", "100 MB")
 max_upload_size = human2bytes(max_upload_size)
 
 try:
-    seamless.delegate()
+    seamless.delegate(reraise_exceptions=True)
 except AssistantConnectionError:
     seamless.delegate(level=2)
 

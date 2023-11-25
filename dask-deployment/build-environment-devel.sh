@@ -64,7 +64,7 @@ echo "SILKDIR: location of the "silk" Git repo (https://github.com/sjdv1982/silk
 echo "SILKDIR=$SILKDIR"
 echo
 echo "Building \"$environment_name\" conda environment..."
-mamba create -n $environment_name 'python=3.10'
+mamba create -n $environment_name 'python=3.10' -y
 conda activate $environment_name
 echo 'python=3.10' > $CONDA_PREFIX/conda-meta/pinned
 mamba env update --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
