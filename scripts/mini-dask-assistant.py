@@ -25,6 +25,7 @@ class SeamlessWorkerPlugin(WorkerPlugin):
             from seamless.core.cache.transformation_cache import transformation_cache
             from seamless.util import set_unforked_process
             from seamless.metalevel.unbashify import get_bash_checksums 
+            from seamless.core.direct.run import set_dummy_manager
         except ImportError:
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
     
@@ -34,6 +35,7 @@ class SeamlessWorkerPlugin(WorkerPlugin):
         get_bash_checksums()
         transformation_cache.stateless = True
         get_global_info()
+        set_dummy_manager()
         execution_metadata0["Executor"] = "mini-dask-assistant-worker"
 
 def run_transformation(checksum, tf_dunder, fingertip, scratch):
