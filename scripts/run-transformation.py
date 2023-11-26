@@ -122,14 +122,15 @@ from seamless.core.transformation import get_global_info, execution_metadata0
 get_global_info(global_info)
 execution_metadata0["Executor"] = "run-transformation"
 
-transformation_buffer = do_fingertip(checksum.bytes())
-if transformation_buffer is None:
-    raise CacheMissError(checksum)
-transformation = json.loads(transformation_buffer.decode())
-for k,v in transformation.items():
-    if not k.startswith("__"):
-        _, _, pin_checksum = v
-        do_fingertip(pin_checksum)
+if not args.delegate:
+    transformation_buffer = do_fingertip(checksum.bytes())
+    if transformation_buffer is None:
+        raise CacheMissError(checksum)
+    transformation = json.loads(transformation_buffer.decode())
+    for k,v in transformation.items():
+        if not k.startswith("__"):
+            _, _, pin_checksum = v
+            do_fingertip(pin_checksum)
 
 result = seamless.run_transformation(checksum.bytes(), fingertip=fingertip, tf_dunder=dunder, scratch=scratch)
 if result is not None:
