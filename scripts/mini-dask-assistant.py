@@ -53,6 +53,7 @@ def run_transformation(checksum, tf_dunder, fingertip, scratch):
     
     checksum = Checksum(checksum)
 
+    last_exc = None
     for trials in range(10):
         try:
             transformation_buffer = do_fingertip(checksum.bytes())
@@ -63,20 +64,28 @@ def run_transformation(checksum, tf_dunder, fingertip, scratch):
             for k,v in transformation.items():
                 if not k.startswith("__"):
                     _, _, pin_checksum = v
-                    do_fingertip(pin_checksum)
+                    pin_buffer = do_fingertip(pin_checksum)
+                    if pin_buffer is None:
+                        raise CacheMissError(pin_buffer)
 
             result_checksum = seamless.run_transformation(
                 checksum.hex(), tf_dunder=tf_dunder,
                 fingertip=fingertip, scratch=scratch
             )
             if scratch and fingertip:
-                return do_fingertip(result_checksum)
+                result = do_fingertip(result_checksum)
             else:
-                return result_checksum
+                result = result_checksum
+            if result is None:
+                raise CacheMissError
+            return result
 
-        except CacheMissError:
+        except CacheMissError as exc:
+            last_exc = exc
             continue
     
+    if last_exc is not None:
+        raise last_exc from None
 ### /remote code
 
 _jobs = {}
