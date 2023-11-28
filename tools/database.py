@@ -549,8 +549,14 @@ class DatabaseServer:
                 if not isinstance(value, dict):
                     raise TypeError
                 SeamlessBufferInfo(checksum, value)
+                try:
+                    existing = json.loads(BufferInfo[checksum].buffer_info)
+                    existing.update(value)
+                    value = existing
+                except DoesNotExist:
+                    pass
                 value = json.dumps(value, sort_keys=True, indent=2)
-            except Exception:
+            except Exception as exc:
                 raise DatabaseError("Malformed PUT buffer info request") from None            
             BufferInfo.create(checksum=checksum, buffer_info=value)
 

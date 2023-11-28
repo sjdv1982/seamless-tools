@@ -65,8 +65,7 @@ args = parser.parse_args()
 
 import seamless
 from seamless import Checksum, CacheMissError
-from seamless.core.direct.run import fingertip as do_fingertip
-
+from seamless.core.direct.run import get_dummy_manager, fingertip as do_fingertip
 checksum = Checksum(args.checksum)
 
 import logging
@@ -127,12 +126,15 @@ if not args.delegate:
     if transformation_buffer is None:
         raise CacheMissError(checksum)
     transformation = json.loads(transformation_buffer.decode())
-    for k,v in transformation.items():
-        if not k.startswith("__"):
-            _, _, pin_checksum = v
-            do_fingertip(pin_checksum)
+    lang = transformation.get("__language__")
+    if not lang.startswith("<"):
+        for k,v in transformation.items():
+            if not k.startswith("__"):
+                _, _, pin_checksum = v
+                do_fingertip(pin_checksum)
 
-result = seamless.run_transformation(checksum.bytes(), fingertip=fingertip, tf_dunder=dunder, scratch=scratch)
+manager = get_dummy_manager()
+result = seamless.run_transformation(checksum.bytes(), fingertip=fingertip, tf_dunder=dunder, scratch=scratch, manager=manager)
 if result is not None:
     if fingertip and scratch:
         result_buffer = do_fingertip(result)

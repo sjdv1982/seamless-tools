@@ -3,6 +3,7 @@ import os
 import socket
 import subprocess
 import json
+import time
 import traceback
 from aiohttp import web
 import anyio
@@ -51,7 +52,7 @@ def run_command_with_outputfile(command):
         command_tf.close()
         command_tf2.close()
         os.chmod(command_tf.name, 0o777)
-        subprocess.check_output(
+        output = subprocess.check_output(
             command_tf.name,
             shell=True,
             executable="/bin/bash", 
@@ -60,13 +61,14 @@ def run_command_with_outputfile(command):
         if not os.path.exists(outfile):
             raise Exception("Empty outputfile")
         with open(outfile, "rb") as f:
-            return f.read()
+            return f.read(), output
     finally:
         os.unlink(command_tf.name)
         os.unlink(command_tf2.name)
 
 def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, scratch):
     try:
+        dundercmd=""
         if dunder is not None:
             tf = tempfile.NamedTemporaryFile("w+t",delete=False)
             tf.write(json.dumps(dunder))
@@ -83,16 +85,18 @@ python {SEAMLESS_SCRIPTS}/run-transformation.py \
     --global_info {global_info_file.name} \
     {fingertipstr} {scratchstr}"""
         if fingertip and scratch:
-            result = run_command_with_outputfile(command)
-            return result
+            result, output = run_command_with_outputfile(command)
+            return result, output
         else: 
-            result = run_command(command)
+            output = run_command(command)
+            return None, output
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
 def execute(checksum, dunder, *, fingertip, scratch):
     try:
+        dundercmd=""
         if dunder is not None:
             tf = tempfile.NamedTemporaryFile("w+t",delete=False)
             tf.write(json.dumps(dunder))
@@ -107,10 +111,11 @@ python {SEAMLESS_SCRIPTS}/run-transformation.py \
     --global_info {global_info_file.name} \
     {fingertipstr} {scratchstr}"""    
         if fingertip and scratch:
-            result = run_command_with_outputfile(command)
-            return result
+            result, output = run_command_with_outputfile(command)
+            return result, output
         else: 
-            result = run_command(command)
+            output = run_command(command)
+            return None, output
 
     finally:
         if dunder is not None:
@@ -121,6 +126,7 @@ def execute_in_docker(checksum, dunder, env, docker_conf, *, fingertip, scratch)
     if docker_image.find("seamless-devel") > -1:
         return execute_in_docker_devel(checksum, dunder, env, docker_conf, scratch=scratch)
     try:
+        dundercmd=""
         dundermount = ""
         if dunder is not None:
             tf = tempfile.NamedTemporaryFile("w+t",delete=False)
@@ -150,10 +156,11 @@ start.sh python /scripts/run-transformation.py \
     --global_info {global_info_file.name} \
     {fingertipstr} {scratchstr}"""    
         if fingertip and scratch:
-            result = run_command_with_outputfile(command)
-            return result
+            result, output = run_command_with_outputfile(command)
+            return result, output
         else: 
-            result = run_command(command)
+            output = run_command(command)
+            return None, output
     finally:
         if dunder is not None:
             os.unlink(tf.name)
@@ -161,6 +168,7 @@ start.sh python /scripts/run-transformation.py \
 def execute_in_docker_devel(checksum, dunder, env, docker_conf, *, fingertip, scratch):
     try:
         dundermount = ""
+        dundercmd=""
         if dunder is not None:
             tf = tempfile.NamedTemporaryFile("w+t",delete=False)
             tf.write(json.dumps(dunder))
@@ -193,10 +201,11 @@ start.sh python /scripts/run-transformation.py \
     --global_info {global_info_file.name} \
     {fingertipstr} {scratchstr}"""
         if fingertip and scratch:
-            result = run_command_with_outputfile(command)
-            return result
+            result, output = run_command_with_outputfile(command)
+            return result, output
         else: 
-            result = run_command(command)
+            output = run_command(command)
+            return None, output
     finally:
         if dunder is not None:
             os.unlink(tf.name)
@@ -215,7 +224,9 @@ def _run_job(checksum, dunder, scratch, fingertip):
     elif "bashcode" in transformation and "pins_" in transformation:
         is_bash = True
     env = {}
-    env_checksum = dunder.get("__env__")
+    env_checksum = None
+    if dunder is not None:
+        env_checksum = dunder.get("__env__")
     if env_checksum is not None:
         env_buffer = do_fingertip(env_checksum)
         env = json.loads(env_buffer.decode())
@@ -231,7 +242,8 @@ def _run_job(checksum, dunder, scratch, fingertip):
         except docker.errors.ImageNotFound:
             ok = False
         if ok:
-            return execute_in_docker(checksum, dunder, env, docker_conf, fingertip=fingertip, scratch=scratch)
+            result, output = execute_in_docker(checksum, dunder, env, docker_conf, fingertip=fingertip, scratch=scratch)
+            return result, output, transformation
 
     conda_env_name = env.get("conda_env_name")
     if conda_env_name is not None:
@@ -241,7 +253,8 @@ def _run_job(checksum, dunder, scratch, fingertip):
         existing_envs = json.loads(info)["envs"]
         existing_envs = [os.path.split(eenv)[1] for eenv in existing_envs]
         if conda_env_name in existing_envs:
-            return execute_in_existing_conda(checksum, dunder, conda_env_name, fingertip=fingertip, scratch=scratch)
+            result, output = execute_in_existing_conda(checksum, dunder, conda_env_name, fingertip=fingertip, scratch=scratch)
+            return result, output, transformation
     
     if env.get("conda") is not None:
         if conda_env_name is not None:
@@ -257,7 +270,8 @@ Please create it, or provide a conda environment definition that will be used as
             raise RuntimeError("""Non-existing Docker image or conda environment specified.
 Please create it, or provide a conda environment definition that will be used as recipe.""")
     
-    return execute(checksum, dunder, fingertip=fingertip, scratch=scratch)
+    result, output = execute(checksum, dunder, fingertip=fingertip, scratch=scratch)
+    return result, output, transformation
 
 _jobs = {}
 
@@ -293,24 +307,32 @@ def run_job(data):
     scratch = bool(data.get("scratch", False))
     fingertip = bool(data.get("fingertip", False))
     try:
-        result = _run_job(checksum, dunder, scratch, fingertip)
+        result, output, transformation = _run_job(checksum, dunder, scratch, fingertip)
     except subprocess.CalledProcessError as exc:
         output = exc.output
-        try:
-            output = output.decode()
-        except UnicodeDecodeError:
-            pass
-        raise RuntimeError(output) from None
-
+        return web.Response(
+                status=400,
+                body=b"ERROR: Unknown error\nOutput:\n" + output 
+            )            
+    
+    try:
+        output2 = output.decode()
+    except Exception:
+        output2 = output
+    
     if result is not None:
         assert data.get("scratch") and data.get("fingertip")
     else:
-        result = seamless.config.database.get_transformation_result(checksum.bytes())
+        for trial in range(5):
+            result = seamless.util.verify_transformation_success(checksum, transformation)
+            if result is not None:
+                break
+            time.sleep(0.2)
 
-        if result is None:
+        if not result:
             return web.Response(
                 status=400,
-                body="ERROR: Unknown error"
+                body=b"ERROR: Unknown error (result not in database)\nOutput:\n" + output 
             )            
 
         result = Checksum(result).hex()
