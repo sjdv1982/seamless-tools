@@ -1,6 +1,9 @@
 import asyncio
+import json
 import os
+import random
 import socket
+import time
 import traceback
 import anyio
 from aiohttp import web
@@ -19,8 +22,11 @@ def is_port_in_use(address, port):
 
 class SeamlessWorkerPlugin(WorkerPlugin):
     def setup(self, worker):
+        
+        print("Worker SETUP")
         try:
             import seamless
+            seamless._original_event_loop = asyncio.get_event_loop() # EVIL but needed for restarts
             from seamless.core.transformation import get_global_info, execution_metadata0
             from seamless.core.cache.transformation_cache import transformation_cache
             from seamless.util import set_unforked_process
@@ -30,6 +36,7 @@ class SeamlessWorkerPlugin(WorkerPlugin):
         except ImportError:
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
 
+
         # To hold on fingertipped buffers for longer
         buffer_cache.LIFETIME_TEMP = 600.0
         buffer_cache.LIFETIME_TEMP_SMALL = 1200.0
@@ -38,54 +45,80 @@ class SeamlessWorkerPlugin(WorkerPlugin):
         set_unforked_process()
         seamless.delegate(level=3)
         get_bash_checksums()
-        transformation_cache.stateless = True
+        ###transformation_cache.stateless = True
         get_global_info()
         set_dummy_manager()
         execution_metadata0["Executor"] = "mini-dask-assistant-worker"
+        print("Worker up")
 
-def run_transformation(checksum, tf_dunder, fingertip, scratch):
+def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scratch):
     import json
+    import time
     import seamless
-    from seamless.core.direct.run import fingertip as do_fingertip
+    import seamless.core.direct.run
+    assert seamless.core.direct.run._dummy_manager is not None 
+    from seamless.core.direct.run import get_dummy_manager, fingertip as do_fingertip
     from seamless import CacheMissError
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
-    checksum = Checksum(checksum)
+
+    manager = get_dummy_manager()
+
+    transformation_checksum = Checksum(transformation_checksum)
+    print("WORKER START TASK", transformation_checksum, fingertip, scratch)
 
     last_exc = None
-    for trials in range(10):
+    for trials in range(1):
         try:
-            transformation_buffer = do_fingertip(checksum.bytes())
+            transformation_buffer = do_fingertip(transformation_checksum.bytes())
             if transformation_buffer is None:
-                raise CacheMissError(checksum)
+                raise CacheMissError(transformation_checksum)
 
             transformation = json.loads(transformation_buffer.decode())
-            for k,v in transformation.items():
-                if not k.startswith("__"):
-                    _, _, pin_checksum = v
-                    pin_buffer = do_fingertip(pin_checksum)
-                    if pin_buffer is None:
-                        raise CacheMissError(pin_buffer)
+
+            lang = transformation.get("__language__")
+            if not lang.startswith("<"):
+                for k,v in transformation.items():
+                    if not k.startswith("__"):
+                        _, _, pin_checksum = v
+                        try:
+                            pin_checksum = Checksum(pin_checksum)
+                        except Exception:
+                            raise ValueError(f'Invalid checksum for pin "{k}": "{pin_checksum}"') from None
+                        pin_buffer = do_fingertip(pin_checksum.value)
+                        if pin_buffer is None:
+                            raise CacheMissError(pin_buffer)
 
             result_checksum = seamless.run_transformation(
-                checksum.hex(), tf_dunder=tf_dunder,
-                fingertip=fingertip, scratch=scratch
+                transformation_checksum.hex(), tf_dunder=tf_dunder,
+                fingertip=fingertip, scratch=scratch,
+                manager=manager
             )
             if scratch and fingertip:
+                if result_checksum is None:
+                    raise CacheMissError
                 result = do_fingertip(result_checksum)
+                if result is None:
+                    raise CacheMissError(result_checksum)
             else:
-                result = result_checksum
+                for trial in range(5):
+                    result = seamless.util.verify_transformation_success(transformation_checksum, transformation)
+                    if result is not None:
+                        break
+                    time.sleep(0.2)
+
             if result is None:
                 raise CacheMissError
             return result
 
         except CacheMissError as exc:
-            last_exc = exc
+            import traceback; traceback.print_exc()
+            last_exc = exc            
             continue
     
     if last_exc is not None:
         raise last_exc from None
+        
 ### /remote code
 
 _jobs = {}
@@ -93,16 +126,17 @@ _jobs = {}
 async def launch_job(client, checksum, tf_dunder, *, fingertip, scratch):
     checksum = Checksum(checksum).hex()
     job = None
-    if checksum in _jobs:
-        job, curr_dunder = _jobs[checksum]
+    if (checksum, fingertip, scratch) in _jobs:
+        job, curr_dunder = _jobs[checksum, fingertip, scratch]
         if curr_dunder != tf_dunder:
             job.cancel()
-            _jobs.pop(checksum)
+            _jobs.pop((checksum, fingertip, scratch))
             job = None
     if job is None:
+        salt = random.random()
         coro = anyio.to_thread.run_sync(run_job, client, Checksum(checksum), tf_dunder, fingertip, scratch)
         job = asyncio.create_task(coro)
-        _jobs[checksum] = job, tf_dunder
+        _jobs[checksum, fingertip, scratch] = job, tf_dunder
     
     remove_job = True
     try:
@@ -113,9 +147,16 @@ async def launch_job(client, checksum, tf_dunder, *, fingertip, scratch):
         return result
     finally:
         if remove_job:
-            _jobs.pop(checksum, None)
+            _jobs.pop((checksum, fingertip, scratch), None)
 
 def run_job(client, checksum, tf_dunder, fingertip, scratch):
+    from seamless.core.direct.run import fingertip as do_fingertip
+
+    transformation_buffer = do_fingertip(checksum.bytes())
+    if transformation_buffer is None:
+        raise CacheMissError(checksum.hex())
+    transformation = json.loads(transformation_buffer.decode())
+    
     known_resources = ("ncores",)
     resources = {}
     if tf_dunder is not None:
@@ -125,10 +166,13 @@ def run_job(client, checksum, tf_dunder, fingertip, scratch):
     for res in known_resources:
         if res in meta:
             resources[res] = meta[res]
+    
     with dask.annotate(resources=resources):
         result = client.submit(
-            run_transformation, checksum, tf_dunder=tf_dunder, key=checksum.hex(),
-            fingertip=fingertip, scratch=scratch
+            run_transformation_dask, checksum, tf_dunder=tf_dunder,
+            fingertip=fingertip, scratch=scratch, 
+            # Dask arguments
+            key=checksum.hex(), pure=False # set pure to False since we want to be able to re-submit failed jobs
         )
     result_value = result.result()
     if result_value is None:
@@ -138,15 +182,37 @@ def run_job(client, checksum, tf_dunder, fingertip, scratch):
         )
 
     if not (scratch and fingertip):
-        result = Checksum(result_value).hex()
-        if not scratch and not can_read_buffer(result):
+        for trial in range(5):
+            result = seamless.util.verify_transformation_success(checksum, transformation)
+            if result is not None:
+                break
+            time.sleep(0.2)
+
+        if not result:
             return web.Response(
-                status=404,
-                body=f"CacheMissError: {result}"
-            )
+                status=400,
+                body="ERROR: Unknown error (result not in database)\nResult checksum:\n" + Checksum(result_value).hex()
+            )            
+
+        result = Checksum(result).hex()
+        if not scratch:
+            for trial in range(50):
+                if can_read_buffer(result):
+                    break
+                time.sleep(0.2)
+            else:
+                return web.Response(
+                    status=404,
+                    body=f"CacheMissError: {result}"
+                )
     else:
         result = result_value
         
+    ### TODO: wait for a use case where this helps...
+    ### # Wait two seconds to give slow networks a chance to update the database/buffer
+    ### import time
+    ### time.sleep(2)
+
     return web.Response(
         status=200,
         body=result
@@ -193,7 +259,6 @@ class JobSlaveServer:
         )
 
     async def _put_job(self, request:web.Request):     
-        global JOBCOUNTER   
         try:
             data = await request.json()
 
@@ -201,22 +266,25 @@ class JobSlaveServer:
             scratch = bool(data.get("scratch", False))
             fingertip = bool(data.get("fingertip", False))
 
-            '''
             global JOBCOUNTER
-            JOBCOUNTER += 1
-            print("JOB", JOBCOUNTER, checksum)
-            from seamless.core.direct.run import fingertip
-            import json
-            print("RQ", json.loads(fingertip(checksum.hex()).decode()))
-            print("DUNDER", data["dunder"])
+            try:
+                JOBCOUNTER += 1
+            except NameError:
+                JOBCOUNTER = 1
+            jobcounter = JOBCOUNTER
+            print("JOB", jobcounter, checksum, scratch, fingertip)
             '''
-
+            from seamless.core.direct.run import fingertip as do_fingertip
+            import json
+            print("RQ", json.loads(do_fingertip(checksum.hex()).decode()))
+            ###print("DUNDER", data["dunder"])
+            '''
             tf_dunder = data["dunder"]
             response = await launch_job(client, checksum, tf_dunder=tf_dunder, scratch=scratch, fingertip=fingertip)
             return response
         
         except Exception as exc:
-            traceback.print_exc()
+            traceback.print_exc() ###
             body="ERROR: " + str(exc)
             return web.Response(
                 status=400,
@@ -273,6 +341,7 @@ Meta information is also ignored. No support for Dask resources.
         raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
 
     import seamless
+    print("Connecting...")
     seamless.delegate(level=3)
 
     client = Client(args.scheduler_address)

@@ -149,3 +149,5 @@ if result is not None:
                 print(result, file=f)
         else:            
             print(result)
+else:
+    raise CacheMissError()

@@ -121,6 +121,8 @@ def is_interactive():
         return False
 
 if not is_interactive():
-    print("Press Ctrl+C to stop")
+    print("Press Ctrl+C to stop")    
     import time
-    time.sleep(99999999)
+    while 1:
+        time.sleep(10)
+        sys.stdout.flush()
