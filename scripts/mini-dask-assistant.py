@@ -85,9 +85,13 @@ def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scrat
                             pin_checksum = Checksum(pin_checksum)
                         except Exception:
                             raise ValueError(f'Invalid checksum for pin "{k}": "{pin_checksum}"') from None
-                        pin_buffer = do_fingertip(pin_checksum.value)
-                        if pin_buffer is None:
-                            raise CacheMissError(pin_buffer)
+                        try:
+                            pin_buffer = do_fingertip(pin_checksum.value)
+                        except CacheMissError:
+                            # Don't try too hard now, since we have nested event loops
+                            pass
+                        #if pin_buffer is None:
+                        #    raise CacheMissError(pin_buffer)
 
             result_checksum = seamless.run_transformation(
                 transformation_checksum.hex(), tf_dunder=tf_dunder,
