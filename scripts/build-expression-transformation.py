@@ -21,4 +21,11 @@ expression = Expression(
         hash_pattern=hash_pattern, target_hash_pattern=target_hash_pattern
 )
 print(expression)       
-print(build_expression_transformation(expression).hex()) 
+expression_transformation = build_expression_transformation(expression)
+print(expression_transformation.hex())
+if len(sys.argv) > 2 and not sys.argv[-1].startswith("-"):
+    from seamless.core.cache.buffer_cache import buffer_cache
+    d = buffer_cache.get_buffer(expression_transformation)
+    assert d is not None
+    with open(sys.argv[-1], "wb") as f:
+        f.write(d)
