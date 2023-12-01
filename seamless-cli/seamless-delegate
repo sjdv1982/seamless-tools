@@ -49,12 +49,19 @@ currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.ar
 cd $currdir
 set +u -e
 source ./seamless-fill-environment-variables
+
+if [ -z "$SEAMLESS_HASHSERVER_DIRECTORY" ]; then
+  export SEAMLESS_HASHSERVER_DIRECTORY=$SEAMLESS_CONFIG_DIRECTORY/buffers
+fi
+if [ -z "$SEAMLESS_DATABASE_DIRECTORY" ]; then
+  export SEAMLESS_DATABASE_DIRECTORY=$SEAMLESS_CONFIG_DIRECTORY/database
+fi
+
 set -u -e
 
-mkdir -p $SEAMLESS_CONFIG_DIRECTORY
-mkdir -p $SEAMLESS_CONFIG_DIRECTORY/buffers
-mkdir -p $SEAMLESS_CONFIG_DIRECTORY/database
-touch $SEAMLESS_CONFIG_DIRECTORY/database/seamless.db
+mkdir -p $SEAMLESS_HASHSERVER_DIRECTORY
+mkdir -p $SEAMLESS_DATABASE_DIRECTORY
+touch $SEAMLESS_DATABASE_DIRECTORY/seamless.db
 
 export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
@@ -78,7 +85,7 @@ export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERV
 export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
 
 cd delegate
-docker compose up database hashserver $assistant --build -d
+docker compose up database hashserver $assistant -d  #--build
 if [[ $assistant != '' ]] ; then
     sleep 5
 fi    

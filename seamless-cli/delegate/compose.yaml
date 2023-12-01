@@ -11,7 +11,7 @@ services:
       - DATABASE_PORT=${DATABASE_PORT:?}
       - DATABASE_WRITABLE=1    
     volumes:
-      - ${SEAMLESS_CONFIG_DIRECTORY:?}/database:/database
+      - ${SEAMLESS_DATABASE_DIRECTORY:?}:/database
   hashserver:
     build: 
       context: ../hashserver
@@ -23,7 +23,7 @@ services:
       - HASHSERVER_PORT=${HASHSERVER_PORT:?}
       - HASHSERVER_WRITABLE=1    
     volumes:
-      - ${SEAMLESS_CONFIG_DIRECTORY:?}/buffers:/buffers
+      - ${SEAMLESS_HASHSERVER_DIRECTORY:?}:/buffers
   micro-assistant-devel:
       build:
         context: ../../scripts
