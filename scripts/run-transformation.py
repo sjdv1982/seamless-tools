@@ -150,4 +150,5 @@ if result is not None:
         else:            
             print(result)
 else:
-    raise CacheMissError()
+    print(f"Transformation failed", file=sys.stderr)
+    exit(0)
