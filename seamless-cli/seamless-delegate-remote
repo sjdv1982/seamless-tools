@@ -1,5 +1,8 @@
 set -e
 
+export SEAMLESS_HASHSERVER_DIRECTORY="/tmp"
+export SEAMLESS_DATABASE_DIRECTORY="/tmp"
+
 assistant=$1
 
 python3 -c '''

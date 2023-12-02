@@ -113,6 +113,7 @@ def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scrat
 
             if result is None:
                 raise CacheMissError
+            print("WORKER END TASK", transformation_checksum, fingertip, scratch)
             return result
 
         except CacheMissError as exc:
@@ -162,7 +163,7 @@ def run_job(client, checksum, tf_dunder, fingertip, scratch):
     transformation = json.loads(transformation_buffer.decode())
     
     known_resources = ("ncores",)
-    resources = {}
+    resources = {"ncores": 1}
     if tf_dunder is not None:
         meta = tf_dunder.get("__meta__", {})
     else:
