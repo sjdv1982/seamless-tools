@@ -40,6 +40,12 @@ parser.add_argument("--host", default="0.0.0.0", required=False)
 parser.add_argument("--port", default=0, type=int, required=False)
 args = parser.parse_args()
 
+import logging
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
+import tempfile
+print("Temp dir", tempfile.gettempdir())
+
 from dask_jobqueue import SLURMCluster
 
 scheduler_kwargs={"host":args.host}
@@ -53,6 +59,7 @@ else:
     CONDA_PREFIX = os.environ["CONDA_PREFIX_1"]
 
 exported_vars = [
+    "TMPDIR",
     "SEAMLESS_DASK_CONDA_ENVIRONMENT",
     "SEAMLESS_DATABASE_IP",
     "SEAMLESS_DATABASE_PORT",
