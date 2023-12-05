@@ -492,8 +492,9 @@ Note that non-bash transformers must have Seamless in their environment.
         host = None
         port = None
 
+    sock = os.path.realpath(args.socket) if args.socket else None
     try:
-        server = JobSlaveServer(host, port, os.path.realpath(args.socket))
+        server = JobSlaveServer(host, port, sock)
         server.start()
 
         loop = asyncio.get_event_loop()
