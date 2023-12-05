@@ -93,8 +93,10 @@ cluster = SLURMCluster(
         "source {}/etc/profile.d/conda.sh".format(CONDA_PREFIX),        
         "conda info --envs",    
         "conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT",
-        "export SEAMLESS_TRANSFORMATION_SOCKET=$(mktemp)",        
-        "python SEAMLESS_TOOLS_DIR/scripts/mini-assistant.py --socket $SEAMLESS_TRANSFORMATION_SOCKET &",
+        "export SEAMLESS_TRANSFORMATION_SOCKET=$(mktemp -u)",        
+        "python $SEAMLESS_TOOLS_DIR/scripts/mini-assistant.py --socket $SEAMLESS_TRANSFORMATION_SOCKET &",
+        "echo 'Open Seamless transformation socket:' $SEAMLESS_TRANSFORMATION_SOCKET",
+        ""
     ],
     
 

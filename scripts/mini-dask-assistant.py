@@ -12,7 +12,7 @@ import dask
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
 
-import seamles
+import seamless
 from seamless import CacheMissError
 from seamless.highlevel import Checksum
 from seamless.core.cache.buffer_remote import can_read_buffer
@@ -53,11 +53,27 @@ async def run_transformation_dask(transformation_checksum, tf_dunder, fingertip,
     import os
     import aiohttp
     from aiohttp.client_exceptions import ServerDisconnectedError
+    import logging
+    logger = logging.getLogger("distributed.worker")
     socket_path = os.environ["SEAMLESS_TRANSFORMATION_SOCKET"]
+
+
+    for wait_a_second in range(30):
+        if os.path.exists(socket_path):
+            break
+        print(f"Waiting for socket {socket_path} to exist... {wait_a_second}")
+        logger.info(f"Waiting for socket {socket_path} to exist... {wait_a_second}")
+        await asyncio.sleep(1)
+    else:
+        raise RuntimeError("Socket {socket_path} was not created by worker startup script")
+    print(f"Socket {socket_path} found")
+    logger.info(f"Socket {socket_path} found")
 
     timeout = 20
 
-    print(transformation_checksum, socket_path)
+    print(f"WORKER RUN {transformation_checksum}")
+    logger.info(f"WORKER RUN {transformation_checksum}")
+
     conn = aiohttp.UnixConnector(path=socket_path)
     # we can't really re-use the session because of threads...
     async with aiohttp.ClientSession(connector=conn) as session:
@@ -95,6 +111,9 @@ async def run_transformation_dask(transformation_checksum, tf_dunder, fingertip,
                 break
             except ServerDisconnectedError:
                 continue
+
+    print(f"WORKER DONE {transformation_checksum}")
+    logger.info(f"WORKER DONE {transformation_checksum}")
     return content
 
 def run_job(client, tf_checksum, tf_dunder, fingertip, scratch):
