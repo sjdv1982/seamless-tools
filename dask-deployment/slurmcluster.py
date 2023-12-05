@@ -92,8 +92,8 @@ cluster = SLURMCluster(
         "source {}/etc/profile.d/conda.sh".format(CONDA_PREFIX),        
         "conda info --envs",    
         "conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT",
-        "export DASK_DISTRIBUTED__WORKER__MULTIPROCESSING_METHOD=fork",
-        "export DASK_DISTRIBUTED__WORKER__DAEMON=False",
+        "export DASK_DISTRIBUTED__WORKER__MULTIPROCESSING_METHOD=fork", ### needed only for micro-dask-assistant
+        "export DASK_DISTRIBUTED__WORKER__DAEMON=False", ### needed only for micro-dask-assistant (?)
     ],
 
     worker_extra_args=[

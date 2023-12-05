@@ -314,12 +314,7 @@ def run_job(data):
                 status=400,
                 body=b"ERROR: Unknown error\nOutput:\n" + output 
             )            
-    
-    try:
-        output2 = output.decode()
-    except Exception:
-        output2 = output
-    
+        
     if result is not None:
         assert data.get("scratch") and data.get("fingertip")
     else:
@@ -332,7 +327,7 @@ def run_job(data):
         if not result:
             return web.Response(
                 status=400,
-                body=b"ERROR: Unknown error (result not in database)\nOutput:\n" + output 
+                body=b"ERROR: Unknown error\nOutput:\n" + output 
             )            
 
         result = Checksum(result).hex()
