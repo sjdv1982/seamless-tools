@@ -503,4 +503,5 @@ Note that non-bash transformers must have Seamless in their environment.
             print("Press Ctrl+C to end")
             loop.run_forever()
     finally:
-        os.unlink(args.socket)
+        if sock:
+            os.unlink(sock)
