@@ -87,9 +87,10 @@ Now comes the project-specific part:
 - You might want to clone and redefine `ENVIRONMENT_OUTPUT_FILE`, because the next Slurm command will modify the file.
 
 - Submit `seamless-dask-wrapper <wrap-script>` under `sbatch`. This will launch a Dask scheduler and workers inside the Seamless+Dask environment. For now, there are
-two wrap scripts: `wrap-local.sh` for deployment of workers on a single node (like the first three methods) and `wrap-slurmcluster.sh`. The latter uses SLURMCluster from the dask-jobqueue project in order to launch new Dask workers dynamically using Slurm.
+two wrap scripts: `wrap-local.sh` for deployment of workers on a single node (like the first three methods) and `wrap-slurmcluster-XXX.sh`. The latter uses SLURMCluster from the dask-jobqueue project in order to launch new Dask workers dynamically using Slurm. 
+It comes in two versions: `wrap-slurmcluster-micro.sh` which launches `slurmcluster-micro.py` for use with the dask-micro-assistant, and 
 
-Example: `sbatch --time 72:00:00 ~/seamless-tools/dask-deployment/seamless-dask-wrapper ~/seamless-tools/dask-deployment/wrap-slurmcluster.sh`
+Example: `sbatch --time 72:00:00 ~/seamless-tools/dask-deployment/seamless-dask-wrapper ~/seamless-tools/dask-deployment/wrap-slurmcluster-mini.sh`
 
 You can also launch `seamless-dask-wrapper <wrap-script>` on a cluster front-end.
 In that case, an interactive Python session (not IPython, unfortunately; IPython gives trouble with asyncio) is opened, where you can manipulate the `cluster` object.

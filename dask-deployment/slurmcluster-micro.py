@@ -1,5 +1,6 @@
 """
 Launches a Dask scheduler to be used with Seamless by setting up a SlurmCluster.
+For use with the dask-micro-assistant.
 
 It is recommended to use this with seamless-dask-wrapper
 

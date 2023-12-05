@@ -10,8 +10,14 @@ import anyio
 from seamless import CacheMissError
 from seamless.highlevel import Checksum
 from seamless.core.cache.buffer_remote import can_read_buffer
-import docker
-import conda.cli.python_api
+try:
+    import docker
+except ImportError:
+    docker = None
+try:
+    from conda.cli import python_api as conda_python_api
+except ImportError:
+    conda_python_api = None
 import tempfile
 
 import os
@@ -234,6 +240,8 @@ def _run_job(checksum, dunder, scratch, fingertip):
     if is_bash:
         docker_conf = None
     if docker_conf is not None:
+        if docker is None:
+            raise RuntimeError("Docker is not available")
         docker_image = docker_conf["name"]
         client = docker.from_env()
         ok = True
@@ -247,7 +255,9 @@ def _run_job(checksum, dunder, scratch, fingertip):
 
     conda_env_name = env.get("conda_env_name")
     if conda_env_name is not None:
-        info, stderr, return_code = conda.cli.python_api.run_command(conda.cli.python_api.Commands.INFO, ["-e", "--json"])        
+        if conda_python_api is None:
+            raise RuntimeError("Conda Python API not available")
+        info, stderr, return_code = conda_python_api.run_command(conda_python_api.Commands.INFO, ["-e", "--json"])        
         if return_code != 0:
             raise RuntimeError("Conda error:\n" + stderr)
         existing_envs = json.loads(info)["envs"]
@@ -346,13 +356,15 @@ def run_job(data):
 
 class JobSlaveServer:
     future = None
-    def __init__(self, host, port):
+    def __init__(self, host, port, sock):
         self.host = host
         self.port = port
+        self.sock = sock
     async def _start(self):
-        if is_port_in_use(self.host, self.port):
-            print("ERROR: %s port %d already in use" % (self.host, self.port))
-            raise Exception
+        if self.sock is None:
+            if is_port_in_use(self.host, self.port):
+                print("ERROR: %s port %d already in use" % (self.host, self.port))
+                raise Exception
 
         from anyio import to_thread
         to_thread.current_default_thread_limiter().total_tokens = 1000
@@ -364,7 +376,12 @@ class JobSlaveServer:
         ])
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, self.host, self.port)
+        if self.sock:
+            print(f"Serving on socket {self.sock}")
+            site = web.UnixSite(runner, self.sock)
+        else:
+            print(f"Serving on host {self.host}, port {self.port}")
+            site = web.TCPSite(runner, self.host, self.port)
         await site.start()
 
     def start(self):
@@ -433,6 +450,12 @@ Note that non-bash transformers must have Seamless in their environment.
     )
 
     parser.add_argument(
+        "--socket",
+        type=str,
+        help="Instead of serving on a host and port, serve on a Unix socket",
+    )
+
+    parser.add_argument(
         "--interactive",
         help="Do not enter a mainloop. Assumes that the script was opened with an interactive shell (e.g. ipython -i)",
         action="store_true"
@@ -450,8 +473,9 @@ Note that non-bash transformers must have Seamless in their environment.
     )
 
     args = parser.parse_args()
-    if args.port == -1:
-        raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
+    if not args.socket:
+        if args.port == -1:
+            raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
 
     import seamless
     seamless.delegate(level=3)
@@ -463,10 +487,19 @@ Note that non-bash transformers must have Seamless in their environment.
     json.dump(global_info, global_info_file)
     global_info_file.flush()
 
-    server = JobSlaveServer(args.host, args.port)
-    server.start()
+    host, port = args.host, args.port
+    if args.socket:
+        host = None
+        port = None
 
-    loop = asyncio.get_event_loop()
-    if not args.interactive:
-        print("Press Ctrl+C to end")
-        loop.run_forever()
+    try:
+        server = JobSlaveServer(host, port, os.path.realpath(args.socket))
+        server.start()
+
+        loop = asyncio.get_event_loop()
+        if not args.interactive:
+            loop.run_until_complete(server.future)
+            print("Press Ctrl+C to end")
+            loop.run_forever()
+    finally:
+        os.unlink(args.socket)
