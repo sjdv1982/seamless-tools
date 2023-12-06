@@ -4,7 +4,6 @@ import socket
 import time
 import traceback
 from aiohttp import web
-import tempfile
 import anyio
 import json
 
