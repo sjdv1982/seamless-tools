@@ -1,6 +1,6 @@
 """
 Launches a Dask scheduler to be used with Seamless by setting up a SlurmCluster.
-For use with the dask-mini-assistant.
+For use with the dask-minifront-assistant.
 
 It is recommended to use this with seamless-dask-wrapper
 
@@ -35,6 +35,10 @@ os.environ["RANDOM_PORT_END"]
 # Check that conda works
 os.environ["CONDA_PREFIX"]
 os.environ["SEAMLESS_DASK_CONDA_ENVIRONMENT"]
+
+if "SEAMLESS_MINIMAL_SINGULARITY_IMAGE" not in os.environ:
+    # assume development environment
+    os.environ["SEAMLESS_MINIMAL_SINGULARITY_IMAGE"] = "docker://ubuntu:18.04"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="0.0.0.0", required=False)
@@ -72,7 +76,7 @@ for var in exported_vars:
 print()
 
 
-ncores=4
+ncores=10
 
 dask.config.set({"distributed.worker.resources.ncores": ncores})
 cluster = SLURMCluster(
@@ -83,20 +87,26 @@ cluster = SLURMCluster(
     
     # The scheduler will send this many tasks to each job
     cores=ncores,
-    memory="16 GB",
+    memory="55 GB",
     python="python",
+
+
+    job_cpu=ncores+2,
 
     # TODO: devise a way to set seamless.ncores equal to SLURMCluster.cores
     job_script_prologue=[
         "#SBATCH --export={}".format(",".join(exported_vars)),
-        "set -u -e",
-        "source {}/etc/profile.d/conda.sh".format(CONDA_PREFIX),        
-        "conda info --envs",    
-        "conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT",
-        "export SEAMLESS_TRANSFORMATION_SOCKET=$(mktemp -u)",        
-        "python $SEAMLESS_TOOLS_DIR/scripts/mini-assistant.py --socket $SEAMLESS_TRANSFORMATION_SOCKET &",
+        "module load singularity",
+        "export SEAMLESS_TRANSFORMATION_SOCKET=$(mktemp -u)",
         "echo 'Open Seamless transformation socket:' $SEAMLESS_TRANSFORMATION_SOCKET",
-        ""
+        """singularity run $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -ci '''
+        source ~/.bashrc
+        conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT
+        python $SEAMLESS_TOOLS_DIR/scripts/mini-assistant.py --socket $SEAMLESS_TRANSFORMATION_SOCKET
+        ''' &""",
+
+        "source {}/etc/profile.d/conda.sh".format(CONDA_PREFIX),        
+        "conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT",
     ],
     
 
@@ -114,7 +124,7 @@ cluster = SLURMCluster(
     scheduler_options=scheduler_kwargs
 )
 
-cluster.adapt(minimum_jobs=0, maximum_jobs=50)
+cluster.adapt(minimum_jobs=1, maximum_jobs=50)
 
 print(cluster.job_script())
 
