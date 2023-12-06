@@ -4,7 +4,6 @@ import socket
 import time
 import traceback
 from aiohttp import web
-import tempfile
 import anyio
 import json
 
@@ -66,8 +65,6 @@ async def run_transformation_dask(transformation_checksum, tf_dunder, fingertip,
         await asyncio.sleep(1)
     else:
         raise RuntimeError("Socket {socket_path} was not created by worker startup script")
-    print(f"Socket {socket_path} found")
-    logger.info(f"Socket {socket_path} found")
 
     timeout = 20
 
@@ -139,7 +136,7 @@ def run_job(client, tf_checksum, tf_dunder, fingertip, scratch):
             run_transformation_dask, tf_checksum, tf_dunder=tf_dunder,
             fingertip=fingertip, scratch=scratch, 
             # Dask arguments
-            ###key=checksum.hex(), 
+            key=tf_checksum.hex(), 
             pure=False # set pure to False since we want to be able to re-submit failed jobs
                         # TODO: now effect because of key??
         )
