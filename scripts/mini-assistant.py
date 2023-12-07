@@ -217,7 +217,7 @@ start.sh python /scripts/run-transformation.py \
             os.unlink(tf.name)
 
 
-def _run_job(checksum, dunder, scratch, fingertip):
+def _run_job(checksum, dunder, fingertip, scratch):
     from seamless.core.direct.run import fingertip as do_fingertip
 
     transformation_buffer = do_fingertip(checksum.bytes())
@@ -317,7 +317,7 @@ def run_job(data):
     scratch = bool(data.get("scratch", False))
     fingertip = bool(data.get("fingertip", False))
     try:
-        result, output, transformation = _run_job(checksum, dunder, scratch, fingertip)
+        result, output, transformation = _run_job(checksum, dunder, fingertip, scratch)
     except subprocess.CalledProcessError as exc:
         output = exc.output
         return web.Response(

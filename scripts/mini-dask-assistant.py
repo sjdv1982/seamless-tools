@@ -1,25 +1,154 @@
 import asyncio
 import os
 import socket
+import subprocess
+import json
 import time
 import traceback
 from aiohttp import web
 import anyio
-import json
-
+import tempfile
 import dask
-from dask.distributed import Client
-from dask.distributed import WorkerPlugin
-
-import seamless
 from seamless import CacheMissError
 from seamless.highlevel import Checksum
 from seamless.core.cache.buffer_remote import can_read_buffer
+from dask.distributed import Client
+from dask.distributed import WorkerPlugin
 
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((address, port)) == 0
 
+def run_command(command):
+    command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    try:
+        command_tf.write("set -u -e\n")
+        command_tf.write(command)
+        command_tf.close()
+        os.chmod(command_tf.name, 0o777)
+        return subprocess.check_output(
+            command_tf.name,
+            shell=True,
+            executable="/bin/bash", 
+            stderr=subprocess.STDOUT,
+        )
+    finally:
+        os.unlink(command_tf.name)
+
+def run_command_with_outputfile(command):
+    command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    command_tf2 = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    outfile = command_tf2.name
+    try:
+        command_tf.write("set -u -e\n")
+        command_tf.write(command + " --output " + outfile)
+        command_tf.close()
+        command_tf2.close()
+        os.chmod(command_tf.name, 0o777)
+        output = subprocess.check_output(
+            command_tf.name,
+            shell=True,
+            executable="/bin/bash", 
+            stderr=subprocess.STDOUT,
+        )
+        if not os.path.exists(outfile):
+            raise Exception("Empty outputfile")
+        with open(outfile, "rb") as f:
+            return f.read(), output
+    finally:
+        os.unlink(command_tf.name)
+        os.unlink(command_tf2.name)
+
+def execute(checksum, dunder, *, fingertip, scratch):
+    from dask.distributed import get_worker
+    import os
+    import logging
+    logger = logging.getLogger("distributed.worker")
+
+    SEAMLESS_TOOLS_DIR = os.environ["SEAMLESS_TOOLS_DIR"]
+    SEAMLESS_SCRIPTS = SEAMLESS_TOOLS_DIR + "/scripts" 
+    global_info = get_worker().plugins["seamless"].global_info
+    print("EXECUTE", checksum)
+    logger.info("EXECUTE " + checksum)
+    try:
+        dundercmd=""
+        if dunder is not None:
+            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf.write(json.dumps(dunder))
+            tf.close()
+            dunderfile = tf.name
+            dundercmd = f"--dunder {dunderfile}"
+        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file.write(json.dumps(global_info))
+        global_info_file.close()
+        fingertipstr = "--fingertip" if fingertip else "" 
+        scratchstr = "--scratch" if scratch else ""
+        command = f"""
+python {SEAMLESS_SCRIPTS}/run-transformation.py \
+    {checksum} {dundercmd} \
+    --global_info {global_info_file.name} \
+    {fingertipstr} {scratchstr}"""    
+        print("RUN COMMAND", command)
+        logger.info("RUN COMMAND " + command)
+
+        if fingertip and scratch:
+            result, output = run_command_with_outputfile(command)
+        else: 
+            result = None
+            output = run_command(command)
+        print("DONE", checksum)
+        logger.info("DONE " + checksum)
+        return result, output
+
+    finally:
+        os.unlink(global_info_file.name)
+        if dunder is not None:
+            os.unlink(tf.name)
+        
+
+def _run_job(client, checksum, dunder, fingertip, scratch):
+    from seamless.core.direct.run import fingertip as do_fingertip
+    checksum = Checksum(checksum)
+
+    transformation_buffer = do_fingertip(checksum.bytes())
+    if transformation_buffer is None:
+        raise CacheMissError(checksum.hex())
+    transformation = json.loads(transformation_buffer.decode())
+    is_bash = False
+    if transformation["__language__"] == "bash":
+        is_bash = True
+    elif "bashcode" in transformation and "pins_" in transformation:
+        is_bash = True
+    env = {}
+    env_checksum = None
+    if dunder is not None:
+        env_checksum = dunder.get("__env__")
+    if env_checksum is not None:
+        env_buffer = do_fingertip(env_checksum)
+        env = json.loads(env_buffer.decode())
+    docker_conf = env.get("docker")
+    if is_bash:
+        docker_conf = None
+    if docker_conf is not None:
+        raise NotImplementedError
+
+    conda_env_name = env.get("conda_env_name")
+    if conda_env_name is not None:
+        raise NotImplementedError
+    
+    fut = client.submit(
+        execute, checksum.hex(), dunder, 
+        fingertip=fingertip, scratch=scratch,
+        # Dask arguments
+        
+        key="{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch)),
+        ## this will cause identical jobs to be scheduled only once. 
+        # Disable during development, or if you are playing around with worker deployment. (TODO: assistant command line option)
+
+        pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+    )
+    result, output = fut.result()
+    return result, output, transformation
 
 _jobs = {}
 
@@ -48,112 +177,22 @@ async def launch_job(client, tf_checksum, tf_dunder, *, fingertip, scratch):
         if remove_job:
             _jobs.pop((tf_checksum, fingertip, scratch), None)
 
-async def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scratch):
-    import os
-    import aiohttp
-    from aiohttp.client_exceptions import ServerDisconnectedError
-    import logging
-    logger = logging.getLogger("distributed.worker")
-    socket_path = os.environ["SEAMLESS_TRANSFORMATION_SOCKET"]
 
-
-    for wait_a_second in range(30):
-        if os.path.exists(socket_path):
-            break
-        print(f"Waiting for socket {socket_path} to exist... {wait_a_second}")
-        logger.info(f"Waiting for socket {socket_path} to exist... {wait_a_second}")
-        await asyncio.sleep(1)
-    else:
-        raise RuntimeError(f"Socket {socket_path} was not created by worker startup script")
-    print(f"Socket {socket_path} found")
-    logger.info(f"Socket {socket_path} found")
-
-    timeout = 60
-
-    print(f"WORKER RUN {transformation_checksum}")
-    logger.info(f"WORKER RUN {transformation_checksum}")
-
-    conn = aiohttp.UnixConnector(path=socket_path)
-    # we can't really re-use the session because of threads...
-    async with aiohttp.ClientSession(connector=conn) as session:
-        data={
-            "checksum":transformation_checksum.hex(), 
-            "dunder":tf_dunder, 
-            "scratch": scratch, 
-            "fingertip": fingertip
-        }
-        for retry in range(5):
-            try:
-                while 1:
-                    async with session.put(url='http://localhost/', json=data,timeout=timeout) as response:
-                        content = await response.read()
-                        if response.status == 202:
-                            await asyncio.sleep(0.1)
-                            continue
-                        if not (scratch and fingertip):
-                            try:
-                                content = content.decode()
-                            except UnicodeDecodeError:
-                                pass                
-                        if response.status != 200:
-                            msg1 = (f"Error {response.status} from assistant:")
-                            if isinstance(content, bytes):
-                                msg1 = msg1.encode()
-                            err = msg1 + content
-                            try:
-                                if isinstance(err, bytes):
-                                    err = err.decode()
-                            except UnicodeDecodeError:
-                                pass                                            
-                            raise RuntimeError(err)
-                        break
-                break
-            except ServerDisconnectedError:
-                continue
-
-    print(f"WORKER DONE {transformation_checksum}")
-    logger.info(f"WORKER DONE {transformation_checksum}")
-    return content
-
-def run_job(client, tf_checksum, tf_dunder, fingertip, scratch):
-    from seamless.core.direct.run import fingertip as do_fingertip
-
-    transformation_buffer = do_fingertip(tf_checksum.bytes())
-    if transformation_buffer is None:
-        raise CacheMissError(tf_checksum.hex())
-    transformation = json.loads(transformation_buffer.decode())
-    
-    known_resources = ("ncores",)
-    resources = {"ncores": 1}
-    if tf_dunder is not None:
-        meta = tf_dunder.get("__meta__", {})
-    else:
-        meta = {}
-    for res in known_resources:
-        if res in meta:
-            resources[res] = meta[res]
-    
-    with dask.annotate(resources=resources):
-        result = client.submit(
-            run_transformation_dask, tf_checksum, tf_dunder=tf_dunder,
-            fingertip=fingertip, scratch=scratch, 
-            # Dask arguments
-            key=tf_checksum.hex(), 
-            pure=False # set pure to False since we want to be able to re-submit failed jobs
-                        # TODO: now effect because of key??
-        )
-    result_value = result.result()
-    if result_value is None:
+def run_job(client, checksum, dunder, fingertip, scratch):
+    try:
+        result, output, transformation = _run_job(client, checksum, dunder, fingertip, scratch)
+    except subprocess.CalledProcessError as exc:
+        output = exc.output
         return web.Response(
-            status=400,
-            body=f"Unknown failure"
-        )
-
-    if scratch and fingertip:
-        return result_value
+                status=400,
+                body=b"ERROR: Unknown error\nOutput:\n" + output 
+            )            
+        
+    if result is not None:
+        assert scratch and fingertip
     else:
         for trial in range(5):
-            result = seamless.util.verify_transformation_success(tf_checksum, transformation)
+            result = seamless.util.verify_transformation_success(checksum, transformation)
             if result is not None:
                 break
             time.sleep(0.2)
@@ -161,31 +200,21 @@ def run_job(client, tf_checksum, tf_dunder, fingertip, scratch):
         if not result:
             return web.Response(
                 status=400,
-                body=b"ERROR: Unknown error\nOutput:\n" + result_value
+                body=b"ERROR: Unknown error\nOutput:\n" + output 
             )            
 
         result = Checksum(result).hex()
-
-        if not scratch:
-            for trial in range(50):
-                if can_read_buffer(result):
-                    break
-                time.sleep(0.2)
-            else:
-                return web.Response(
-                    status=404,
-                    body=f"CacheMissError: {result}"
-                )
-        
-    ### TODO: wait for a use case where this helps...
-    ### # Wait two seconds to give slow networks a chance to update the database/buffer
-    ### import time
-    ### time.sleep(2)
+        if not scratch and not can_read_buffer(result):
+            return web.Response(
+                status=404,
+                body=f"CacheMissError: {result}"
+            )
 
     return web.Response(
         status=200,
         body=result
     )
+
 
 
 class JobSlaveServer:
@@ -230,7 +259,7 @@ class JobSlaveServer:
     async def _put_job(self, request:web.Request):     
         try:
             data = await request.json()
-
+            
             tf_checksum = Checksum(data["checksum"])
             scratch = bool(data.get("scratch", False))
             fingertip = bool(data.get("fingertip", False))
@@ -253,32 +282,54 @@ class JobSlaveServer:
                 status=400,
                 body=body
             )            
-            
+        
 
 class SeamlessWorkerPlugin(WorkerPlugin):
-    def setup(self, worker):
-        import os
-        print("Worker SETUP")
+    async def setup(self, worker):
+        import json
+        import logging
+        import multiprocessing
+        logger = logging.getLogger("distributed.worker")
+
         try:
-            import seamless
+            from seamless.core.transformation import get_global_info
         except ImportError:
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
 
-        if "SEAMLESS_TRANSFORMATION_SOCKET" not in os.environ:
-            raise RuntimeError("""The Dask mini assistant requires SEAMLESS_TRANSFORMATION_SOCKET.
-You might be using a deployment script designed for the Dask micro assistant.""")
+        def pr(msg):
+            print(msg)
+            logger.info(msg)
+        
+        pr("Worker SETUP")
+
+        with multiprocessing.Pool(1) as p:
+            fut = p.apply_async(get_global_info)
+            for _ in range(100):  # allow 100 seconds for get_global_info
+                if fut.ready():
+                    break
+                await asyncio.sleep(1)
+            global_info = fut.get(timeout=1)
+        
+        self.global_info = global_info
+
+        pr("Seamless global info:")
+        pr(json.dumps(self.global_info))
+        pr("Worker up")
 
 if __name__ == "__main__":
     import argparse
     env = os.environ
-    parser = argparse.ArgumentParser(description="""Mini-dask assistant.
-Transformations are forwarded to a remote Dask scheduler, 
-    which will forward them further to a running mini-assistant in --socket mode.
+    parser = argparse.ArgumentParser(description="""Mini assistant.
+Transformations are executed by repeatedly launching run-transformation.py in a subprocess.
+                                     
+No support for using transformer environment definitions (conda YAML) as a recipe.
 
-The Dask scheduler must have started up in a Seamless-compatible way,
-see seamless-tools/dask-deployment/example.py .
+However, provided names of Docker images and conda environments are respected.
+Note that non-bash transformers must have Seamless in their environment.
 """)
                                      
+    parser.add_argument("--ncores",type=int,default=None)
+
     default_port = int(env.get("SEAMLESS_ASSISTANT_PORT", -1))
 
     parser.add_argument(
@@ -305,6 +356,17 @@ see seamless-tools/dask-deployment/example.py .
         help="Do not enter a mainloop. Assumes that the script was opened with an interactive shell (e.g. ipython -i)",
         action="store_true"
     )
+    parser.add_argument("--direct-print", dest="direct_print", action="store_true")
+    parser.add_argument(
+        "--verbose",
+        help="Serve graph in verbose mode, setting the Seamless logger to INFO",
+        action="store_true"
+    )
+    parser.add_argument(
+        "--debug",
+        help="Serve graph in debugging mode. Turns on asyncio debugging, and sets the Seamless logger to DEBUG",
+        action="store_true"
+    )
 
     args = parser.parse_args()
     if args.port == -1:
@@ -315,11 +377,12 @@ see seamless-tools/dask-deployment/example.py .
     seamless.delegate(level=3)
 
     client = Client(args.scheduler_address)
+
     try:
         client.register_plugin(SeamlessWorkerPlugin(), name="seamless")
     except AttributeError:
         client.register_worker_plugin(SeamlessWorkerPlugin(), name="seamless")
-
+    
     server = JobSlaveServer(client, args.host, args.port)
     server.start()
 
