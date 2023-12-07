@@ -36,13 +36,15 @@ You must define a port range, and all ports within that range must be accessible
 
 - Log in (or launch a batch shell script) on a remote machine.
 - There, activate the Seamless Dask conda environment
-- Run `./one-node.sh $RANDOM_PORT_START $RANDOM_PORT_END`, specifying a random port range for the hashserver, the database, and the Dask scheduler. You may add a hostname too. Keep this script alive.
-(There may be alternatives to `one-node.sh` that dynamically launch new jobs on the cluster).
+- Run `./local.sh $RANDOM_PORT_START $RANDOM_PORT_END`, specifying a random port range for the hashserver, the database, and the Dask scheduler. You may add a hostname too. Keep this script alive. (See below for alternatives.)
 - Variables will be printed out. Copy the variable section for direct connection.
 - In a new local terminal, paste the variable section.
 - In that terminal, start `seamless-delegate-remote mini-dask-assistant` (or `mini-dask-assistant-devel`)
 - In any local terminal, paste the variable section.
   Then, start `seamless-bash`, or import seamless directly from conda, or use `/bin/seamless`.
+- Instead of `local.sh`, you can also use a script that dynamically launches jobs on an HPC cluster. There is currently `wrap-slurmcluster-micro.sh`, `wrap-slurmcluster-mini.sh`, `wrap-slurmcluster-minifront.sh`, wrapping `slurmcluster-micro.py`,  `slurmcluster-mini.py`
+and `slurmcluster-minifront.py` (there is also `slurmcluster-minifront-singularity.py`).
+
 
 ## Remote method with SSH tunneling
 

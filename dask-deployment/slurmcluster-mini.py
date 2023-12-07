@@ -91,11 +91,12 @@ cluster = SLURMCluster(
 
     job_script_prologue=[
         "#SBATCH --export={}".format(",".join(exported_vars)),
+        "set -u -e",
         "source {}/etc/profile.d/conda.sh".format(CONDA_PREFIX),        
+        "conda info --envs",    
         "conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT",
-        "export SEAMLESS_TRANSFORMATION_SOCKET=$(mktemp -u)",
-        "echo 'Open Seamless transformation socket:' $SEAMLESS_TRANSFORMATION_SOCKET",
-        "python $SEAMLESS_TOOLS_DIR/scripts/mini-assistant.py --socket $SEAMLESS_TRANSFORMATION_SOCKET &",
+        "export DASK_DISTRIBUTED__WORKER__MULTIPROCESSING_METHOD=fork",
+        "export DASK_DISTRIBUTED__WORKER__DAEMON=False",
     ],
     
 

@@ -86,15 +86,14 @@ cluster = SLURMCluster(
     memory="16 GB",
     python="python",
 
-    # TODO: devise a way to set seamless.ncores equal to SLURMCluster.cores
     job_script_prologue=[
         "#SBATCH --export={}".format(",".join(exported_vars)),
         "set -u -e",
         "source {}/etc/profile.d/conda.sh".format(CONDA_PREFIX),        
         "conda info --envs",    
         "conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT",
-        "export DASK_DISTRIBUTED__WORKER__MULTIPROCESSING_METHOD=fork", ### needed only for micro-dask-assistant
-        "export DASK_DISTRIBUTED__WORKER__DAEMON=False", ### needed only for micro-dask-assistant (?)
+        "export DASK_DISTRIBUTED__WORKER__MULTIPROCESSING_METHOD=fork",
+        "export DASK_DISTRIBUTED__WORKER__DAEMON=False",
     ],
 
     worker_extra_args=[
