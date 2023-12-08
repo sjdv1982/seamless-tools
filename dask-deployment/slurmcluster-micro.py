@@ -77,7 +77,8 @@ ncores=4
 dask.config.set({"distributed.worker.resources.ncores": ncores})
 cluster = SLURMCluster(
     #queue='regular',
-    
+    walltime="01:00:00",
+
     # processes should be 1, otherwise you get trouble
     processes=1, 
     
@@ -106,6 +107,8 @@ cluster = SLURMCluster(
             os.environ["RANDOM_PORT_END"]
         ),
         f"--resources \"ncores={ncores}\"",
+        "--lifetime", "55m", 
+        "--lifetime-stagger", "4m",
     ],
     scheduler_options=scheduler_kwargs
 )
