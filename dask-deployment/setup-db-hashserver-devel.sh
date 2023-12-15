@@ -1,4 +1,4 @@
-# Sets up a database and hashserver inside a Dask+Seamless conda environment
+# Sets up a database and hashserver inside a Seamless conda environment
 # A development environment is assumed, such as created by
 #  build-environment-devel.sh
 # This script is to be sourced inside a script that sets up the correct
@@ -11,7 +11,7 @@ x=$SEAMLESS_DATABASE_PORT
 x=$SEAMLESS_HASHSERVER_PORT
 
 # Check that the correct packages are there:
-python -c 'import peewee, fastapi, uvicorn, dask, dask.distributed'
+python -c 'import peewee, fastapi, uvicorn'
 
 cd $SEAMLESS_TOOLS_DIR/tools
 mkdir -p ~/.seamless/database
