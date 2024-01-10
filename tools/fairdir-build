@@ -1,8 +1,31 @@
-raise NotImplementedError  #revise
 #!/usr/bin/env python3
+
+"""
+Tool to build (or build upon) a Seamless FAIR dir.
+
+FAIR dirs contain collections in deepcell/deepfolder format. 
+fairdir-build creates these collections from a source directory that contains the real files.
+
+FAIR dirs are served by the FAIR servers that support querying by collection name and format.
+
+Collections may overlap, i.e. a file checksum can go into different collections.
+
+Collections are organized as datasets, that have distributions.
+
+This follows the terminology of FAIR datapoint (https://specs.fairdatapoint.org/fdp-specs-v1.2.html).
+In the future, fairdir-build and fairserver will be FAIR datapoint compliant.
+
+Distributions have formats (e.g. gzipped) and may also have URL info where to download each
+individual checksum.
+
+Every time fairdir-build is run, new distribution(s) are built for given dataset(s), with a version
+that corresponds to today's date. Unchanged checksums from earlier distributions are re-used
+as much as possible.
+"""
 
 import os
 import json
+import orjson
 import cson
 import csv
 from ruamel.yaml import YAML
@@ -15,9 +38,9 @@ import multiprocessing
 import concurrent.futures
 import copy
 import gc
-
 from seamless import calculate_checksum
 from silk.mixed import MAGIC_SEAMLESS_MIXED, MAGIC_NUMPY
+from seamless import parse_checksum
 from seamless.core.cache.buffer_cache import buffer_cache
 from seamless.core.convert import try_convert
 from seamless.core.buffer_info import BufferInfo, convert_from_buffer_info
@@ -71,7 +94,7 @@ def write_json(d:dict, filename):
     with open(filename, "wb") as f:
         f.write(get_plain_buffer(d))
 
-def remove_stale_buffer_hardlink(checksum, inode):
+def remove_stale_buffer_hardlink(buffer_dir, checksum, inode):
     buffer_file = os.path.join(buffer_dir, checksum)
     if os.path.exists(buffer_file):
         buffer_inode = str(os.stat(buffer_file).st_ino)
@@ -79,7 +102,7 @@ def remove_stale_buffer_hardlink(checksum, inode):
             report("Remove stale buffer hardlink {}".format(buffer_file))
             os.remove(buffer_file)
 
-def intern_buffer(checksum, filename, hardlink):
+def intern_buffer(buffer_dir, checksum, filename, hardlink):
     buffer_file = os.path.join(buffer_dir, checksum)
     if os.path.exists(buffer_file):
         # We trust that the buffer is correct...
@@ -90,16 +113,13 @@ def intern_buffer(checksum, filename, hardlink):
         shutil.copyfile(filename, buffer_file)
 
 def get_buffer_info(checksum):
-    d = buffer_info_bucket.get(checksum)
-    if d is None:
-        return None
-    assert isinstance(d, dict), d
-    return BufferInfo(checksum, d)
+    return buffer_infos.get(checksum)
 
+changed_buffer_info = False
 def set_buffer_info(buffer_info: BufferInfo):
-    checksum = buffer_info.checksum.hex()
-    d = buffer_info.as_dict()
-    buffer_info_bucket.set(checksum, d)
+    global changed_buffer_info
+    buffer_infos[checksum] = buffer_info
+    changed_buffer_info = True
 
 def write_buffer_length(checksum, length):
     buffer_info = get_buffer_info(checksum)
@@ -143,34 +163,6 @@ def update_buffer_info(buffer_info:BufferInfo, attr, value):
     #    print("BB!", buffer_info.as_dict())
     #    exit(0)
 
-def guarantee_buffer_info(buffer_info:BufferInfo, buffer, celltype:str):
-    """Modify buffer_info to reflect that checksum is surely deserializable into celltype
-    Adapted from buffer_cache.guarantee_buffer_info
-    """
-    if celltype == "bytes":
-        return
-    if celltype == "checksum":
-        # out-of-scope for buffer info
-        return
-    if celltype in ("ipython", "python", "cson", "yaml"):
-        # parsability as IPython/python/cson/yaml is out-of-scope for buffer info
-        celltype = "text"
-    if celltype == "mixed":
-        if buffer is not None:
-            if buffer.startswith(MAGIC_NUMPY):
-                update_buffer_info(buffer_info, "is_numpy", True)
-            elif buffer.startswith(MAGIC_SEAMLESS_MIXED):
-                update_buffer_info(buffer_info, "is_seamless_mixed", True)
-            else:
-                update_buffer_info(buffer_info, "is_json", True)
-    elif celltype == "binary":
-        update_buffer_info(buffer_info, "is_numpy", True)
-    elif celltype == "plain":
-        update_buffer_info(buffer_info, "is_json", True)
-    elif celltype == "text":
-        update_buffer_info(buffer_info, "is_utf8", True)
-    elif celltype in ("str", "int", "float", "bool"):
-        update_buffer_info(buffer_info, "json_type", celltype)
 
 def do_operation(cmd, source_celltype, target_celltype, ops):
     # TODO: 
@@ -263,7 +255,7 @@ def do_operation(cmd, source_celltype, target_celltype, ops):
             if buffer_info != old_buffer_info:
                 set_buffer_info(buffer_info)
         
-        buffer_file = os.path.join(buffer_dir, result_checksum)
+        buffer_file = os.path.join(BUFFER_DIR, result_checksum)
         if os.path.exists(buffer_file):
             # We trust that the buffer is correct...
             pass
@@ -274,16 +266,16 @@ def do_operation(cmd, source_celltype, target_celltype, ops):
                     f.write(result_buf)
             except Exception:
                 os.remove(buffer_file)
-        buffer_cache.uncache_buffer(result_checksum)
+        buffer_cache._uncache_buffer(result_checksum)
         result.append((checksum, result_checksum))
     gc.collect()
     return result
 
 def write_deepcontent(deepdict_checksum, deepdict):    
-    deep_indices_dir = os.path.join(SDB, "deep_indices")
+    deep_indices_dir = os.path.join(FAIRDIR, "deep_indices")
     if not os.path.exists(deep_indices_dir):
         os.mkdir(deep_indices_dir)
-    buffersizefile = os.path.join(SDB, "deep_indices", "buffersizes.csv")
+    buffersizefile = os.path.join(FAIRDIR, "deep_indices", "buffersizes.csv")
     if os.path.exists(buffersizefile):
         buffersizes = load_csv(buffersizefile)
     else:
@@ -308,7 +300,7 @@ def write_deepcontent(deepdict_checksum, deepdict):
             if buffersize is None:
                 raise Exception(checksum, buffer_info.as_dict())
         except Exception:
-            buffer_file = os.path.join(buffer_dir, checksum)
+            buffer_file = os.path.join(BUFFER_DIR, checksum)
             with open(buffer_file, "rb") as f:
                 buffer = f.read()
                 buffersize = len(buffer)
@@ -319,7 +311,7 @@ def write_deepcontent(deepdict_checksum, deepdict):
     if len(new_checksums):
         write_csv(buffersizes, buffersizefile)        
     report("Write deep content size for {}: {}".format(deepdict_checksum, deepcontent_size))
-    deepcontentfile = os.path.join(SDB, "deep_indices", "deepcontent.csv")
+    deepcontentfile = os.path.join(FAIRDIR, "deep_indices", "deepcontent.csv")
     if os.path.exists(deepcontentfile):
         deepcontent = load_csv(deepcontentfile)
     else:
@@ -329,7 +321,7 @@ def write_deepcontent(deepdict_checksum, deepdict):
 
 
 def get_subdir(subdirname):
-    subdir = os.path.join(SDB, subdirname)
+    subdir = os.path.join(FAIRDIR, subdirname)
     if not os.path.exists(subdir):
         os.mkdir(subdir)
         report("Created {}".format(subdir))
@@ -337,20 +329,41 @@ def get_subdir(subdirname):
         err("{} is not a directory".format(subdir))
     return subdir
 
-from database_bucket import TopBucket
-
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "database_dir",
-    help="Seamless database directory to operate on",
+    "fairdir",
+    help="Seamless FAIR directory to build or update",
     type=str
 )
 parser.add_argument(
     "actionfile",
-    help="Database action file (json, cson or yaml) to run",
+    help="FAIR dir action file (json, cson or yaml) to run",
     type=argparse.FileType('r')
 )
+
+parser.add_argument(
+    "--source",
+    help="Directory that will be indexed into a collection",
+    type=str,
+    required=True
+)
+
+parser.add_argument(
+    "--bufferdir",
+    help="Seamless buffer dir where to store (hardlinks to) the buffers in the collections",
+    type=str,
+    required=True
+)
+
+parser.add_argument(
+    "--collection-bufferdir",
+    help="""Seamless buffer dir where to store the buffers of the collection objects (deep buffers).
+These are normally much smaller than the total size of the buffers in the collection.
+If not specified, collection objects are written to "bufferdir".""",
+    type=str,
+)
+
 parser.add_argument(
     "--verbose", "-v",
     action="store_true"
@@ -362,12 +375,28 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-SDB = args.database_dir
-if not os.path.isdir(SDB):
-    print("Seamless database directory {} does not exist".format(SDB))
+FAIRDIR = args.fairdir
+if not os.path.isdir(FAIRDIR):
+    err("Target FAIR directory '{}' does not exist. It must at least exist as an empty directory.".format(FAIRDIR))
 
-buffer_info_dir = os.path.join(SDB, "buffer_info")
-buffer_info_bucket = TopBucket(buffer_info_dir, readonly=False)
+dirpath = args.source
+if not dirpath:
+    err("--source must point to an existing directory that will be indexed into a collection")
+if not os.path.exists(dirpath):
+    err("{} does not exist".format(dirpath))
+if not os.path.isdir(dirpath):
+    err("{} is not a directory".format(dirpath))
+
+BUFFER_DIR = args.bufferdir
+if not os.path.isdir(BUFFER_DIR):
+    err("Buffer directory '{}' does not exist".format(BUFFER_DIR))
+
+COLLECTION_BUFFER_DIR = args.collection_bufferdir
+if COLLECTION_BUFFER_DIR is None:
+    COLLECTION_BUFFER_DIR = BUFFER_DIR
+else:
+    if not os.path.isdir(COLLECTION_BUFFER_DIR):
+        err("Collection buffer directory '{}' does not exist".format(COLLECTION_BUFFER_DIR))
 
 afname = args.actionfile.name
 if afname.endswith(".json"):
@@ -393,29 +422,39 @@ report(json.dumps(actiondict, indent=2))
 ok = False
 if isinstance(actiondict, dict):
     while 1:
-        if "directory" not in actiondict:
+        if "collection" not in actiondict:
+            break
+        if "cross_device" not in actiondict:
             break
         if "actions" not in actiondict:
             break
         ok = True
         break
 if not ok:
-    err("malformatted actionfile")
+    err("malformatted actionfile: 'collection', 'cross_device' and 'actions' are required")
 # /TODO
 
-default_collection_name = actiondict["directory"]["collection"]
-cross_device = actiondict["directory"]["cross_device"]
-dirpath = actiondict["directory"]["path"]
-if not os.path.exists(dirpath):
-    err("{} does not exist".format(dirpath))
-if not os.path.isdir(dirpath):
-    err("{} is not a directory".format(dirpath))
+
+default_collection_name = actiondict["collection"]
+cross_device = actiondict["cross_device"]
+
+buffer_infos = {}
+buffer_info_file = os.path.join(FAIRDIR, "buffer_info.json")
+if os.path.exists(buffer_info_file):
+    report("Existing buffer info file found. Loading...")
+    with open(buffer_info_file) as f:
+        buf = f.read()
+    buffer_infos0 = orjson.loads(buf)
+    for cs, d in buffer_infos0.items():
+        buffer_infos[cs] = BufferInfo(cs, d)
+    report("Existing buffer info file loaded")
+else:
+    report("No existing buffer info file found.")
 
 # Build inode table. 
 # If there is an old inode table:
 #   remove interned buffers that point to an inode that has changed
 inode_dir = get_subdir("inodes")
-buffer_dir = get_subdir("buffers")
 inode_table_file = os.path.join(inode_dir, default_collection_name) + ".csv"
 try:
     old_inode_table = load_csv(inode_table_file)
@@ -467,7 +506,7 @@ for root, dirnames, filenames in sorted(os.walk(dirpath, followlinks=False)):
                 # If there is a buffer hardlink with the old checksum 
                 #  that points to the inode, clean it up
                 old_checksum, _ = old_inode_table[inode]
-                remove_stale_buffer_hardlink(old_checksum, inode)
+                remove_stale_buffer_hardlink(BUFFER_DIR, old_checksum, inode)
             inode_table[inode] = [checksum, mtime]
             inodes_changed = True
 
@@ -495,14 +534,6 @@ else:
     report("Write inode table to {}".format(inode_table_file))
     write_csv(inode_table, inode_table_file)
 
-'''
-###
-high_inodes = sorted(list(inode_table.keys()))[1000:]
-for inode in high_inodes:
-    inode_table.pop(inode)
-    inode_to_entry.pop(inode)
-###
-'''
 
 report("Running actions")
 collections = {
@@ -528,7 +559,6 @@ try:
             source_collection_name = action.get("source_collection", default_collection_name)
             source_collection = collections[source_collection_name]        
             hardlink = action["hardlink"]
-            buffer_dir = get_subdir("buffers")
             if source_collection.get("default"):
                 if hardlink and cross_device:
                     # TODO: do such checks before running any actions
@@ -537,7 +567,7 @@ try:
                     checksum, _ = inode_table[inode]
                     entry = inode_to_entry[inode]
                     filename = os.path.join(dirpath, entry)
-                    intern_buffer(checksum, filename, hardlink)
+                    intern_buffer(BUFFER_DIR, checksum, filename, hardlink)
                     
             elif source_collection.get("copied"):
                 raise NotImplementedError # TODO: make a test for this
@@ -564,7 +594,6 @@ try:
             target_celltype = action.get("celltype")
             source_collection_name = action.get("source_collection", default_collection_name)
             source_collection = collections[source_collection_name]        
-            buffer_dir = get_subdir("buffers")
             operation_dir = get_subdir("operations")
             operation_file = os.path.join(operation_dir, target_collection_name) + ".csv"
             if os.path.exists(operation_file):
@@ -584,7 +613,7 @@ try:
                     checksum, _ = inode_table[inode]
                     if checksum in old_operation:
                         result_checksum = old_operation[checksum]
-                        result_checksum_file = os.path.join(buffer_dir, result_checksum)
+                        result_checksum_file = os.path.join(BUFFER_DIR, result_checksum)
                         if os.path.exists(result_checksum_file):
                             noperation += 1
                             operation[checksum] = result_checksum
@@ -613,7 +642,7 @@ try:
                 for entry, checksum in result.items():
                     if checksum in old_operation:
                         result_checksum = old_operation[checksum]
-                        result_checksum_file = os.path.join(buffer_dir, result_checksum)
+                        result_checksum_file = os.path.join(BUFFER_DIR, result_checksum)
                         if os.path.exists(result_checksum_file):
                             noperation += 1
                             operation[checksum] = result_checksum
@@ -691,7 +720,6 @@ try:
             assert target_collection_name not in collections, target_collection_name
             collection_dir = get_subdir("collections")
             target_collection_dir = os.path.join(collection_dir, target_collection_name)
-            buffer_dir = get_subdir("buffers")
             interned = False
             can_hardlink = False
             if source_collection.get("default"):
@@ -754,7 +782,7 @@ try:
 
             if interned:
                 filenames = {
-                    entry:os.path.join(buffer_dir, checksum)
+                    entry:os.path.join(BUFFER_DIR, checksum)
                     for entry, checksum in checksums.items()
                 }
             else:
@@ -788,7 +816,7 @@ try:
                         ino = os.stat(filename).st_ino
                         if old_ino == ino:
                             continue
-                    buf_file = os.path.join(buffer_dir, checksum)
+                    buf_file = os.path.join(BUFFER_DIR, checksum)
                     if os.path.exists(buf_file):
                         ino = os.stat(buf_file).st_ino
                         if old_ino == ino:
@@ -850,6 +878,7 @@ try:
             urls = action["urls"]
             regex = re.compile(action[source_file_or_key])
             for entry in entries:
+                print(entry)
                 unnamed_capturing_groups = regex.match(entry).groups()
                 named_capturing_groups = regex.match(entry).groupdict()
                 target_urls = []
@@ -900,10 +929,10 @@ try:
             deepfolder_checksum = calculate_checksum(get_plain_buffer(deepfolder), hex=True)
             print("Computed deepfolder for {}: deep buffer checksum {}".format(source_collection_name, deepfolder_checksum))
             if old_deepfolder_checksum is not None and deepfolder_checksum != old_deepfolder_checksum:
-                remove_stale_buffer_hardlink(old_deepfolder_checksum, old_deepfolder_inode)
+                remove_stale_buffer_hardlink(COLLECTION_BUFFER_DIR, old_deepfolder_checksum, old_deepfolder_inode)
             report("Write deepfolder deep buffer to {}".format(deepfolder_file))
             write_json(deepfolder, deepfolder_file)
-            intern_buffer(deepfolder_checksum, deepfolder_file, hardlink=True)
+            intern_buffer(COLLECTION_BUFFER_DIR, deepfolder_checksum, deepfolder_file, hardlink=True)
             write_deepcontent(deepfolder_checksum, deepfolder)
         
         elif name == "deepcell":
@@ -984,15 +1013,20 @@ try:
             deepcell_checksum = calculate_checksum(get_plain_buffer(deepcell), hex=True)
             print("Computed deepcell for {} -> {}: deep buffer checksum {}".format(source_collection_name, target_collection_name, deepcell_checksum))
             if old_deepcell_checksum is not None and deepcell_checksum != old_deepcell_checksum:
-                remove_stale_buffer_hardlink(old_deepcell_checksum, old_deepcell_inode)
+                remove_stale_buffer_hardlink(COLLECTION_BUFFER_DIR, old_deepcell_checksum, old_deepcell_inode)
             report("Write deepcell deep buffer to {}".format(deepcell_file))
             write_json(deepcell, deepcell_file)
-            intern_buffer(deepcell_checksum, deepcell_file, hardlink=True)
+            intern_buffer(COLLECTION_BUFFER_DIR, deepcell_checksum, deepcell_file, hardlink=True)
             write_deepcontent(deepcell_checksum, deepcell)
             collections[target_collection_name] = {
                 "name": target_collection_name,
                 "origin": source_collection_name,
                 "deepcell": True,
             }
+        if changed_buffer_info:
+            buf = orjson.dumps({k:v.as_dict() for k,v in buffer_infos.items()}).decode()
+            with open(buffer_info_file, "w") as f:
+                f.write(buf)
+            changed_buffer_info = False
 finally:
     executor.shutdown()
