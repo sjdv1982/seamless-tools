@@ -254,33 +254,33 @@
 
             "source_collection": "pdb_mmcif_unzip_flat"
                         
-            "source_file": "(.{2})(.{2})\.cif"
+            "source_file": "(.{1})(.{2})(.{1})\.cif"
                                 
             "urls": [
                 {
-                    "url": "https://files.rcsb.org/download/{0}{1}.cif",
+                    "url": "https://files.rcsb.org/download/{0}{1}{2}.cif",
                     "celltype": "text"
                 }
                 {
-                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}.cif",
+                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}{2}.cif",
                     "celltype": "text"
                 }
                 {
-                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{0}/{0}{1}.cif",
+                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{1}/{0}{1}{2}.cif",
                     "celltype": "text"
                 }
                 {
-                    "url": "https://files.rcsb.org/download/{0}{1}.cif.gz",
+                    "url": "https://files.rcsb.org/download/{0}{1}{2}.cif.gz",
                     "compression": "gz"
                     "celltype": "text"
                 }
                 {
-                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}.cif.gz",
+                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}{2}.cif.gz",
                     "compression": "gz"
                     "celltype": "text"
                 }
                 {
-                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{0}/{0}{1}.cif.gz",
+                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{1}/{0}{1}{2}.cif.gz",
                     "compression": "gz"
                     "celltype": "text"
                 }
@@ -344,33 +344,33 @@
             "source_collection": "pdb_mmcif_unzip_deepcell"
 
             # source_key instead of source_file, since the source collection is a deepcell
-            "source_key": "(.{2})(.{2})"
+            "source_key": "(.{1})(.{2})(.{1})"
                                 
             "urls": [
                 {
-                    "url": "https://files.rcsb.org/download/{0}{1}.cif",
+                    "url": "https://files.rcsb.org/download/{0}{1}{2}.cif",
                     "celltype": "text"
                 }
                 {
-                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}.cif",
+                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}{2}.cif",
                     "celltype": "text"
                 }
                 {
-                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{0}/{0}{1}.cif",
+                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{1}/{0}{1}{2}.cif",
                     "celltype": "text"
                 }
                 {
-                    "url": "https://files.rcsb.org/download/{0}{1}.cif.gz",
+                    "url": "https://files.rcsb.org/download/{0}{1}{2}.cif.gz",
                     "compression": "gz"
                     "celltype": "text"
                 }
                 {
-                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}.cif.gz",
+                    "url": "https://www.ebi.ac.uk/pdbe/entry-files/download/{0}{1}{2}.cif.gz",
                     "compression": "gz"
                     "celltype": "text"
                 }
                 {
-                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{0}/{0}{1}.cif.gz",
+                    "url": "https://data.pdbjbk1.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{1}/{0}{1}{2}.cif.gz",
                     "compression": "gz"
                     "celltype": "text"
                 }
