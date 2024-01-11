@@ -5,6 +5,13 @@
 #       --bufferdir ~/pdb_buffers \
 #       --collection-bufferdir ~/pdb_deepbuffers
 
+# As --source, define a rsync'ed download directory, 
+# in this case rsync'ed from the Protein Data Bank, e.g. using:
+#
+# rsync -rlpt -v -z --delete \
+#   rsync.ebi.ac.uk::pub/databases/pdb/data/structures/divided/mmCIF/ \
+#   ~/mmCIF
+#
 # !!!! NOTE: NEVER modify a file inside "source" in-place !!!
 # e.g. with "rsync --in-place" or by appending to the file.
 # If you want to modify a file, create a temporary file,
