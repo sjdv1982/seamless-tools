@@ -23,13 +23,14 @@ per-dataset, as the index is rather large and is more often incremented instead 
 
 import os
 import csv
+import sys
 import cson
 import json
 from seamless import calculate_checksum
 from seamless.core.protocol.serialize import serialize_sync as serialize
 
 def err(*args, **kwargs):
-    print("ERROR: " + args[0], *args[1:], **kwargs)
+    print("ERROR: " + args[0], *args[1:], **kwargs, file=sys.stderr)
     exit(1)
 
 def load_csv(filename):
