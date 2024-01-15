@@ -1,4 +1,19 @@
 """
+Serves a fairdir and its distributions. The fairdir contains metadata on a large collection
+(deepcell or deepfolder), such as size, checksum and download URLs.
+
+See fairdir-build and fairdir-add-distribution on how to build and update a fairdir.
+
+
+In a fairdir, collections are organized as datasets, that have distributions.
+This follows the terminology of FAIR datapoint (https://specs.fairdatapoint.org/fdp-specs-v1.2.html).
+In the future, fairdir-build and fairserver will be FAIR datapoint compliant, which is currently
+not the case.
+
+Use fairdir-add-distribution to create a snapshot of a collection.
+
+API:
+
 Fair server requests:
 Human and machine. For now, just machine.
 If unknown, just return 400.
@@ -24,19 +39,16 @@ opening files again and again.
     The access_index file is not normally shared by the FAIRserver,
     but if it can be obtained elsewhere, it can be useful for mass-downloading.
 Response is built dynamically by parsing:
-$FD/dataset_distributions/<dataset_name>.json and $FD/dataset_header/<dataset_name>.cson/.json/.yaml
+$FAIRDIR/distributions/<dataset_name>.json and $FAIRDIR/dataset_header/<dataset_name>.cson/.json/.yaml
 2. /machine/find/<checksum>
    Response:
    - name of dataset
    - dataset distribution (see above)
-3. /machine/deepbuffer/<checksum>
-   Deep buffer (= element index) content. 
-   Dict of element-to-elementchecksum
-4. /machine/access/<element-checksum>
+3. /machine/access/<element-checksum>
    List of URLS for that element.
-5. /machine/keyorder/<keyorder checksum>
+4. /machine/keyorder/<keyorder checksum>
    Key order buffer (list of key orders) content.
-6. /machine/find_distribution?dataset=...&version=...&date=...
+5. /machine/find_distribution?dataset=...&version=...&date=...
    /machine/find_checksum?dataset=...&version=...&date=...
 """
 
@@ -59,12 +71,21 @@ def err(*args, **kwargs):
     print("ERROR: " + args[0], *args[1:], **kwargs)
     exit(1)
 
-FD = os.environ.get("FAIRSERVER_DIR")
-if FD is None:
+FAIRDIR = os.environ.get("FAIRSERVER_DIR")
+if FAIRDIR is None:
     err("FAIRSERVER_DIR undefined")
 
+SUBDIRECTORIES = "distributions", "access_index", "keyorder"
+for subdir in SUBDIRECTORIES:
+    subdir_path = os.path.join(FAIRDIR, subdir)
+    if not os.path.isdir(subdir_path):
+        err(f"The FAIR server dir does not have a subdirectory '{subdir}'")
+
+DISTRIBUTIONS_DIR = os.path.join(FAIRDIR, "distributions")
+    
+
 async def get_distributions(dataset):
-    filename = os.path.join(FD, "dataset_distributions", dataset + ".json")
+    filename = os.path.join(DISTRIBUTIONS_DIR, dataset + ".json")
     async with aiofiles.open(filename, mode='r') as f:
         distributions = await f.read()
     distributions = cson.loads(distributions)
@@ -81,7 +102,7 @@ async def handle_machine_dataset(request):
             "yaml": yaml.load
         }
         for ext in loaders.keys():
-            filename = os.path.join(FD, "dataset_header", dataset + "." + ext)
+            filename = os.path.join(FAIRDIR, "dataset_header", dataset + "." + ext)
             if os.path.exists(filename):
                 loader = loaders[ext]
                 async with aiofiles.open(filename, mode='r') as f:
@@ -112,7 +133,7 @@ async def handle_machine_find(request):
     checksum = request.match_info.get('checksum')
     
     try:
-        datasets = glob.glob(os.path.join(FD, "dataset_distributions", "*.json"))
+        datasets = glob.glob(os.path.join(DISTRIBUTIONS_DIR, "*.json"))
         for filename in datasets:
             dataset = os.path.split(filename)[1].split(".")[0]
             async with aiofiles.open(filename, mode='r') as f:
@@ -150,7 +171,7 @@ _access_index_cache = {}
 async def handle_machine_access(request):
     checksum = request.match_info.get('checksum')
     try:
-        access_index_files = glob.glob(os.path.join(FD, "access_index", "*"))
+        access_index_files = glob.glob(os.path.join(FAIRDIR, "access_index", "*"))
         for filename in access_index_files:
             if filename in _access_index_cache:
                 access_index = _access_index_cache[filename]
@@ -277,10 +298,10 @@ async def handle_get_checksum(request):
 
 
 
-# NOTE: in production, send this to NGINX/Apache instead
 async def handle_static(head, request):
+    """Serves a file statically. Only used for keyorder requests"""
     tail = request.match_info.get('tail')
-    filename = os.path.join(FD, head, tail)
+    filename = os.path.join(FAIRDIR, head, tail)
     if not os.path.exists(filename):
         return web.Response(
             status=400,
@@ -301,7 +322,6 @@ def main():
         web.get('/machine/dataset/{dataset:.*}', handle_machine_dataset),
         web.get('/machine/find/{checksum:.*}', handle_machine_find),
         web.get('/machine/access/{checksum:.*}', handle_machine_access),
-        web.get('/machine/deepbuffer/{tail:.*}', partial(handle_static, "deepbuffer")),
         web.get('/machine/keyorder/{tail:.*}', partial(handle_static, "keyorder")),
         web.get('/machine/find_distribution', handle_get_distribution),
         web.get('/machine/find_checksum', handle_get_checksum),

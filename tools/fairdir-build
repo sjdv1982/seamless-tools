@@ -4,23 +4,17 @@
 Tool to build (or build upon) a Seamless FAIR dir.
 
 FAIR dirs contain collections in deepcell/deepfolder format. 
-fairdir-build creates these collections from a source directory that contains the real files.
+fairdir-build creates these collections from a source directory that contains the original files.
 
-FAIR dirs are served by the FAIR servers that support querying by collection name and format.
+FAIR dirs are served by the FAIR servers that support querying by collection name and other metadata.
 
 Collections may overlap, i.e. a file checksum can go into different collections.
 
-Collections are organized as datasets, that have distributions.
-
-This follows the terminology of FAIR datapoint (https://specs.fairdatapoint.org/fdp-specs-v1.2.html).
-In the future, fairdir-build and fairserver will be FAIR datapoint compliant.
-
-Distributions have formats (e.g. gzipped) and may also have URL info where to download each
+Collections have formats (e.g. gzipped) and may also have URL info where to download each
 individual checksum.
 
-Every time fairdir-build is run, new distribution(s) are built for given dataset(s), with a version
-that corresponds to today's date. Unchanged checksums from earlier distributions are re-used
-as much as possible.
+Every time fairdir-build is run, a collection is updated. Unchanged checksums from 
+the existing collections are re-used.
 """
 
 import os
@@ -311,13 +305,13 @@ def write_deepcontent(deepdict_checksum, deepdict):
     if len(new_checksums):
         write_csv(buffersizes, buffersizefile)        
     report("Write deep content size for {}: {}".format(deepdict_checksum, deepcontent_size))
-    deepcontentfile = os.path.join(FAIRDIR, "deep_indices", "deepcontent.csv")
-    if os.path.exists(deepcontentfile):
-        deepcontent = load_csv(deepcontentfile)
+    deepcontent_file = os.path.join(FAIRDIR, "deep_indices", "deepcontent.csv")
+    if os.path.exists(deepcontent_file):
+        deepcontent = load_csv(deepcontent_file)
     else:
         deepcontent = {}
     deepcontent[deepdict_checksum] = deepcontent_size
-    write_csv(deepcontent, deepcontentfile)
+    write_csv(deepcontent, deepcontent_file)
 
 
 def get_subdir(subdirname):

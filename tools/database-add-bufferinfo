@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+
+import json
+from peewee import SqliteDatabase, Model, BlobField, CharField, TextField, FixedCharField, CompositeKey, DoesNotExist, IntegrityError
+from playhouse.sqlite_ext import JSONField
+
+Checksum = lambda *args, **kwargs: FixedCharField(max_length=64, *args, **kwargs)
+
+db = SqliteDatabase(None)
+
+# from the Seamless code
+def parse_checksum(checksum, as_bytes=False):
+    """Parses checksum and returns it as string"""
+    if isinstance(checksum, bytes):
+        checksum = checksum.hex()
+    if isinstance(checksum, str):
+        checksum = bytes.fromhex(checksum)
+
+    if isinstance(checksum, bytes):
+        assert len(checksum) == 32, len(checksum)
+        if as_bytes:
+            return checksum
+        else:
+            return checksum.hex()
+    
+    if checksum is None:
+        return
+    raise TypeError(type(checksum))
+
+# from the Seamless code
+class SeamlessBufferInfo:
+    __slots__ = (
+        "checksum", "length", "is_utf8", "is_json", "json_type", 
+        "is_json_numeric_array", "is_json_numeric_scalar",
+        "is_numpy", "dtype", "shape", "is_seamless_mixed", 
+        "str2text", "text2str", "binary2bytes", "bytes2binary",
+        "binary2json", "json2binary"
+    )
+    def __init__(self, checksum, params:dict={}):
+        for slot in self.__slots__:
+            setattr(self, slot, params.get(slot))
+        if isinstance(checksum, str):
+            checksum = bytes.fromhex(checksum)
+        self.checksum = checksum
+    
+    def __setattr__(self, attr, value):
+        if value is not None:    
+            if attr == "length":
+                if not isinstance(value, int):
+                    raise TypeError(type(value))
+                if not value >= 0:
+                    raise ValueError
+            if attr.startswith("is_"):
+                if not isinstance(value, bool):
+                    raise TypeError(type(value))
+        if attr.find("2") > -1 and value is not None:
+            if isinstance(value, bytes):
+                value = value.hex()
+        super().__setattr__(attr, value)
+
+    def __setitem__(self, item, value):
+        return setattr(self, item, value)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def update(self, other):
+        if not isinstance(other, SeamlessBufferInfo):
+            raise TypeError
+        for attr in self.__slots__:
+            v = getattr(other, attr)
+            if v is not None:
+                setattr(self, attr, v)
+    
+    def get(self, attr, default=None):
+        value = getattr(self, attr)
+        if value is None:
+            return default
+        else:
+            return value
+    
+    def as_dict(self):
+        result = {}
+        for attr in self.__slots__:
+            if attr == "checksum":
+                continue
+            v = getattr(self, attr)
+            if v is not None:
+                result[attr] = v
+        return result
+
+
+class BaseModel(Model):
+    class Meta:
+        database = db
+        legacy_table_names = False
+    
+    @classmethod
+    def create(cls, **kwargs):
+        if cls not in primary:
+            return super().create(**kwargs)
+        try:
+            return super().create(**kwargs)
+        except IntegrityError as exc:
+            prim = primary[cls]
+            if prim == "id" and prim not in kwargs:
+                raise exc from None
+            instance = cls.get(**{prim: kwargs[prim]})
+            instance.update(**kwargs)
+            instance.save()
+
+class Transformation(BaseModel):
+    checksum = Checksum(primary_key=True)
+    result = Checksum(index=True, unique=False)
+
+class RevTransformation(BaseModel):
+    result = Checksum(index=True, unique=False)
+    checksum = Checksum(unique=False)
+
+class Elision(BaseModel):
+    checksum = Checksum(primary_key=True)
+    result = Checksum()
+
+class BufferInfo(BaseModel):
+    # store SeamlessBufferInfo as JSON
+    checksum = Checksum(primary_key=True)
+    buffer_info = TextField()
+
+class SyntacticToSemantic(BaseModel):
+    syntactic = Checksum(index=True)
+    celltype = TextField()
+    subcelltype = TextField()
+    semantic = Checksum(index=True)
+    class Meta:
+            database = db
+            legacy_table_names = False
+            primary_key = CompositeKey(
+                'syntactic', 'celltype', 'subcelltype', 'semantic',
+            )
+    @classmethod
+    def create(cls, **kwargs):
+        try:
+            return super().create(**kwargs)
+        except IntegrityError as exc:
+            if exc.args[0].split()[0] != "UNIQUE":
+                raise exc from None 
+
+class Compilation(BaseModel):
+    checksum = Checksum(primary_key=True)
+    result = Checksum(index=True)
+
+class Expression(BaseModel):
+    
+    input_checksum = Checksum()
+    path = CharField(max_length=100)
+    celltype = CharField(max_length=20)
+    hash_pattern = CharField(max_length=20)
+    target_celltype = CharField(max_length=20)
+    target_hash_pattern = CharField(max_length=20)
+    result = Checksum(index=True, unique=False)
+    class Meta:
+            database = db
+            legacy_table_names = False
+            primary_key = CompositeKey(
+                'input_checksum', 'path', 'celltype', 'hash_pattern',
+                'target_celltype', 'target_hash_pattern'
+            )
+    
+    @classmethod
+    def create(cls, **kwargs):
+        try:
+            return super().create(**kwargs)
+        except IntegrityError:
+            kwargs2 = {}
+            for k in (
+                'input_checksum', 'path', 'celltype', 'hash_pattern',
+                'target_celltype', 'target_hash_pattern'
+            ):
+                kwargs2[k] = kwargs[k]
+            instance = cls.get(**kwargs2)
+            instance.result = kwargs["result"]
+            instance.save()
+
+class StructuredCellJoin(BaseModel):
+    '''
+    Structured cell join:
+    input checksum: checksum of a dict containing:
+    - auth: auth checksum
+    - inchannels: dict-of-checksums where key=inchannel and value=checksum
+    - schema: schema checksum (if not empty)
+    - hash_pattern: structured cell hash pattern (if not empty)
+    result: value checksum of the structured cell
+    '''
+    checksum = Checksum(primary_key=True)
+    result = Checksum(index=True, unique=False)
+
+
+class MetaData(BaseModel):
+    # store meta-data for transformations:
+    # - executor name (seamless-internal, SLURM, ...)
+    # - Seamless version (including Docker/Singularity/conda version)
+    # - exact environment conda packages (as environment checksum)
+    # - hardware (GPU, memory)
+    # - execution time (also if failed)
+    # - last recorded progress (if failed)
+    checksum = Checksum(primary_key=True)
+    metadata = JSONField()
+
+class ContestedTransformation(BaseModel):
+    result = Checksum(index=True, unique=False)
+    checksum = Checksum(index=True, unique=False)
+    metadata = JSONField()
+
+
+model_classes = [Transformation, RevTransformation, Elision, BufferInfo, SyntacticToSemantic, Compilation, Expression, StructuredCellJoin, MetaData, ContestedTransformation]
+primary = {}
+for model_class in model_classes:
+    if model_class is Expression or model_class is SyntacticToSemantic or model_class is RevTransformation:
+        continue
+    for fieldname, field in model_class._meta.fields.items():
+        if field.primary_key:
+            primary[model_class] = fieldname
+            break
+    else:
+        raise Exception
+
+
+def err(*args, **kwargs):
+    print("ERROR: " + args[0], *args[1:], **kwargs)
+    exit(1)
+
+
+import argparse
+p = argparse.ArgumentParser(description="Add all buffer info in a JSON file to a Seamless database SqLite file")
+p.add_argument("buffer_info_file", help="""JSON file with buffer info.
+Must be a dict where keys are checksums and values are buffer info dicts.
+Such files are generated by fairdir-build.""")
+p.add_argument("database_file", help="File where the database is stored.")
+
+args = p.parse_args()
+
+buffer_info_file = args.buffer_info_file
+with open(buffer_info_file, "r") as f:
+    buffer_info = json.load(f)
+if not isinstance(buffer_info, dict):
+    err(f"Malformed buffer info file '{buffer_info_file}'")
+
+database_file = args.database_file
+db.init(database_file)
+db.connect()
+db.create_tables(model_classes, safe=True)
+
+print("Validate buffer info JSON file...")
+keys = list(buffer_info.keys())
+CHUNKSIZE = 100000
+for n in range(0, len(keys), CHUNKSIZE):
+    bulk = []
+    for cs in keys[n:n+CHUNKSIZE]:
+        d = buffer_info[cs]
+        cs = parse_checksum(cs)
+        d = SeamlessBufferInfo(cs, d).as_dict()
+        dtxt = json.dumps(d)
+        bulk.append((cs, dtxt))
+    if not len(bulk):
+        break
+    print(f"Insert data ({n+1}-{n+len(bulk)}/{len(keys)})...")
+    (
+        BufferInfo
+        .insert_many(bulk, fields=[BufferInfo.checksum, BufferInfo.buffer_info])
+        .on_conflict(
+            conflict_target=[BufferInfo.checksum],
+            preserve=[BufferInfo.checksum],
+        )
+        .execute()
+    )
+

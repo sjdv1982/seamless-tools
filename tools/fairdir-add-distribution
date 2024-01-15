@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
 
+"""
+Saves the current state of a FAIR directory collection (deepcell or deepfolder) as a distribution.
+Distributions must be marked with a date and/or version.
+Distributions of the same collection at different points in time form a dataset.
+
+This follows the terminology of FAIR datapoint (https://specs.fairdatapoint.org/fdp-specs-v1.2.html).
+In the future, fairdir-build and fairserver will be FAIR datapoint compliant.
+
+fairdir-add-distribution will add three new subdirectories (directly served by fairserver) to a FAIR dir,
+if they don't exist already:
+
+- distributions. Contains for each dataset a JSON file which contains a list of distributions
+
+- access_index. Contains the list of download URLs for each item in the distribution. 
+Essentially a snapshot of a file in download_indices/. 
+This is per-distribution, but in practice, this is often maintained 
+per-dataset, as the index is rather large and is more often incremented instead of replaced.
+
+- keyorder. Checksum-to-content dir for the ordered keys of every distribution.
+"""
+
 import os
 import csv
 import cson
@@ -22,18 +43,17 @@ def load_csv(filename):
                 result[row[0]] = row[1:]
     return result
 
-SDB = os.environ.get("SEAMLESS_DATABASE_DIR")
-if SDB is None:
-    err("SEAMLESS_DATABASE_DIR undefined")
-FD = os.environ.get("FAIRSERVER_DIR")
-if FD is None:
-    err("FAIRSERVER_DIR undefined")
-
 import argparse
-parser = argparse.ArgumentParser(description="""Adds an distribution to a FAIR dataset.
-The distribution refers to deepcell/deepfolder collection as it currently is in the database,
-tagging it with a version or date.
+parser = argparse.ArgumentParser(description="""Takes a snapshot of a collection in a FAIR dir,
+adding it as a distribution of a FAIR dataset, tagging it with a version or date.
+Distributions can be served by the fairserver.
 """)
+
+parser.add_argument(
+    "fairdir",
+    help="Seamless FAIR directory to update",
+    type=str
+)
 
 parser.add_argument(
     "dataset_name",
@@ -42,7 +62,7 @@ parser.add_argument(
 
 parser.add_argument(
     "collection_name",
-    help="Collection name in SEAMLESS_DATABASE_DIR. Must be a deepcell or deepfolder"
+    help="Collection name in FAIRDIR. Must be a deepcell or deepfolder"
 )
 
 parser.add_argument(
@@ -58,8 +78,8 @@ parser.add_argument(
 parser.add_argument(
     "--format",
     help="""Format tag of the added distribution. 
-This is just descriptive, allowing the same deepfolder to be in the same FAIR dataset
-with distributions for multiple different file formats.
+This is just descriptive, allowing the same collection to be in the same FAIR dataset
+multiple times, with distributions for multiple different file formats.
 """
 )
 
@@ -75,9 +95,9 @@ parser.add_argument(
     "--merge-access-index",
     dest="merge_access_index",
     action="store_true",
-    help="""Merge access indices with the current latest distribution.
+    help="""Merge access indices (download lists) with the current latest distribution.
 If set, access index (if it exists) will be merged with existing access index 
-in FAIRSERVER_DIR for the distribution that is latest  (given the specified format 
+in FAIRDIR for the distribution that is latest  (given the specified format 
 and compression).
 If not, a new access index is built."""
 )
@@ -92,14 +112,29 @@ does not explicitly describe version or date."""
 )
 
 args = parser.parse_args()
+
+FAIRDIR = args.fairdir
+if not os.path.isdir(FAIRDIR):
+    err("Target FAIR directory '{}' does not exist.".format(FAIRDIR))
+
+deepcontent_file = os.path.join(FAIRDIR, "deep_indices", "deepcontent.csv")
+if not os.path.exists(deepcontent_file):
+    err(f"Deep content file '{deepcontent_file}' does not exist. This doesn't seem a proper FAIR directory, or it doesn't contain any proper collections.")
+
+SUBDIRECTORIES = "distributions", "access_index", "keyorder"
+for subdir in SUBDIRECTORIES:
+    subdir_path = os.path.join(FAIRDIR, subdir)
+    if not os.path.exists(subdir_path):
+        os.mkdir(subdir_path)
+
 if args.date is None and args.version is None:
     err("You must define --date and/or --version")
 
 if args.compression not in (None, "gzip", "zip", "bzip"):
     err("If defined, compression must be gzip, zip or bzip")
 
-deep_buffer_file1 = os.path.join(SDB, "deepcells", args.collection_name + ".json")
-deep_buffer_file2 = os.path.join(SDB, "deepfolders", args.collection_name + ".json")
+deep_buffer_file1 = os.path.join(FAIRDIR, "deepcells", args.collection_name + ".json")
+deep_buffer_file2 = os.path.join(FAIRDIR, "deepfolders", args.collection_name + ".json")
 if not os.path.exists(deep_buffer_file1) and not os.path.exists(deep_buffer_file2):
     err("""Collection name does not exist or is not a deepcell or deepfolder.
 Neither file exists:
@@ -107,12 +142,12 @@ Neither file exists:
   {}""".format(deep_buffer_file1, deep_buffer_file2))
 
 if os.path.exists(deep_buffer_file1) and os.path.exists(deep_buffer_file2):
-    err("""Malformed database directory structure.
+    err("""Malformed FAIR directory structure.
 Both files exist:
   {}
   {}""".format(deep_buffer_file1, deep_buffer_file2))
 
-# Get deep buffer from $SDB/<deepcell-or-deepfolder>/<collection_name>.json. 
+# Get deep buffer from $FAIRDIR/<deepcell-or-deepfolder>/<collection_name>.json. 
 # Calculate checksum.
 
 if os.path.exists(deep_buffer_file1):
@@ -128,17 +163,13 @@ deep_buffer_checksum = calculate_checksum(deep_buffer, hex=True)
 deep_buffer_dict = json.loads(deep_buffer.decode())
 distribution_nkeys = len(deep_buffer_dict)
 
-# Copy deep buffer into $FD/deepbuffer/<checksum>
-with open(os.path.join(FD, "deepbuffer", deep_buffer_checksum), "wb") as f:
-    f.write(deep_buffer)
-
 # Get deep buffer content length from deepcontent.csv
-deepcontent = load_csv(os.path.join(SDB, "deep_indices", "deepcontent.csv"))
+deepcontent = load_csv(deepcontent_file)
 content_size = int(deepcontent[deep_buffer_checksum])
 
 
-# If exists, load existing distributions from $FD/dataset_distributions/<dataset_name>
-distributions_file = os.path.join(FD, "dataset_distributions", args.dataset_name + ".json")
+# If exists, load existing distributions from $FAIRDIR/distributions/<dataset_name>
+distributions_file = os.path.join(FAIRDIR, "distributions", args.dataset_name + ".json")
 if os.path.exists(distributions_file):
     with open(distributions_file) as f:
         # Load with CSON to be more robust towards manual editing
@@ -190,20 +221,14 @@ To maximize chunk coherence, fill up deleted keys:
 Add all remaining new keys from the current distribution to the end.
 Convert the keyorder list to Seamless JSON.
 Calculate the checksum of the keyorder buffer and store the buffer in 
-$FD/keyorder/<key order checksum>
+$FAIRDIR/keyorder/<key order checksum>
 """
 print("Determine key order...")
 latest_keyorder = []
 if latest_distribution is not None:
-    latest_keyorder_checksum = latest_distribution.get("keyorder")
-    if latest_keyorder_checksum is not None:
-        with open(os.path.join(FD, "keyorder", latest_keyorder_checksum)) as f:
-            latest_keyorder = json.load(f)
-    else:
-        latest_distribution_checksum = latest_distribution["checksum"]
-        with open(os.path.join(FD, "deepbuffer", latest_distribution_checksum)) as f:
-            latest_distribution_deep_buffer = json.load(f)
-            latest_keyorder = sorted(list(latest_distribution_deep_buffer))
+    latest_keyorder_checksum = latest_distribution["keyorder"]
+    with open(os.path.join(FAIRDIR, "keyorder", latest_keyorder_checksum)) as f:
+        latest_keyorder = json.load(f)
 latest_keyorder_set = set(latest_keyorder)
 
 added_keys = [key for key in sorted(deep_buffer_dict.keys()) if key not in latest_keyorder_set]
@@ -236,13 +261,13 @@ keyorder += added_keys[added_key_pos:]
 keyorder_buffer = serialize(keyorder, "plain")
 keyorder_checksum = calculate_checksum(keyorder_buffer, hex=True)
 print("Key order checksum: {}".format(keyorder_checksum))
-with open(os.path.join(FD, "keyorder", keyorder_checksum), "wb") as f:
+with open(os.path.join(FAIRDIR, "keyorder", keyorder_checksum), "wb") as f:
     f.write(keyorder_buffer)
 
-# If exists, load $SDB/download_index/<collection_name>.json as the raw access index
+# If exists, load $FAIRDIR/download_indices/<collection_name>.json as the raw access index
 
 raw_access_index = None
-raw_access_index_file = os.path.join(SDB, "download_indices", args.collection_name + ".json")
+raw_access_index_file = os.path.join(FAIRDIR, "download_indices", args.collection_name + ".json")
 if os.path.exists(raw_access_index_file):
     with open(raw_access_index_file, "r") as f:
         raw_access_index = json.load(f)
@@ -254,7 +279,7 @@ Else, make a brand new access index.
 The access index is built from the raw access index above
  by converting each of its key to a checksum using the deep buffer
 Once the access index has been built, calculate its checksum and store it under 
- $FD/access_index/<access-index-checksum>
+ $FAIRDIR/access_index/<access-index-checksum>
 """
 
 if raw_access_index is not None:
@@ -264,7 +289,7 @@ if raw_access_index is not None:
     if args.merge_access_index and latest_distribution is not None:
         latest_access_index_checksum = latest_distribution.get("access_index") 
         if latest_access_index_checksum is not None:
-            latest_access_index_file = os.path.join(FD, "access_index", latest_access_index_checksum)
+            latest_access_index_file = os.path.join(FAIRDIR, "access_index", latest_access_index_checksum)
             with open(latest_access_index_file) as f:
                 latest_access_index = json.load(f)
             access_index = latest_access_index
@@ -279,7 +304,7 @@ if raw_access_index is not None:
     access_index_buffer = serialize(access_index, "plain")
     access_index_checksum = calculate_checksum(access_index_buffer, hex=True)
     print("Access index checksum: {}".format(access_index_checksum))
-    with open(os.path.join(FD, "access_index", access_index_checksum), "wb") as f:
+    with open(os.path.join(FAIRDIR, "access_index", access_index_checksum), "wb") as f:
         f.write(access_index_buffer)
 
     """If --merge-access-index, delete the old access index.
@@ -293,7 +318,7 @@ if raw_access_index is not None:
 
 """
 Build the distribution and add it to the previously loaded distributions in
-$FD/dataset_distributions/<dataset_name> . An distribution contains essentially what is served, but in addition it contains the list of raw access index files.
+$FAIRDIR/distributions/<dataset_name> . An distribution contains essentially what is served, but in addition it contains the list of raw access index files.
 """
 if latest_distribution is not None:
     latest_distribution.pop("latest")
