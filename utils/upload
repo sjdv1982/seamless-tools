@@ -38,6 +38,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--dest",
+    help="""Destination directory.
+    Normally, files and directories are uploaded to a buffer write server.
+    However, you may instead provide a destination directory. This option implies -y."""
+)
+
+parser.add_argument(
     "-y",
     "--yes",
     dest="auto_confirm",
@@ -66,17 +73,32 @@ SEAMLESS_MAX_UPLOAD_FILES, SEAMLESS_MAX_UPLOAD_SIZE, SEAMLESS_MAX_DOWNLOAD_FILES
 parser.add_argument("files_and_directories", nargs=argparse.REMAINDER)
 
 args = parser.parse_args()
+for a in args.files_and_directories:
+    if a.startswith("-"):
+        err(f"Option {a} must be specified before upload targets")
 
+verbosity = min(args.verbosity, 3)
+set_verbosity(verbosity)
+msg(1, "Verbosity set to {}".format(verbosity))
 
 max_upload_files = os.environ.get("SEAMLESS_MAX_UPLOAD_FILES", "400")
 max_upload_files = int(max_upload_files)
 max_upload_size = os.environ.get("SEAMLESS_MAX_UPLOAD_SIZE", "100 MB")
 max_upload_size = human2bytes(max_upload_size)
 
-try:
-    seamless.delegate(reraise_exceptions=True)
-except AssistantConnectionError:
+if args.dest:
+    args.auto_confirm = True
+    os.environ.pop("SEAMLESS_READ_BUFFER_SERVERS", None)
+    os.environ.pop("SEAMLESS_READ_BUFFER_FOLDERS", None)
+    os.environ.pop("SEAMLESS_WRITE_BUFFER_SERVER", None)
+    os.environ.pop("SEAMLESS_WRITE_BUFFER_FOLDER", None)
+    os.environ["SEAMLESS_READ_BUFFER_FOLDERS"] = args.dest
     seamless.delegate(level=2)
+else:
+    try:
+        seamless.delegate(reraise_exceptions=True)
+    except AssistantConnectionError:
+        seamless.delegate(level=2)
 
 paths = [path.rstrip(os.sep) for path in args.files_and_directories]
 directories = [path for path in paths if os.path.isdir(path)]
@@ -88,6 +110,7 @@ try:
         max_upload_files=max_upload_files,
         directories=directories,
         auto_confirm=args.auto_confirm,
+        destination_folder = args.dest,
     )
 except SeamlessSystemExit as exc:
     err(*exc.args)
