@@ -54,10 +54,10 @@ Note that __env__ must be specified as a checksum, the buffer of which must be a
 )
 
 parser.add_argument(
-    "--global_info",
+    "--global_info", "--global-info",
     help="""Global info file.
 Contains information about the hardware and system, as generated
-by seamless.core.transformation.get_global_info.
+by seamless.core.transformation.get_global_info or seamless-get-global-info.
 Providing this information saves 5-10 seconds."""
 )
 
@@ -118,7 +118,8 @@ buffer_cache.LIFETIME_TEMP = 600.0
 buffer_cache.LIFETIME_TEMP_SMALL = 1200.0
 
 from seamless.core.transformation import get_global_info, execution_metadata0
-get_global_info(global_info)
+if global_info is not None:
+    get_global_info(global_info)
 execution_metadata0["Executor"] = "run-transformation"
 
 if not args.delegate:
