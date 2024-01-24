@@ -32,6 +32,11 @@ services:
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
       volumes:
+        - ${READ_BUFFER_FOLDER_1:-/dummy1}:${READ_BUFFER_FOLDER_1:-/dummy1}:ro
+        - ${READ_BUFFER_FOLDER_2:-/dummy2}:${READ_BUFFER_FOLDER_2:-/dummy2}:ro
+        - ${READ_BUFFER_FOLDER_3:-/dummy3}:${READ_BUFFER_FOLDER_3:-/dummy3}:ro
+        - ${READ_BUFFER_FOLDER_4:-/dummy4}:${READ_BUFFER_FOLDER_4:-/dummy4}:ro
+        - ${READ_BUFFER_FOLDER_5:-/dummy5}:${READ_BUFFER_FOLDER_5:-/dummy5}:ro
         - ${SEAMLESSDIR:?}:/seamless
         - ${SEAMLESS_TOOLS_DIR:?}/tools:/home/jovyan/seamless-tools
         - ${SEAMLESS_TOOLS_DIR:?}/scripts:/home/jovyan/seamless-scripts
@@ -52,6 +57,7 @@ services:
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
         - DOCKER_IMAGE=seamless-devel
         - DOCKER_VERSION=${DOCKER_VERSION:-""}
+        - SEAMLESS_READ_BUFFER_FOLDERS=${READ_BUFFER_FOLDER_1};${READ_BUFFER_FOLDER_2};${READ_BUFFER_FOLDER_3};${READ_BUFFER_FOLDER_4};${READ_BUFFER_FOLDER_5}
   micro-assistant:
       build:
         context: ../../scripts
@@ -76,6 +82,11 @@ services:
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
       volumes:
+        - ${READ_BUFFER_FOLDER_1:-/dummy1}:${READ_BUFFER_FOLDER_1:-/dummy1}:ro
+        - ${READ_BUFFER_FOLDER_2:-/dummy2}:${READ_BUFFER_FOLDER_2:-/dummy2}:ro
+        - ${READ_BUFFER_FOLDER_3:-/dummy3}:${READ_BUFFER_FOLDER_3:-/dummy3}:ro
+        - ${READ_BUFFER_FOLDER_4:-/dummy4}:${READ_BUFFER_FOLDER_4:-/dummy4}:ro
+        - ${READ_BUFFER_FOLDER_5:-/dummy5}:${READ_BUFFER_FOLDER_5:-/dummy5}:ro
         - ${SEAMLESSDIR:?}:/seamless
         - ${SEAMLESS_TOOLS_DIR:?}/tools:/home/jovyan/seamless-tools
         - ${SEAMLESS_TOOLS_DIR:?}/scripts:/home/jovyan/seamless-scripts
@@ -97,6 +108,7 @@ services:
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
         - DOCKER_IMAGE=seamless-devel
         - DOCKER_VERSION=${DOCKER_VERSION:-""}
+        - SEAMLESS_READ_BUFFER_FOLDERS=${READ_BUFFER_FOLDER_1};${READ_BUFFER_FOLDER_2};${READ_BUFFER_FOLDER_3};${READ_BUFFER_FOLDER_4};${READ_BUFFER_FOLDER_5}
   mini-assistant:
       group_add:
       - users
