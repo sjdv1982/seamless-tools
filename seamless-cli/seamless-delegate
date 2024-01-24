@@ -45,6 +45,13 @@ if [[ $assistant == none ]] ; then
   assistant=''
 fi
 set -u
+
+export READ_BUFFER_FOLDER_1=$(python -c 'import os, sys; inp=sys.argv[1].split(";"); print(os.path.abspath(inp[0]) if len(inp) > 0 else "")' $SEAMLESS_READ_BUFFER_FOLDERS)
+export READ_BUFFER_FOLDER_2=$(python -c 'import os, sys; inp=sys.argv[1].split(";"); print(os.path.abspath(inp[1]) if len(inp) > 1 else "")' $SEAMLESS_READ_BUFFER_FOLDERS)
+export READ_BUFFER_FOLDER_3=$(python -c 'import os, sys; inp=sys.argv[1].split(";"); print(os.path.abspath(inp[2]) if len(inp) > 2 else "")' $SEAMLESS_READ_BUFFER_FOLDERS)
+export READ_BUFFER_FOLDER_4=$(python -c 'import os, sys; inp=sys.argv[1].split(";"); print(os.path.abspath(inp[3]) if len(inp) > 3 else "")' $SEAMLESS_READ_BUFFER_FOLDERS)
+export READ_BUFFER_FOLDER_5=$(python -c 'import os, sys; inp=sys.argv[1].split(";"); print(os.path.abspath(inp[4]) if len(inp) > 4 else "")' $SEAMLESS_READ_BUFFER_FOLDERS)
+
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 cd $currdir
 set +u -e
@@ -85,7 +92,4 @@ export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERV
 export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
 
 cd delegate
-docker compose up database hashserver $assistant -d  --build
-if [[ $assistant != '' ]] ; then
-    sleep 5
-fi    
+docker compose up database hashserver $assistant -d  --build --wait
