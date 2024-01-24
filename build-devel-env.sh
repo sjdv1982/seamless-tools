@@ -44,12 +44,11 @@ mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython scipy 
 mamba install -n $environment_name -c conda-forge commentjson -y
 mamba install -n $environment_name -c conda-forge black mypy types-requests sphinx recommonmark -y
 mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-delegated-development.yaml
-pip install docker
 for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
 conda activate $environment_name
-pip install sphinx_rtd_theme
+pip install docker sphinx_rtd_theme
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
   SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR \

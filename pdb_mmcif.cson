@@ -85,7 +85,7 @@
             #   requires directory cross_device to be False 
             #
             # NOTE: this requires discipline!!! See above about not modifying in-place. 
-            # If the external file is modified in-place, but database-run-actions is not re-run, 
+            # If the external file is modified in-place, but fairdir-build is not re-run, 
             #  then buffers/<checksum> points to a file with the wrong checksum!!!
             "hardlink": true
 
