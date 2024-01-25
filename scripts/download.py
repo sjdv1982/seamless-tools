@@ -55,6 +55,13 @@ SEAMLESS_MAX_DOWNLOAD_FILES, SEAMLESS_MAX_DOWNLOAD_SIZE.""",
     const="no",
 )
 
+parser.add_argument(
+    "-c",
+    "--checksums",
+    dest="checksums",
+    help='Interpret arguments as checksums, rather than as files containing checksums',
+    action="store_true"
+)
 parser.add_argument("files_and_directories", nargs=argparse.REMAINDER)
 
 args = parser.parse_args()
@@ -74,84 +81,89 @@ except AssistantConnectionError:
 to_download = {}
 directories = []
 files = []
-paths = [path.rstrip(os.sep) for path in args.files_and_directories]
 index_checksums = {}
-for path in paths:
-    if not path.endswith(".INDEX"):
-        if path.endswith(".CHECKSUM"):
-            path2 = os.path.splitext(path)[0] + ".INDEX"
-        else:
-            path2 = path + ".INDEX"
-        if os.path.exists(path2):
-            path = path2
-    if path.endswith(".INDEX"):
-        dirname = os.path.splitext(path)[0]
-        directories.append(dirname)
-        if not os.path.exists(path):
-            msg(0, f"Cannot read index file '{path}'")
-            continue
-        with open(path) as f:
-            data = f.read()
-        data = strip_textdata(data)
-        index_buffer = data.encode() + b'\n'
-        if not index_buffer.strip(b'\n'):
-            checksum_file = os.path.splitext(path)[0] + ".CHECKSUM"
-            if not os.path.exists(checksum_file):
-                err(f"Index file '{path}' is empty, {checksum_file} does not exist")
-            index_checksum = read_checksum_file(checksum_file)
-            if index_checksum is None:
-                err(
-                    f"Index file '{path}' is empty, {checksum_file} does not contain a checksum"
-                )
-            index_checksum = Checksum(index_checksum)
-            msg(1, f"Index file '{path}' is empty, downloading from checksum")
-            index_buffer = buffer_cache.get_buffer(index_checksum.bytes())
-            if index_buffer is None:
-                err(
-                    f"Index file '{path}' is empty, cannot download checksum in {checksum_file}, CacheMissError"
-                )
+if args.checksums:
+    for cs in args.files_and_directories:
+        checksum = Checksum(cs).hex()     
+        to_download[checksum] = checksum
+        files.append(checksum)
+else:
+    paths = [path.rstrip(os.sep) for path in args.files_and_directories]
+    for path in paths:
+        if not path.endswith(".INDEX"):
+            if path.endswith(".CHECKSUM"):
+                path2 = os.path.splitext(path)[0] + ".INDEX"
             else:
-                err_msg = f"Index file '{path}' is empty, but {checksum_file} does not contain the checksum of a valid directory index"
-        else:
-            index_checksum = Checksum(calculate_checksum(index_buffer))
-            err_msg = f"File '{path}' is not a valid index file"
+                path2 = path + ".INDEX"
+            if os.path.exists(path2):
+                path = path2
+        if path.endswith(".INDEX"):
+            dirname = os.path.splitext(path)[0]
+            directories.append(dirname)
+            if not os.path.exists(path):
+                msg(0, f"Cannot read index file '{path}'")
+                continue
+            with open(path) as f:
+                data = f.read()
+            data = strip_textdata(data)
+            index_buffer = data.encode() + b'\n'
+            if not index_buffer.strip(b'\n'):
+                checksum_file = os.path.splitext(path)[0] + ".CHECKSUM"
+                if not os.path.exists(checksum_file):
+                    err(f"Index file '{path}' is empty, {checksum_file} does not exist")
+                index_checksum = read_checksum_file(checksum_file)
+                if index_checksum is None:
+                    err(
+                        f"Index file '{path}' is empty, {checksum_file} does not contain a checksum"
+                    )
+                index_checksum = Checksum(index_checksum)
+                msg(1, f"Index file '{path}' is empty, downloading from checksum")
+                index_buffer = buffer_cache.get_buffer(index_checksum.bytes())
+                if index_buffer is None:
+                    err(
+                        f"Index file '{path}' is empty, cannot download checksum in {checksum_file}, CacheMissError"
+                    )
+                else:
+                    err_msg = f"Index file '{path}' is empty, but {checksum_file} does not contain the checksum of a valid directory index"
+            else:
+                index_checksum = Checksum(calculate_checksum(index_buffer))
+                err_msg = f"File '{path}' is not a valid index file"
 
-        has_err = False
-        try:
-            index_data = json.loads(index_buffer.decode())
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            has_err = True
-        if not has_err:
-            if not isinstance(index_data, dict):
+            has_err = False
+            try:
+                index_data = json.loads(index_buffer.decode())
+            except (json.JSONDecodeError, UnicodeDecodeError):
                 has_err = True
+            if not has_err:
+                if not isinstance(index_data, dict):
+                    has_err = True
+                else:
+                    for k, cs in index_data.items():
+                        try:
+                            cs2 = Checksum(cs)
+                            assert cs2.hex() is not None
+                        except Exception:
+                            has_err = True
+                            break
+            if has_err:
+                err(err_msg)
             else:
                 for k, cs in index_data.items():
-                    try:
-                        cs2 = Checksum(cs)
-                        assert cs2.hex() is not None
-                    except Exception:
-                        has_err = True
-                        break
-        if has_err:
-            err(err_msg)
-        else:
-            for k, cs in index_data.items():
-                kk = os.path.join(dirname, k)
-                to_download[kk] = cs
-        index_checksums[dirname] = index_checksum.hex()
-        continue
-    if path.endswith(".CHECKSUM"):
-        path = os.path.splitext(path)[0]
-    checksum_file = path + ".CHECKSUM"
-    checksum = read_checksum_file(checksum_file)
-    if checksum is None:
-        err(
-            f"File '{checksum_file}' does not contain a checksum"
-        )
-    checksum = Checksum(checksum)
-    to_download[path] = checksum.hex()
-    files.append(path)
-
+                    kk = os.path.join(dirname, k)
+                    to_download[kk] = cs
+            index_checksums[dirname] = index_checksum.hex()
+            continue
+        if path.endswith(".CHECKSUM"):
+            path = os.path.splitext(path)[0]
+        checksum_file = path + ".CHECKSUM"
+        checksum = read_checksum_file(checksum_file)
+        if checksum is None:
+            err(
+                f"File '{checksum_file}' does not contain a checksum"
+            )
+        checksum = Checksum(checksum)
+        to_download[path] = checksum.hex()
+        files.append(path)
 
 
 ################################################################
