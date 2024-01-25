@@ -192,6 +192,13 @@ if __name__ == "__main__":
 
     import seamless
 
+    from seamless.core.transformation import get_global_info, execution_metadata0
+    from seamless.core.cache.transformation_cache import transformation_cache
+    transformation_cache.stateless = True
+    
+    get_global_info()
+    execution_metadata0["Executor"] = "micro-assistant"
+
     seamless.delegate(level=3)
 
     if args.ncores is not None and args.ncores > 0:
@@ -220,13 +227,6 @@ if __name__ == "__main__":
 
     server = JobSlaveServer(args.host, args.port)
     server.start()
-
-    from seamless.core.transformation import get_global_info, execution_metadata0
-    from seamless.core.cache.transformation_cache import transformation_cache
-    transformation_cache.stateless = True
-    
-    get_global_info()
-    execution_metadata0["Executor"] = "micro-assistant"
 
     if not args.interactive:
         print("Press Ctrl+C to end")
