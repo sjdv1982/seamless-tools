@@ -283,8 +283,9 @@ Once the access index has been built, calculate its checksum and store it under
  $FAIRDIR/access_index/<access-index-checksum>
 """
 
+access_index = {}
+access_index_checksum = None
 if raw_access_index is not None:
-    access_index = {}
     
     latest_access_index_checksum = None
     if args.merge_access_index and latest_distribution is not None:
@@ -336,9 +337,10 @@ new_distribution = {
     "nkeys": distribution_nkeys,
     "index_size": deep_buffer_size,
     "content_size": content_size,
-    "keyorder": keyorder_checksum,
-    "access_index": access_index_checksum,
+    "keyorder": keyorder_checksum,    
 }
+if access_index_checksum is not None:
+    new_distribution["access_index"] = access_index_checksum
 
 for key in list(new_distribution.keys()):
     if not new_distribution[key]:
