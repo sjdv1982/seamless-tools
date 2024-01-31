@@ -176,4 +176,7 @@ print("Serving graph...")
 if not args.interactive:
     print("Press Ctrl+C to end")
     import asyncio
-    asyncio.get_event_loop().run_forever()
+    try:
+        asyncio.get_event_loop().run_forever()
+    except KeyboardInterrupt:
+        pass
