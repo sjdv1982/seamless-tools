@@ -14,8 +14,13 @@ docker_host_ip = sys.argv[2]
 for w in ("localhost", "127.0.0.1", "127.0.1.1"):
     url[1] = url[1].replace(w, docker_host_ip)
     url[2] = url[2].replace(w, docker_host_ip)
-print(urlunsplit(url)) 
-  ' $1 $2
+result = urlunsplit(url)
+for w in ("localhost", "127.0.0.1", "127.0.1.1"):
+    if result == w:
+        result = docker_host_ip
+        break
+print(result)        
+' $1 $2
   }
 export SEAMLESS_READ_BUFFER_SERVERS_MAPPED=$(mapping $SEAMLESS_READ_BUFFER_SERVERS $SEAMLESS_DOCKER_HOST_IP)
 export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERVER $SEAMLESS_DOCKER_HOST_IP)
@@ -25,6 +30,7 @@ set -u -e
 
 docker run --rm \
   $SEAMLESS_DOCKER_PUBLISH_SHARESERVER_PORTS \
+  $SEAMLESS_DOCKER_PUBLISH_DEBUG_PORTS \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NAME \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL \
