@@ -71,6 +71,22 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--buffer-server",
+    dest="buffer_servers",
+    help="Add an additional buffer read server",
+     action="append",
+    default=[],
+)
+
+parser.add_argument(
+    "--fair-server",
+    dest="fair_servers",
+    help="Add a FAIR server",
+     action="append",
+    default=[],
+)
+
+parser.add_argument(
     "--no-lru",
     dest="no_lru",
     help="Disable LRU caches for checksum-to-buffer, value-to-checksum, value-to-buffer, and buffer-to-value",
@@ -114,6 +130,12 @@ if delegation_error:
     exit(1)
 if args.status_graph or args.ncores:
     seamless.config.unblock_local()
+
+for buffer_server in args.buffer_servers:
+    seamless.config.add_buffer_server(buffer_server)
+
+for fair_server in args.fair_servers:
+    seamless.fair.add_server(fair_server)
 
 if args.no_lru:
     from seamless.core.protocol.calculate_checksum import calculate_checksum_cache, checksum_cache
