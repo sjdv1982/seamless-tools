@@ -96,7 +96,7 @@ if args.dest:
     seamless.delegate(level=2)
 else:
     try:
-        seamless.delegate(reraise_exceptions=True)
+        seamless.delegate(raise_exceptions=True)
     except AssistantConnectionError:
         seamless.delegate(level=2)
 

@@ -6,6 +6,21 @@ currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.ar
 source $currdir/seamless-fill-environment-variables
 $currdir/seamless-detect-used-ports 5813 5138
 
+function mapping() {
+  python -c 'import sys
+from urllib.parse import urlsplit, urlunsplit
+url = list(urlsplit(sys.argv[1]))
+docker_host_ip = sys.argv[2]
+for w in ("localhost", "127.0.0.1", "127.0.1.1"):
+    url[1] = url[1].replace(w, docker_host_ip)
+    url[2] = url[2].replace(w, docker_host_ip)
+print(urlunsplit(url)) 
+  ' $1 $2
+  }
+export SEAMLESS_READ_BUFFER_SERVERS_MAPPED=$(mapping $SEAMLESS_READ_BUFFER_SERVERS $SEAMLESS_DOCKER_HOST_IP)
+export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERVER $SEAMLESS_DOCKER_HOST_IP)
+export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
+  
 set -u -e
 
 docker run --rm \
@@ -18,11 +33,10 @@ docker run --rm \
   -e DOCKER_VERSION="$SEAMLESS_DOCKER_VERSION" \
   -e HOSTCWD=`pwd` \
   -e SHARESERVER_ADDRESS=$SEAMLESS_SHARESERVER_ADDRESS \
-  -e SEAMLESS_READ_BUFFER_FOLDERS=$SEAMLESS_READ_BUFFER_FOLDERS \
-  -e SEAMLESS_READ_BUFFER_SERVERS=$SEAMLESS_READ_BUFFER_SERVERS \
-  -e SEAMLESS_WRITE_BUFFER_SERVER=$SEAMLESS_WRITE_BUFFER_SERVER \
+  -e SEAMLESS_READ_BUFFER_SERVERS=$SEAMLESS_READ_BUFFER_SERVERS_MAPPED \
+  -e SEAMLESS_WRITE_BUFFER_SERVER=$SEAMLESS_WRITE_BUFFER_SERVER_MAPPED \
   -e SEAMLESS_DOCKER_HOST_IP=$SEAMLESS_DOCKER_HOST_IP \
-  -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
+  -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP_MAPPED \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
   -e SEAMLESS_ASSISTANT_IP=$SEAMLESS_ASSISTANT_IP \
   -e SEAMLESS_ASSISTANT_PORT=$SEAMLESS_ASSISTANT_PORT \

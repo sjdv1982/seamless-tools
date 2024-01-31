@@ -5,44 +5,19 @@ parser.add_argument(
     help="Seamless graph file to serve",
     type=argparse.FileType('r')
 )
-parser.add_argument(
-    "zipfile",
-    help="""Zip file that contains the buffers of the graph checksum.
-If not provided, the buffers must be read from the database or a communion peer""",
-    nargs='?',
-    type=argparse.FileType('rb')
-)
-parser.add_argument(
-    "--database",
-    help="""Connect to a Seamless database server.
-The environmental variables SEAMLESS_DATABASE_IP 
-and SEAMLESS_DATABASE_PORT must have been defined.
-""",
-    action="store_true"
-)
 
 parser.add_argument(
     "--delegate",
-    help="""Delegate all computation and data storage to remote servers.
-Disable all local transformations. Connect to an assistant and get configuration.""",
-    action="store_true"
+    help="""Delegate all computation and buffer storage to remote servers/folders.
+These servers/folders are read from environment variables.    
+Optionally, a delegation level can be provided (default: 4)
+See the documentation of seamless.delegate(...) for more details.""",
+    nargs="?",
+    type=int,
+    default=0,
+    const=4
 )
 
-raise NotImplementedError
-parser.add_argument(
-    "--communion",
-    help="""Connect to a Seamless communion peer, e.g. jobless or a jobslave.
-The environmental variables SEAMLESS_COMMUNION_IP 
-and SEAMLESS_COMMUNION_PORT must have been defined.
-Alternatively, a list of comma-separated communion server URLs 
-can be defined using SEAMLESS_COMMUNION_INCOMING.
-
-Note that serve-graph does not provide any buffers to communion peers.
-Communion peers must therefore connect to a database or to another peer.
-""",
-    action="store_true"
-)
-parser.add_argument("--communion_id",type=str,default="serve_graph", help="Name of this peer in the communion")
 parser.add_argument(
     "--interactive",
     help="Do not enter a mainloop. Assumes that the script was opened with an interactive shell (e.g. ipython -i)",
@@ -56,14 +31,26 @@ parser.add_argument(
 
 parser.add_argument(
     "--status-graph",
-    help="Bind a graph that reports the status of the main graph",
-    type=argparse.FileType('r')
+    help="""Bind a graph that reports the status of the main graph. 
+Optionally, provide a .seamless file, else the default status visualization graph is used.""",
+    nargs="?",
+    const="/seamless-graphs/status-visualization.seamless"
 )
 
 parser.add_argument(
-    "--add-zip",
-    help="Specify additional zip files to be added",
-    type=argparse.FileType('rb'),
+    "--load-zip",
+    help="Specify additional zip files to be loaded as buffer sources",
+    dest="zips",
+    nargs="*",
+    action="append",
+    default=[],
+)
+
+parser.add_argument(
+    "--load-vault",
+    help="Specify additional vault folders to be loaded as buffer sources",
+    dest="vaults",
+    nargs="*",
     action="append",
     default=[],
 )
@@ -91,14 +78,24 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-if args.delegate:
-    args.communion = False
-    args.database = False
-    args.ncores = 0
+zips = []
+for zipl in args.zips:
+    for zipf in zipl:
+        zips.append(zipf)
+
+if args.status_graph == "/seamless-graphs/status-visualization.seamless":
+    zipf = "/seamless-graphs/status-visualization.zip"
+    if zipf not in zips:
+        zips.append(zipf)
 
 
-if args.zipfile is None and not args.database and not args.delegate: 
-    print("If no zipfile is specified, --database or --delegate must be enabled", file=sys.stderr)
+vaults = []
+for vaultl in args.vaults:
+    for vault in vaultl:
+        vaults.append(vault)
+
+if not args.delegate and not zips and not vaults:
+    print("No buffer sources have been defined. Consider adding --delegate", file=sys.stderr)
     sys.exit(1)
 
 if args.debug:
@@ -110,9 +107,13 @@ if args.debug:
 
 env = os.environ
 
-env["SEAMLESS_COMMUNION_ID"] = args.communion_id
-
 import seamless
+
+delegation_error = seamless.delegate(args.delegate)
+if delegation_error:
+    exit(1)
+if args.status_graph or args.ncores:
+    seamless.config.unblock_local()
 
 if args.no_lru:
     from seamless.core.protocol.calculate_checksum import calculate_checksum_cache, checksum_cache
@@ -124,29 +125,8 @@ if args.no_lru:
     serialize_cache.disable()
 
 import seamless.shareserver
-from seamless import communion_server
 
-if args.communion or args.delegate:
-    pass
-    """
-    # will not work until load_graph will be much smarter
-    if args.database:
-        communion_server.configure_servant({
-            "buffer": False,
-            "buffer_status": False,
-            "buffer_info": False,
-            "transformation_job": False,
-            "transformation_status": False,
-            "semantic_to_syntactic": False,
-            "hard_cancel": False,  # allow others to hard cancel our jobs
-            "clear_exception": False, # allow others to clear exceptions on our jobs
-        })
-    """
-
-if args.communion:
-    communion_server.start()
-
-if args.ncores is not None and not args.delegate:
+if args.ncores is not None:
     seamless.set_ncores(args.ncores)
 
 if not args.no_shares:
@@ -159,37 +139,27 @@ if not args.no_shares:
 
 import seamless.highlevel.stdlib
 
-raise NotImplementedError
-if args.database:
-    seamless.database_sink.connect()
-    seamless.database_cache.connect()
-
-if args.delegate:
-    seamless.delegate()    
-
 from seamless.highlevel import load_graph, Context
 graph = json.load(args.graph)
-if (args.communion or args.delegate) and args.ncores is not None and int(args.ncores) == 0:
+if args.delegate == 4:
     for node in graph.get("nodes", []):
         if node.get("type") == "transformer":
             meta = node.get("meta")
             if meta is not None:
                 meta.pop("local", None)
-if args.zipfile is None and not args.add_zip:
-    ctx = load_graph(graph, mounts=args.mounts, shares=(not args.no_shares))
-else:
-    ctx = Context()
-    if args.zipfile is not None:
-        ctx.add_zip(args.zipfile)
-    for zipf in args.add_zip:
-        ctx.add_zip(zipf)
-    ctx.set_graph(graph, mounts=args.mounts, shares=(not args.no_shares))
+ctx = Context()
+for zipf in zips:
+    ctx.add_zip(zipf)
+for vault in vaults:
+    ctx.load_vault(vault)
+ctx.set_graph(graph, mounts=args.mounts, shares=(not args.no_shares))
 ctx.translate()
 
 if args.status_graph:
     from seamless.metalevel.bind_status_graph import bind_status_graph
-    status_graph = json.load(args.status_graph)
-    if (args.communion or args.delegate) and (args.ncores is None or int(args.ncores)):
+    with open(args.status_graph) as f:
+        status_graph = json.load(f)
+    if args.delegate and (args.ncores is None or int(args.ncores)):
         for node in status_graph.get("nodes", []):
             if node.get("type") == "transformer":
                 meta = node.get("meta", {})
@@ -199,7 +169,7 @@ if args.status_graph:
         ctx, status_graph,
         mounts=False,
         shares=True,
-        zips=args.add_zip,
+        zips=zips,
     )
 
 print("Serving graph...")
