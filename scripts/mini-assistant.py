@@ -298,7 +298,8 @@ async def launch_job(data):
         coro = anyio.to_thread.run_sync(run_job, data)
         job = asyncio.create_task(coro)
         _jobs[checksum] = job, data
-    
+        print("job ", checksum)
+        
     remove_job = True
     try:
         return await asyncio.wait_for(asyncio.shield(job), timeout=10.0)

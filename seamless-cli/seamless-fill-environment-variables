@@ -17,6 +17,33 @@ print(bridge[0]["IPAM"]["Config"][0]["Gateway"])
 
 fi
 
+function mapping() {
+python -c 'import sys
+from urllib.parse import urlsplit, urlunsplit
+url = list(urlsplit(sys.argv[1]))
+docker_host_ip = sys.argv[2]
+for w in ("localhost", "127.0.0.1", "127.0.1.1"):
+    url[1] = url[1].replace(w, docker_host_ip)
+    url[2] = url[2].replace(w, docker_host_ip)
+print(urlunsplit(url)) 
+' $1 $2
+}
+
+if [ -n "$SEAMLESS_CONDA_ENVIRONMENT" ]; then
+  if [ -n "$SEAMLESS_DOCKER_HOST_IP" ]; then
+    unset SEAMLESS_READ_BUFFER_FOLDERS
+    if [ -n "$SEAMLESS_READ_BUFFER_SERVERS" ]; then
+      export SEAMLESS_READ_BUFFER_SERVERS=$(mapping $SEAMLESS_READ_BUFFER_SERVERS $SEAMLESS_DOCKER_HOST_IP)
+    fi
+    if [ -n "$SEAMLESS_WRITE_BUFFER_SERVER" ]; then
+      export SEAMLESS_WRITE_BUFFER_SERVER=$(mapping $SEAMLESS_WRITE_BUFFER_SERVER $SEAMLESS_DOCKER_HOST_IP)
+    fi
+    if [ -n "$SEAMLESS_DATABASE_IP" ]; then 
+      export SEAMLESS_DATABASE_IP=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
+    fi
+  fi
+fi
+
 if [ -z "$SEAMLESS_DEBUGGING_DIRECTORY" ]; then 
   export SEAMLESS_DEBUGGING_DIRECTORY=/tmp/seamless-debug
   mkdir -p ${SEAMLESS_DEBUGGING_DIRECTORY}
