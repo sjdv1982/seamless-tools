@@ -26,7 +26,8 @@ dependencies:
       # recommended (parts of Seamless won't work)
       - makefun
       # extra
-      - ipython
+      - jupyterlab
+      - ipython<=8.16.*
 variables:
   # PYTHONPATH: ${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH}
   # PATH: ${SEAMLESS_TOOLS_DIR}/seamless-cli:$SEAMLESSDIR/bin:${PATH}
