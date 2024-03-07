@@ -49,6 +49,7 @@ for i in $(seq ${CONDA_SHLVL}); do
 done
 conda activate $environment_name
 pip install docker sphinx_rtd_theme
+pip install aiofiles  # to run fairserver tests
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
   SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR \
