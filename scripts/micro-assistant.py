@@ -196,7 +196,7 @@ if __name__ == "__main__":
     from seamless.core.cache.transformation_cache import transformation_cache
     transformation_cache.stateless = True
     
-    get_global_info()
+    get_global_info(force=True)
     execution_metadata0["Executor"] = "micro-assistant"
 
     seamless.delegate(level=3)

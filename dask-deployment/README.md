@@ -22,7 +22,6 @@ $DATABASE_DIR and $HASHSERVER_BUFFER_DIR.
 
 ## Local method
 
-- Start `seamless-delegate none` . This will start up the database and hashserver
 - Activate the Seamless Dask conda environment
 - `source seamless-fill-environment-variables`, then launch local.py and keep it alive. Note the Dask scheduler address. You can get the same address every time
 by adding `--port XXXX`.
