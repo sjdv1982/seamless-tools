@@ -57,9 +57,11 @@ print(urlunsplit(url))
 export SEAMLESS_READ_BUFFER_SERVERS_MAPPED=$(mapping $SEAMLESS_READ_BUFFER_SERVERS $SEAMLESS_DOCKER_HOST_IP)
 export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERVER $SEAMLESS_DOCKER_HOST_IP)
 export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
+export READ_BUFFER_FOLDER_1=''
+export READ_BUFFER_FOLDER_2=''
+export READ_BUFFER_FOLDER_3=''
+export READ_BUFFER_FOLDER_4=''
+export READ_BUFFER_FOLDER_5=''
 
 cd delegate
-docker compose up $assistant --build -d
-if [[ $assistant != '' ]] ; then
-    sleep 5
-fi    
+docker compose up $assistant --build -d --wait
