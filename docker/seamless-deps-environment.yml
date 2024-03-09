@@ -32,6 +32,7 @@ dependencies:
   - orjson=3.8.*
   - requests=2.28.*
   - aiohttp=3.7.*
+  - bashlex=0.18.*
   - datrie  # required to build some pip packages
 
   # new packages: recommended (parts of Seamless won't work)
@@ -66,7 +67,7 @@ dependencies:
     - snakemake==7.18.*
     - jupyter-console==6.6.*
     - itables==1.4.*
-    
+    # - jsonschema==4.17.*  # for silk; repeat in Dockerfile
 
 variables:
     RPY2_CFFI_MODE: ABI

@@ -1,7 +1,7 @@
 FROM rpbs/seamless-deps
 LABEL author="Sjoerd de Vries <sjoerd.devries@loria.fr>"
 USER root
-RUN apt install less gcc g++ gfortran -y && conda install black mypy types-requests sphinx recommonmark -y && pip install sphinx_rtd_theme 
+RUN apt update && apt install less gcc g++ gfortran -y && mamba install black mypy types-requests sphinx recommonmark -y && pip install sphinx_rtd_theme 
 COPY . /usr/local/src/seamless-tools
 RUN rm -rf /usr/local/src/seamless-tools/.git && \
     mkdir /home/jovyan/software && \
@@ -13,8 +13,11 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
     cp -Lr /usr/local/src/seamless-tools/seamless-cli /home/jovyan/seamless-cli
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
 RUN ln -s /seamless/seamless/graphs /seamless-graphs
-USER jovyan
 RUN mamba install -c rpbs silk -y
-RUN echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc && echo 'alias conda=mamba' >> /home/jovyan/.bashrc && echo 'export PATH=~/seamless-cli:$PATH' >> /home/jovyan/.bashrc
+USER jovyan
+RUN echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc \
+    && echo 'alias conda=mamba' >> /home/jovyan/.bashrc \
+    && echo 'export PATH=~/seamless-cli:$PATH' >> /home/jovyan/.bashrc \
+    && echo 'export PATH=~/seamless-bin:$PATH' >> /home/jovyan/.bashrc
 ENV PYTHONPATH /home/jovyan/software:$PYTHONPATH
 ENV XDG_CONFIG_HOME=/seamless

@@ -31,6 +31,8 @@ Jobless is an experimental workload manager for Seamless.
 
 ## Configuring Jobless
 
+OUTDATED!
+
 Jobless configuration needs to be done in a .yaml file.
 
 There are several documented example configuration files in `jobless/config/*.yaml`. These configure *jobhandlers* for various kinds of transformations.
