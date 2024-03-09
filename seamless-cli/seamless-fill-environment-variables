@@ -115,7 +115,7 @@ if [ "$SEAMLESS_DOCKER_IMAGE" == seamless-devel ]; then
   if [ -z "$SEAMLESS_TOOLS_DIR" ]; then
       echo 'SEAMLESS_TOOLS_DIR undefined, using Docker-installed version' > /dev/stderr
   else
-    export SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL=$SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL" -v $SEAMLESS_TOOLS_DIR/tools:/home/jovyan/seamless-tools  -v $SEAMLESS_TOOLS_DIR/scripts:/home/jovyan/seamless-scripts -v $SEAMLESS_TOOLS_DIR/seamless-cli:/home/jovyan/seamless-cli"
+    export SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL=$SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL" -v $SEAMLESS_TOOLS_DIR/tools:/home/jovyan/seamless-tools  -v $SEAMLESS_TOOLS_DIR/scripts:/home/jovyan/seamless-scripts -v $SEAMLESS_TOOLS_DIR/seamless-cli:/home/jovyan/seamless-cli -v $SEAMLESSDIR/bin:/home/jovyan/seamless-bin"
   fi
 fi
 
