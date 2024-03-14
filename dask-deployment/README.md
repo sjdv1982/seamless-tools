@@ -26,7 +26,6 @@ $DATABASE_DIR and $HASHSERVER_BUFFER_DIR.
 - `source seamless-fill-environment-variables`, then launch local.py and keep it alive. Note the Dask scheduler address. You can get the same address every time
 by adding `--port XXXX`.
 - In a different terminal, do `export DASK_SCHEDULER_ADDRESS=...`  and then `seamless-delegate X-dask-assistantY`, where X is "micro" or "mini" and Y can be empty or "-devel"
-- Start `seamless-bash` or import seamless directly from conda (with `source seamless-fill-environment-variables`) or use `/bin/seamless`.
 
 ## Remote method with direct connection
 
@@ -39,11 +38,9 @@ You must define a port range, and all ports within that range must be accessible
 - Variables will be printed out. Copy the variable section for direct connection.
 - In a new local terminal, paste the variable section.
 - In that terminal, start `seamless-delegate-remote mini-dask-assistant` (or `mini-dask-assistant-devel`)
-- In any local terminal, paste the variable section.
-  Then, start `seamless-bash`, or import seamless directly from conda, or use `/bin/seamless`.
 - Instead of `local.sh`, you can also use a script that dynamically launches jobs on an HPC cluster. There is currently `wrap-slurmcluster-micro.sh`, `wrap-slurmcluster-mini.sh`, `wrap-slurmcluster-minifront.sh`, wrapping `slurmcluster-micro.py`,  `slurmcluster-mini.py`
 and `slurmcluster-minifront.py` (there is also `slurmcluster-minifront-singularity.py`).
-
+- Finally, paste the variable section into the shell where you will be using Seamless.
 
 ## Remote method with SSH tunneling
 
@@ -60,8 +57,7 @@ Keep this script alive.
   You may need to change SEAMLESS_SSH_DATABASE_HOST/SEAMLESS_SSH_HASHSERVER_HOST
   if it is different from the entry in your `.ssh/config`.
 - In a new local terminal, paste the variable section.
-- In that terminal, start `seamless-delegate-ssh mini-dask-assistant` (or `mini-dask-assistant-devel`). Unlike the other `seamless-delegate*` scripts, the terminal will block while `seamless-delegate-ssh` is active.  
-- In another local terminal, start `seamless-bash`, or import seamless directly from conda, or use `/bin/seamless`. Pasting the variable section is not necessary.
+- In that terminal, start `seamless-delegate-ssh mini-dask-assistant` (or `mini-dask-assistant-devel`). Unlike the other `seamless-delegate*` scripts, the terminal will block hile `seamless-delegate-ssh` is active.  
 
 ## Slurm
 
@@ -87,9 +83,15 @@ Now comes the project-specific part:
 
 - You might want to clone and redefine `ENVIRONMENT_OUTPUT_FILE`, because the next Slurm command will modify the file.
 
+
 - Submit `seamless-dask-wrapper <wrap-script>` under `sbatch`. This will launch a Dask scheduler and workers inside the Seamless+Dask environment. For now, there are
 two wrap scripts: `wrap-local.sh` for deployment of workers on a single node (like the first three methods) and `wrap-slurmcluster-XXX.sh`. The latter uses SLURMCluster from the dask-jobqueue project in order to launch new Dask workers dynamically using Slurm. 
-It comes in two versions: `wrap-slurmcluster-micro.sh` which launches `slurmcluster-micro.py` for use with the dask-micro-assistant, and 
+`wrap-slurmcluster-XXX.sh` comes in three versions: 
+  - `wrap-slurmcluster-micro.sh` which launches `slurmcluster-micro.py` for use with the dask-micro-assistant. 
+  -`wrap-slurmcluster-mini.sh` which launches `slurmcluster-mini.py` for use with the dask-mini-assistant.
+  - `wrap-slurmcluster-minifront.sh`which launches `slurmcluster-minifront.py` for use with the dask-minifront-assistant. The minifront script launches a mini assistant in a parallel process and forwards all job requests to it, allowing a separation of the Dask process and the Seamless assistant process.
+  (For the truly paranoid, there is also `slurmcluster-minifront-singularity.py`, which wraps the mini assistant in a minimal (non-isolated) Singularity image. This in fact removes the mini assistant PID from direct Slurm control.)
+If you use `wrap-slurmcluster-XXX.sh`, you may want to copy and modify `slurmcluster-XXX.py` to control Dask resources (number of jobs, memory, etc.)
 
 Example: `sbatch --time 72:00:00 ~/seamless-tools/dask-deployment/seamless-dask-wrapper ~/seamless-tools/dask-deployment/wrap-slurmcluster-mini.sh`
 
