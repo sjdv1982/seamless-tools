@@ -22,6 +22,7 @@ docker run --rm \
   -e SEAMLESS_DOCKER_HOST_IP=$SEAMLESS_DOCKER_HOST_IP \
   -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
+  -e SEAMLESS_SCRIPTS_DIR=/home/jovyan/seamless-scripts \
   -v `pwd`:/cwd \
   --workdir /cwd \
   -u `id -u`:`id -g` \

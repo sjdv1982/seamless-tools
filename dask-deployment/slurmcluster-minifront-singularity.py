@@ -36,9 +36,13 @@ os.environ["RANDOM_PORT_END"]
 os.environ["CONDA_PREFIX"]
 os.environ["SEAMLESS_DASK_CONDA_ENVIRONMENT"]
 
-if "SEAMLESS_MINIMAL_SINGULARITY_IMAGE" not in os.environ:
-    # assume development environment
-    os.environ["SEAMLESS_MINIMAL_SINGULARITY_IMAGE"] = "docker://ubuntu:18.04"
+
+# Check that SEAMLESS_SCRIPTS_DIR is defined
+os.environ["SEAMLESS_SCRIPTS_DIR"]
+
+# Check that SINGULARITY_IMAGE is defined
+# Note that something simple such as "docker://ubuntu:18.04" should do
+os.environ["SINGULARITY_IMAGE"]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="0.0.0.0", required=False)
@@ -99,10 +103,10 @@ cluster = SLURMCluster(
         "module load singularity",
         "export SEAMLESS_TRANSFORMATION_SOCKET=$(mktemp -u)",
         "echo 'Open Seamless transformation socket:' $SEAMLESS_TRANSFORMATION_SOCKET",
-        """singularity run $SEAMLESS_MINIMAL_SINGULARITY_IMAGE bash -ci '''
+        """singularity run $SINGULARITY_IMAGE bash -ci '''
         source ~/.bashrc
         conda activate $SEAMLESS_DASK_CONDA_ENVIRONMENT
-        python $SEAMLESS_TOOLS_DIR/scripts/mini-assistant.py --socket $SEAMLESS_TRANSFORMATION_SOCKET
+        python $SEAMLESS_SCRIPTS_DIR/mini-assistant.py --socket $SEAMLESS_TRANSFORMATION_SOCKET
         ''' &""",
 
         "source {}/etc/profile.d/conda.sh".format(CONDA_PREFIX),        

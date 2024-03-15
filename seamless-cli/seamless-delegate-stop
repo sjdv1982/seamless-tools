@@ -5,6 +5,9 @@ source ./seamless-fill-environment-variables
 set -u -e
 export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
+export SEAMLESSDIR="/NONE"
+export SEAMLESS_TOOLS_DIR="/NONE"
+export SILKDIR="/NONE"
 export DOCKER_GROUP_ID="-1"
 export DASK_SCHEDULER_ADDRESS="-1"
 export SEAMLESS_DATABASE_IP_MAPPED='-1'

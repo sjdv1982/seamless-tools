@@ -60,11 +60,17 @@ cd $currdir
 set +u -e
 source ./seamless-fill-environment-variables
 
-if [ -z "$SEAMLESS_HASHSERVER_DIRECTORY" ]; then
-  export SEAMLESS_HASHSERVER_DIRECTORY=$SEAMLESS_CONFIG_DIRECTORY/buffers
+if [ -n "$SEAMLESS_CONFIG_DIRECTORY" ]; then
+    if [ -z "$SEAMLESS_HASHSERVER_DIRECTORY" ]; then
+        export SEAMLESS_HASHSERVER_DIRECTORY=$SEAMLESS_CONFIG_DIRECTORY/buffers
+    fi
+    if [ -z "$SEAMLESS_DATABASE_DIRECTORY" ]; then
+        export SEAMLESS_DATABASE_DIRECTORY=$SEAMLESS_CONFIG_DIRECTORY/database
+    fi
 fi
-if [ -z "$SEAMLESS_DATABASE_DIRECTORY" ]; then
-  export SEAMLESS_DATABASE_DIRECTORY=$SEAMLESS_CONFIG_DIRECTORY/database
+
+if [ -z "$DOCKER_GROUP_ID" ]; then
+    export DOCKER_GROUP_ID=$(getent group docker | cut -d: -f3)
 fi
 
 set -u -e
@@ -75,7 +81,7 @@ touch $SEAMLESS_DATABASE_DIRECTORY/seamless.db
 
 export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
-export DOCKER_GROUP_ID=$(getent group docker | cut -d: -f3)
+
 export DOCKER_VERSION=$(docker --version)
 ls hashserver/.git > /dev/null
 

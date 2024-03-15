@@ -2,6 +2,12 @@
 
 set -e
 
+args=""
+for var in "$@"
+do
+    args="$args \"$var\""
+done
+
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 source $currdir/seamless-fill-environment-variables
 
@@ -24,10 +30,13 @@ docker run --rm \
   -e SEAMLESS_ASSISTANT_IP=$SEAMLESS_ASSISTANT_IP \
   -e SEAMLESS_ASSISTANT_PORT=$SEAMLESS_ASSISTANT_PORT \
   -e SEAMLESS_ASSISTANT_ID=$SEAMLESS_ASSISTANT_ID \
+  -e SEAMLESS_SCRIPTS_DIR=/home/jovyan/seamless-scripts \
   -v `pwd`:/cwd \
   --workdir /cwd \
   -v /tmp:/tmp \
   -u `id -u` \
   --group-add users \
   $SEAMLESS_DOCKER_CUSTOM_PARAMS \
-  $SEAMLESS_DOCKER_IMAGE start.sh $*
+  $SEAMLESS_DOCKER_IMAGE bash -ic "$args"
+  #$SEAMLESS_DOCKER_IMAGE bash -ic "$1 $2 \"$3\" \"$4\""
+  #$SEAMLESS_DOCKER_IMAGE bash -ic "seamless -vvv -c \"echo 42 ; echo 88; ls; date\""

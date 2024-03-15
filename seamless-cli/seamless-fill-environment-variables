@@ -77,8 +77,10 @@ if [ -z "$SEAMLESS_READ_BUFFER_FOLDERS" ]; then
   export SEAMLESS_READ_BUFFER_FOLDERS=''
 fi
 
-if [ -z "$SEAMLESS_CONFIG_DIRECTORY" ]; then
-  export SEAMLESS_CONFIG_DIRECTORY=$HOME/.seamless
+if [ -z "$DOCKER_IMAGE" ]; then
+  if [ -z "$SEAMLESS_CONFIG_DIRECTORY" ]; then
+    export SEAMLESS_CONFIG_DIRECTORY=$HOME/.seamless
+  fi
 fi
 
 if [ -z "$SEAMLESS_HASHSERVER_PORT" ]; then
@@ -148,6 +150,8 @@ fi
 export HOST_USER_ID=`id -u`
 export HOST_GROUP_ID=`id -g`
 
+if [ -z "$_SEAMLESS_FILL_ENVIRONMENT_VARIABLES_NO_PRINTENV" ]; then
+
 printenv | sort | python3 -c '''
 import sys
 for l in sys.stdin.readlines():
@@ -157,3 +161,5 @@ for l in sys.stdin.readlines():
   if ll[0].find("SEAMLESS") > -1 and ll[0].find("__CONDA") == -1: 
     print(l,end="",file=sys.stderr)
 '''
+
+fi

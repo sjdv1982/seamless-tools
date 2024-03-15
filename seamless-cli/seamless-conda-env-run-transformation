@@ -24,6 +24,7 @@ docker run \
   -e SEAMLESS_DOCKER_HOST_IP=$SEAMLESS_DOCKER_HOST_IP \
   -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
+  -e SEAMLESS_SCRIPTS_DIR=/home/jovyan/seamless-scripts \
   -v $CONDA_ENV_DIR:/SEAMLESS-CONDA-ENV:ro \
   -e tf_checksum=$tf_checksum \
   rpbs/seamless-minimal \
