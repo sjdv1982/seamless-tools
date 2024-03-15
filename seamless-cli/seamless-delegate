@@ -33,7 +33,6 @@ if [ -z "$DASK_SCHEDULER_ADDRESS" ]; then
     if [[ $assistant == mini-dask-assistant* ]] ; then
         echo 'Undefined DASK_SCHEDULER_ADDRESS' > /dev/stderr
         echo 'If you wish to run a local Dask deployment:'
-        echo '- Run first "seamless-delegate none"'
         echo '- Launch a local Dask scheduler'
         echo '- Define DASK_SCHEDULER_ADDRESS'
         exit 1

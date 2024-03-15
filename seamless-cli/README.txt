@@ -9,7 +9,3 @@ Requirements:
   Notably, setting it to "seamless-devel" makes it mount an external Seamless source directory 
   (defined as $SEAMLESSDIR)
 - A few more dependencies. These are installed together with the commands in the seamless-cli conda package (channel rpbs)
-
-The seamless-conda-env-XXX commands instead use the rpbs/seamless-minimal Docker image.
-This image relies on an *external* conda environment, mounted into the Docker image.
-This allows the user to install conda packages and then run a transformation
