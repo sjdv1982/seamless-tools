@@ -1,4 +1,3 @@
-name: seamless-delegated-development
 channels:
   - rpbs
   - conda-forge
@@ -30,7 +29,7 @@ dependencies:
       - ipython<=8.16.*
 variables:
   # PYTHONPATH: ${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH}
-  # PATH: ${SEAMLESS_TOOLS_DIR}/seamless-cli:$SEAMLESSDIR/bin:${PATH}
+  # PATH: $SEAMLESSDIR/bin:${PATH}:${SEAMLESS_TOOLS_DIR}/seamless-cli
   SEAMLESS_CONDA_ENVIRONMENT: 1
   SEAMLESS_DEFAULT_ASSISTANT_IP: 127.0.0.1
   SEAMLESS_DEFAULT_ASSISTANT_PORT: 5533

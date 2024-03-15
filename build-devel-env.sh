@@ -43,7 +43,7 @@ mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-depen
 mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython scipy wurlitzer -y
 mamba install -n $environment_name -c conda-forge commentjson -y
 mamba install -n $environment_name -c conda-forge black mypy types-requests sphinx recommonmark -y
-mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-delegated-development.yaml
+mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-development-update.yaml
 for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
@@ -53,6 +53,7 @@ pip install aiofiles  # to run fairserver tests
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
   SEAMLESS_TOOLS_DIR=$SEAMLESS_TOOLS_DIR \
+  SEAMLESS_SCRIPTS_DIR=$SEAMLESS_TOOLS_DIR/scripts \
   SILKDIR=$SILKDIR \
   PATH=$SEAMLESSDIR/bin:${SEAMLESS_TOOLS_DIR}/seamless-cli:${PATH} \
   PYTHONPATH=${SILKDIR}:${SEAMLESSDIR}:${PYTHONPATH} \
