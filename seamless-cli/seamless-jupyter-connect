@@ -73,7 +73,7 @@ Then, run "seamless-jupyter-connect --container jolly_einstein"""
         exit(1)
     container = lines[1].decode().strip().split()[-1]
 if args.existing is None:
-    cmd2 = "~/seamless-scripts/jupyter-console-existing"
+    cmd2 = "~/seamless-scripts/utils/jupyter-console-existing"
 else:
     cmd2 = "jupyter console --existing {}".format(args.existing)
 cmd = "docker exec -it --user jovyan {} bash -c \"{}\""

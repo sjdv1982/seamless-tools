@@ -69,7 +69,7 @@ conda activate $environment_name
 echo 'python=3.10' > $CONDA_PREFIX/conda-meta/pinned
 mamba env update --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
 mamba install -c conda-forge gcc gxx gfortran cython scipy wurlitzer -y
-mamba env update --file $SEAMLESS_TOOLS_DIR/seamless-development-update.yaml
+mamba env update --file $SEAMLESS_TOOLS_DIR/seamless-development-update.yaml  # also sets SEAMLESS_XXX vars
 mamba install -c conda-forge dask peewee fastapi uvicorn dask-jobqueue cloudpickle=3 -y
 pip install jsonschema==4.17.* requests==2.28.*
 pip install docker

@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+
+import os
+import argparse
+import sys
+from hashlib import sha3_256
+import json
+
+def calculate_checksum(content):
+    if isinstance(content, str):
+        content = content.encode()
+    if not isinstance(content, bytes):
+        raise TypeError(type(content))
+    hash = sha3_256(content)
+    result = hash.digest().hex()
+    return result
+
+def parse_checksum(checksum):
+    """Parses checksum and returns it as string.
+
+    Snippet from the Seamless source code (fair use)"""
+    if isinstance(checksum, bytes):
+        checksum = checksum.hex()
+    if isinstance(checksum, str):
+        if len(checksum) % 2:
+            raise ValueError("Wrong length")
+        checksum = bytes.fromhex(checksum)
+
+    if isinstance(checksum, bytes):
+        if len(checksum) != 32:
+            raise ValueError("Wrong length")
+        return checksum.hex()
+
+    if checksum is None:
+        return
+    raise TypeError(type(checksum))
+
+def err(*args, **kwargs):
+    print("ERROR: " + args[0], *args[1:], **kwargs, file=sys.stderr)
+    exit(1)
+
+p = argparse.ArgumentParser(description="""Deploy the contents of a deepfolder into a directory.
+By default, the deployment dir will be subdirectory of the buffer dir: <buffer dir>/deployed/<checksum>.
+The files in the deployment dir are either soft-linked (default) or hard-linked to buffers in the buffer dir.""")
+
+p.add_argument("checksum", help="""Deepfolder checksum to deploy.
+The deepfolder buffer must be present in the buffer dir.""")
+p.add_argument("bufferdir", help="Buffer dir that must contain all buffers. Cannot be in vault format.")
+p.add_argument("--deep-bufferdir", help="Specify the source dir for the deepfolder buffer (if not bufferdir)")
+p.add_argument("--deployment-dir", help="Explicitly overrule the deployment dir")
+p.add_argument("--hardlink", help="In the deployment dir, Create hard links into buffer dir, rather than soft-links", action="store_true")
+
+
+args = p.parse_args()
+checksum = args.checksum
+bufferdir = args.bufferdir
+if not os.path.isdir(bufferdir):
+    err(f"'{bufferdir}' is not a directory")
+deep_bufferdir = args.deep_bufferdir
+if deep_bufferdir is None:
+    deep_bufferdir = bufferdir
+deployment_dir = args.deployment_dir
+if deployment_dir is None:
+    deployment_dir = os.path.join(bufferdir, "deployed", checksum)
+
+deepbuffer_file = os.path.join(deep_bufferdir, checksum)
+if not os.path.exists(deepbuffer_file):
+    err(f"File '{deepbuffer_file}' does not exist")
+with open(deepbuffer_file, "r") as f:
+    deepbuffer = f.read()
+if calculate_checksum(deepbuffer) != checksum:
+    err(f"File '{deepbuffer_file}' has the wrong checksum")
+deepcell = json.loads(deepbuffer)
+if not isinstance(deepcell, dict):
+    err(f"File '{deepbuffer_file}' is not a deep cell buffer")
+
+to_copy = []
+for item, checksum in deepcell.items():
+    if parse_checksum(checksum) != checksum:
+        err(f"File '{deepbuffer_file}' is not a deep cell buffer")
+    source_file = os.path.join(bufferdir, checksum)
+    if not os.path.exists(source_file):
+        err(f'Buffer dir does not contain checksum "{checksum}"')
+    target_file = os.path.join(deployment_dir, item)
+    to_copy.append((source_file, target_file))
+
+os.makedirs(deployment_dir, exist_ok=True)
+for source_file, target_file in to_copy:
+    target_dir = os.path.dirname(target_file)
+    if target_dir != deployment_dir:
+        os.makedirs(target_dir, exist_ok=True)
+    if args.hardlink:
+        os.link(source_file, target_file)
+    else:
+        os.symlink(os.path.abspath(source_file), target_file)

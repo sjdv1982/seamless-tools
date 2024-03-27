@@ -16,6 +16,4 @@ docker run --rm \
   --workdir /cwd \
   -u `id -u` \
   --group-add users \
-  -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
-  -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
-  $SEAMLESS_DOCKER_IMAGE start.sh python3 /home/jovyan/seamless-scripts/upload-vault.py $vault_dir $*
+  $SEAMLESS_DOCKER_IMAGE start.sh python3 /home/jovyan/seamless-scripts/utils/upload-vault.py $vault_dir $*

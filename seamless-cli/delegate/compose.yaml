@@ -26,7 +26,7 @@ services:
       - ${SEAMLESS_HASHSERVER_DIRECTORY:?}:/buffers
   micro-assistant-devel:
       build:
-        context: ../../scripts
+        context: ../assistants
         dockerfile: micro-assistant-devel.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
@@ -60,7 +60,7 @@ services:
         - SEAMLESS_READ_BUFFER_FOLDERS=${READ_BUFFER_FOLDER_1};${READ_BUFFER_FOLDER_2};${READ_BUFFER_FOLDER_3};${READ_BUFFER_FOLDER_4};${READ_BUFFER_FOLDER_5}
   micro-assistant:
       build:
-        context: ../../scripts
+        context: ../assistants
         dockerfile: micro-assistant.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
@@ -76,7 +76,7 @@ services:
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
   mini-assistant-devel:
       build:
-        context: ../../scripts
+        context: ../assistants
         dockerfile: mini-assistant-devel.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
@@ -115,7 +115,7 @@ services:
       group_add:
       - users
       build:
-        context: ../../scripts
+        context: ../assistants
         dockerfile: mini-assistant.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
@@ -131,7 +131,7 @@ services:
       group_add:
         - users
       build:
-        context: ../../scripts
+        context: ../assistants
         dockerfile: micro-dask-assistant-devel.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
@@ -155,7 +155,7 @@ services:
       group_add:
         - users
       build:
-        context: ../../scripts
+        context: ../assistants
         dockerfile: mini-dask-assistant-devel.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
@@ -179,7 +179,7 @@ services:
       group_add:
         - users
       build:
-        context: ../../scripts
+        context: ../assistants
         dockerfile: minifront-dask-assistant-devel.Dockerfile
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:

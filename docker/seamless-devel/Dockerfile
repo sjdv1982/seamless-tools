@@ -14,6 +14,7 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
 RUN ln -s /seamless/seamless/graphs /seamless-graphs
 RUN mamba install -c rpbs silk -y
+RUN groupadd docker -g 999
 USER jovyan
 RUN echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc \
     && echo 'alias conda=mamba' >> /home/jovyan/.bashrc \

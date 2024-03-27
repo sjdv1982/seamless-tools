@@ -4,11 +4,11 @@ if [ -z "$SEAMLESS_DOCKER_IMAGE" ]; then
   export SEAMLESS_DOCKER_IMAGE=rpbs/seamless
 fi
 
-docker --version && export SEAMLESS_DOCKER_VERSION=$(docker --version)
+(docker --version >& /dev/null) && export SEAMLESS_DOCKER_VERSION=$(docker --version)
 
 if [ -z "$SEAMLESS_DOCKER_HOST_IP" ]; then
 
-  docker --version && export SEAMLESS_DOCKER_HOST_IP=$(docker network inspect bridge \
+  (docker --version >& /dev/null) && export SEAMLESS_DOCKER_HOST_IP=$(docker network inspect bridge \
   | python3 -c '''
 import json, sys
 bridge = json.load(sys.stdin)
