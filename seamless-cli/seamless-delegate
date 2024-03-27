@@ -1,3 +1,9 @@
+if [ -n "$DOCKER_IMAGE" ]; then
+  echo 'DOCKER_IMAGE environment variable has been set.' >> /dev/stderr
+  echo 'Running from inside a Docker container is not supported.' >> /dev/stderr
+  exit 1
+fi
+
 set -e
 
 assistant=$1
