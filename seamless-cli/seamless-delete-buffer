@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import sys
+
+def err(msg):
+    print(msg, file=sys.stderr)
+    exit(1)
+
+def parse_checksum(checksum):
+    if os.path.exists(checksum):
+        with open(checksum) as f:
+            cs = f.read().strip().strip("\n").strip().strip("\n")
+        if len(cs) != 64:
+            err(f"File '{checksum}' does not contain a checksum, incorrect length")
+        try:
+            cs = bytes.fromhex(cs)
+        except Exception:
+            err(f"File '{checksum}' does not contain a checksum")
+        return cs.hex()
+    else:
+        checksum = checksum.strip()
+        if len(checksum) != 64:
+            err(f"Invalid checksum (incorrect length): {checksum}")
+        try:
+            cs = bytes.fromhex(checksum)
+        except Exception:
+            err(f"Invalid checksum: {checksum}")
+        return cs.hex()
+
+parser = argparse.ArgumentParser()
+parser.add_argument("bufferdir", help="Seamless buffer directory")
+parser.add_argument("checksums_and_or_checksum_files", nargs=argparse.REMAINDER)
+args = parser.parse_args()
+
+bufferdir = args.bufferdir
+if not os.path.isdir(bufferdir):
+    err(f"Not a buffer directory: '{bufferdir}'")
+
+checksums = []
+for checksum in args.checksums_and_or_checksum_files:
+    cs = parse_checksum(checksum)
+    checksums.append(cs)
+
+for checksum in checksums:
+    filename = os.path.join(bufferdir, checksum)
+    if os.path.exists(filename):
+        print(f"{checksum} : deleted", file=sys.stderr)
+        os.remove(filename)
+    else:
+        print(f"{checksum} : not found", file=sys.stderr)        
