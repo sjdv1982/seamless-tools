@@ -98,7 +98,9 @@ else:
     try:
         seamless.delegate(raise_exceptions=True)
     except AssistantConnectionError:
-        seamless.delegate(level=2)
+        has_err = seamless.delegate(level=2)
+        if has_err:
+            exit(1)
 
 paths = [path.rstrip(os.sep) for path in args.files_and_directories]
 directories = [path for path in paths if os.path.isdir(path)]
