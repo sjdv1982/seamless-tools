@@ -8,9 +8,8 @@ $currdir/seamless-detect-used-ports 5813 5138
 
 set -u -e
 
-containerID=$(docker run --rm -it -d \
+docker run --rm \
   $SEAMLESS_DOCKER_PUBLISH_SHARESERVER_PORTS \
-  $SEAMLESS_DOCKER_PUBLISH_DEBUG_PORTS \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NAME \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL \
@@ -23,7 +22,6 @@ containerID=$(docker run --rm -it -d \
   -e SEAMLESS_READ_BUFFER_SERVERS=$SEAMLESS_READ_BUFFER_SERVERS \
   -e SEAMLESS_WRITE_BUFFER_SERVER=$SEAMLESS_WRITE_BUFFER_SERVER \
   -e SEAMLESS_DOCKER_HOST_IP=$SEAMLESS_DOCKER_HOST_IP \
-  -e SEAMLESS_DEBUGGING_DIRECTORY=$SEAMLESS_DEBUGGING_DIRECTORY \
   -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
   -e SEAMLESS_ASSISTANT_IP=$SEAMLESS_ASSISTANT_IP \
@@ -36,7 +34,4 @@ containerID=$(docker run --rm -it -d \
   -u `id -u` \
   --group-add users \
   $SEAMLESS_DOCKER_CUSTOM_PARAMS \
-  $SEAMLESS_DOCKER_IMAGE start.sh ipython3 $*)
-
-echo $containerID | docker exec -i $containerID /bin/bash -c 'cat > /home/jovyan/DOCKER_CONTAINER'
-docker attach $containerID
+  $SEAMLESS_DOCKER_IMAGE start.sh $*

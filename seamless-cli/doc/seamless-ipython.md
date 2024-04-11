@@ -20,7 +20,10 @@ The current directory is mounted to /cwd, and IPython is executed there.
 
 /tmp is mounted as well
 
-Uses the host network for the Docker container. Will only work under Linux.
+**NOTE: The new container has access to the Docker daemon. This is a security risk. Use seamless-ipython-safe to avoid this.**
+
+**NOTE: The new container claims the default ports for the Seamless web server. Use seamless-ipython-no-webserver to avoid this.**
+
 
 Options
 -------
@@ -43,4 +46,4 @@ Sjoerd de Vries <sjdv1982@gmail.com>
 SEE ALSO
 ========
 
-**seamless(1)**, **seamless-bash(1)**, **seamless-jupyter(1)**
+**seamless-bash(1)**, **seamless-jupyter(1)**

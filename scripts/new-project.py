@@ -267,10 +267,10 @@ or:
   and in the Jupyter browser window,
   open /home/jovyan/cwd/{0}.ipynb
 
-If Seamless needs to execute Docker transformers:
-- Use seamless-load-project-trusted to start up IPython
+If Seamless does not need to execute Docker transformers:
+- Use seamless-load-project-safe to start up IPython
 or:
-- Use seamless-jupyter-trusted to start up Jupyter
+- Use seamless-jupyter-safe to start up Jupyter
   and in the Jupyter browser window,
   open /home/jovyan/cwd/{0}.ipynb
 """.format(project_name))

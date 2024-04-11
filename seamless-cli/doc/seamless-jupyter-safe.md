@@ -1,15 +1,15 @@
-% seamless-jupyter-trusted(1) Version 0.1 | seamless-cli Documentation
+% seamless-jupyter(1) Version 0.1 | seamless-cli Documentation
 
 NAME
 ====
 
-**seamless-jupyter-trusted** - Starts a Jupyter Notebook server in a new Seamless Docker container
+**seamless-jupyter-safe** - Starts a Jupyter Notebook server in a new Seamless Docker container
 
 SYNOPSIS
 ========
 
-| **seamless-jupyter-trusted** \[_Jupyter notebook server arguments_]
-| **seamless-jupyter-trusted** \[**-h**|**--help**]
+| **seamless-jupyter-safe** \[_Jupyter notebook server arguments_]
+| **seamless-jupyter-safe** \[**-h**|**--help**]
 
 DESCRIPTION
 ===========
@@ -20,10 +20,9 @@ The current directory is mounted to /cwd, and the Jupyter server is executed the
 
 /tmp is mounted as well
 
-Uses the host network for the Docker container. Will only work under Linux.
+**NOTE: The new container does not have access to the Docker daemon. Bash-docker transformers cannot be executed, and most seamless-cli commands will not work.**
 
-This variant gives Seamless access to the Docker daemon, so it can launch its own Docker containers via the Docker transformer. This works only under Linux.
-**NOTE: THIS IS A BIG SECURITY HOLE, IT CAN GIVE ROOT ACCESS TO YOUR SYSTEM**
+**NOTE: The new container claims the default ports for the Seamless web server, as well as port 8888 for Jupyter.**
 
 All Jupyter passwords are disabled.
 

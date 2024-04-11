@@ -4,22 +4,15 @@ set -e
 
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
 source $currdir/seamless-fill-environment-variables
-
-export JUPYTER_ENABLE_LAB=${JUPYTER_ENABLE_LAB}
-
-$currdir/seamless-detect-used-ports 5813 5138 $SEAMLESS_JUPYTER_PORT
+$currdir/seamless-detect-used-ports 5813 5138
 
 set -u -e
 
-containerID=$(docker run --rm -d \
+containerID=$(docker run --rm -it -d \
   $SEAMLESS_DOCKER_PUBLISH_SHARESERVER_PORTS \
-  $SEAMLESS_DOCKER_PUBLISH_DEBUG_PORTS \
-  $SEAMLESS_DOCKER_PUBLISH_JUPYTER_PORTS \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NAME \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_NETWORK \
   $SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL \
-  $SEAMLESS_DOCKER_RUN_PARAMS_X_TRUSTED \
-  -e JUPYTER_ENABLE_LAB=${JUPYTER_ENABLE_LAB} \
   -e DOCKER_IMAGE=$SEAMLESS_DOCKER_IMAGE \
   -e DOCKER_VERSION="$SEAMLESS_DOCKER_VERSION" \
   -e HOSTCWD=`pwd` \
@@ -28,25 +21,19 @@ containerID=$(docker run --rm -d \
   -e SEAMLESS_READ_BUFFER_SERVERS=$SEAMLESS_READ_BUFFER_SERVERS \
   -e SEAMLESS_WRITE_BUFFER_SERVER=$SEAMLESS_WRITE_BUFFER_SERVER \
   -e SEAMLESS_DOCKER_HOST_IP=$SEAMLESS_DOCKER_HOST_IP \
-  -e SEAMLESS_DEBUGGING_DIRECTORY=$SEAMLESS_DEBUGGING_DIRECTORY \
   -e SEAMLESS_DATABASE_IP=$SEAMLESS_DATABASE_IP \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
   -e SEAMLESS_ASSISTANT_IP=$SEAMLESS_ASSISTANT_IP \
   -e SEAMLESS_ASSISTANT_PORT=$SEAMLESS_ASSISTANT_PORT \
   -e SEAMLESS_ASSISTANT_ID=$SEAMLESS_ASSISTANT_ID \
   -e SEAMLESS_SCRIPTS_DIR=/home/jovyan/seamless-scripts \
-  --hostname localhost \
-  --workdir /home/jovyan \
-  -v `pwd`:/home/jovyan/cwd \
   -v `pwd`:/cwd \
+  --workdir /cwd \
   -v /tmp:/tmp \
   -u `id -u` \
   --group-add users \
   $SEAMLESS_DOCKER_CUSTOM_PARAMS \
-  $SEAMLESS_DOCKER_IMAGE start-notebook.sh \
-  --port $SEAMLESS_JUPYTER_PORT \
-  --NotebookApp.token='' --NotebookApp.password='' \
-  $*)
+  $SEAMLESS_DOCKER_IMAGE start.sh ipython3 $*)
 
 echo $containerID | docker exec -i $containerID /bin/bash -c 'cat > /home/jovyan/DOCKER_CONTAINER'
 docker attach $containerID
