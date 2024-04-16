@@ -7,9 +7,7 @@ def clear_database(db):
 
     con.execute("BEGIN")
     for table in con.execute("SELECT * FROM sqlite_schema WHERE type='table'"):
-        print("TABLE", table[1])
-
-        cmd=f"""DELETE FROM {table[1]}"""    
+        cmd=f"""DELETE FROM {table[1]}"""
         con.execute(cmd)
     con.commit()
 

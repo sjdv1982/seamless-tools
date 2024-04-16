@@ -11,9 +11,14 @@ args = parser.parse_args()
 import seamless
 from seamless.config import AssistantConnectionError
 try:
-    seamless.delegate()
+    seamless.delegate(raise_exceptions=True)
 except AssistantConnectionError:
-    seamless.delegate(level=2)
+    try:
+        seamless.delegate(level=3, raise_exceptions=True)
+    except Exception:
+        has_err = seamless.delegate(level=2)
+        if has_err:
+            exit(1)
 
 from seamless.core.cache.buffer_cache import buffer_cache
 from seamless.vault import load_vault, load_vault_flat

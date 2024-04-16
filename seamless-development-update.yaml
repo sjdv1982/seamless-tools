@@ -26,6 +26,7 @@ dependencies:
       - makefun
       # extra
       - jupyterlab
+      - jupyter-console
       - ipython<=8.16.*
 variables:
   SEAMLESS_CONDA_ENVIRONMENT: 1

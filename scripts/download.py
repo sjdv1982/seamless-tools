@@ -72,9 +72,11 @@ max_download_size = os.environ.get("SEAMLESS_MAX_DOWNLOAD_SIZE", "500 MB")
 max_download_size = human2bytes(max_download_size)
 
 try:
-    seamless.delegate()
+    seamless.delegate(raise_exceptions=True)
 except AssistantConnectionError:
-    seamless.delegate(level=1)
+    has_err = seamless.delegate(level=1)
+    if has_err:
+        exit(1)
 
 ################################################################
 
