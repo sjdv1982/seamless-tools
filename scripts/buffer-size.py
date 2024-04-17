@@ -22,13 +22,6 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "-c",
-    "--checksums",
-    dest="checksums",
-    help='Force interpretation of arguments as checksums, rather than as files containing checksums',
-    action="store_true"
-)
-parser.add_argument(
     "-H",
     "--human-readable",
     dest="human_readable",
@@ -48,34 +41,33 @@ except AssistantConnectionError:
 ################################################################
 
 checksum_list = []
-if args.checksums:
-    for cs in args.files_and_directories:
+checksum_mapping = {}
+paths = [path.rstrip(os.sep) for path in args.files_and_directories]
+paths2 = []
+for path in paths:     
+    if path.endswith(".CHECKSUM"):
+        checksum_file = path
+        path2 = os.path.splitext(path)[0]
+    else:            
+        checksum_file = path + ".CHECKSUM"
+        path2 = path
+    if os.path.exists(checksum_file) or path.endswith(".CHECKSUM"):
+        checksum = read_checksum_file(checksum_file)
+        if checksum is None:
+            err(
+                f"File '{checksum_file}' does not contain a checksum"
+            )
+        checksum = Checksum(checksum).hex()
+    else:
         try:
-            checksum = Checksum(cs).hex()
+            checksum = Checksum(path).hex()
         except ValueError:
-            err(f"{cs} is not a valid checksum")
-        checksum_list.append(checksum)
-else:
-    paths = [path.rstrip(os.sep) for path in args.files_and_directories]
-    for path in paths:        
-        if path.endswith(".CHECKSUM"):
-            checksum_file = path
-        else:
-            checksum_file = path + ".CHECKSUM"
-        if not args.checksums and (os.path.exists(checksum_file) or path.endswith(".CHECKSUM")):
-            checksum = read_checksum_file(checksum_file)
-            if checksum is None:
-                err(
-                    f"File '{checksum_file}' does not contain a checksum"
-                )
-            checksum = Checksum(checksum).hex()
-        else:
-            try:
-                checksum = Checksum(path).hex()
-            except ValueError:
-                err(f"{path} is not an existing file, nor a valid checksum")
-        checksum_list.append(checksum)
+            err(f"{path} is not an existing file, nor a valid checksum")
+    checksum_list.append(checksum)
+    paths2.append(path2)
+    checksum_mapping[path2] = checksum
 
+buffer_sizes = {}
 for checksum in checksum_list:
     buffer_size = ""
     buffer_info = database.get_buffer_info(checksum)
@@ -87,4 +79,9 @@ for checksum in checksum_list:
             else:
                 buffer_size = str(length)
             buffer_size = " " + buffer_size
-    print(f"{checksum}{buffer_size}")
+    buffer_sizes[checksum] = buffer_size
+
+for path2 in paths2:
+    checksum = checksum_mapping[path2]
+    buffer_size = buffer_sizes[checksum]
+    print(f"{path2} {checksum}{buffer_size}")

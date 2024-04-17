@@ -12,8 +12,6 @@ from seamless.cmd.file_load import files_to_checksums
 from seamless.cmd.bytes2human import bytes2human, human2bytes
 from seamless.cmd.exceptions import SeamlessSystemExit
 from seamless.highlevel import Checksum
-from seamless.core.protocol.json import json_dumps
-from seamless import calculate_checksum
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -93,7 +91,9 @@ if args.dest:
     os.environ.pop("SEAMLESS_WRITE_BUFFER_SERVER", None)
     os.environ.pop("SEAMLESS_WRITE_BUFFER_FOLDER", None)
     os.environ["SEAMLESS_READ_BUFFER_FOLDERS"] = args.dest
-    seamless.delegate(level=2)
+    has_err = seamless.delegate(level=2)
+    if has_err:
+        exit(1)
 else:
     try:
         seamless.delegate(raise_exceptions=True)
@@ -125,7 +125,10 @@ def write_checksum(filename, file_checksum):
     if file_checksum.value is None:
         return
     try:
-        with open(filename + ".CHECKSUM", "w") as f:
+        filename2 = filename
+        if filename.endswith(".INDEX"):
+            filename2 = os.path.splitext(filename)[0]
+        with open(filename2 + ".CHECKSUM", "w") as f:
             f.write(file_checksum.hex() + "\n")
     except Exception:
         msg(0, f"Cannot write checksum to file '{filename}.CHECKSUM'")

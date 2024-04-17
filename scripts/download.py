@@ -55,16 +55,38 @@ SEAMLESS_MAX_DOWNLOAD_FILES, SEAMLESS_MAX_DOWNLOAD_SIZE.""",
     const="no",
 )
 
+
 parser.add_argument(
-    "-c",
-    "--checksums",
-    dest="checksums",
-    help='Interpret arguments as checksums, rather than as files containing checksums',
-    action="store_true"
+    "-o",
+    "--output",
+    dest="outputs",
+    help='Explicitly specify output file or directory. Can be repeated in case of multiple downloads',
+    action="append",
+    default=[],
 )
-parser.add_argument("files_and_directories", nargs=argparse.REMAINDER)
+
+parser.add_argument(
+    "--directory",
+    help='Treat all raw checksum arguments as checksums to directory index buffers',
+    action="store_true",
+    default=False
+)
+
+parser.add_argument(
+    "--index",
+    dest="index_only",
+    help='For directories (deep buffers), only download the index, and write one checksum file per buffer.',
+    action="store_true",
+    default=False
+)
+
+parser.add_argument("files_directories_and_checksums", nargs=argparse.REMAINDER)
 
 args = parser.parse_args()
+
+for path in args.files_directories_and_checksums:
+    if path.startswith("-"):
+        err("Options must be specified before files/directories")
 
 max_download_files = os.environ.get("SEAMLESS_MAX_DOWNLOAD_FILES", "2000")
 max_download_files = int(max_download_files)
@@ -74,9 +96,12 @@ max_download_size = human2bytes(max_download_size)
 try:
     seamless.delegate(raise_exceptions=True)
 except AssistantConnectionError:
-    has_err = seamless.delegate(level=1)
-    if has_err:
-        exit(1)
+    try:
+        seamless.delegate(level=3, raise_exceptions=True)
+    except Exception:
+        has_err = seamless.delegate(level=2)
+        if has_err:
+            exit(1)
 
 ################################################################
 
@@ -84,79 +109,118 @@ to_download = {}
 directories = []
 files = []
 index_checksums = {}
-if args.checksums:
-    for cs in args.files_and_directories:
-        checksum = Checksum(cs).hex()     
-        to_download[checksum] = checksum
-        files.append(checksum)
-else:
-    paths = [path.rstrip(os.sep) for path in args.files_and_directories]
-    for path in paths:
-        if not path.endswith(".INDEX"):
-            if path.endswith(".CHECKSUM"):
-                path2 = os.path.splitext(path)[0] + ".INDEX"
-            else:
-                path2 = path + ".INDEX"
-            if os.path.exists(path2):
-                path = path2
-        if path.endswith(".INDEX"):
-            dirname = os.path.splitext(path)[0]
-            directories.append(dirname)
-            if not os.path.exists(path):
-                msg(0, f"Cannot read index file '{path}'")
-                continue
-            with open(path) as f:
-                data = f.read()
-            data = strip_textdata(data)
-            index_buffer = data.encode() + b'\n'
-            if not index_buffer.strip(b'\n'):
-                checksum_file = os.path.splitext(path)[0] + ".CHECKSUM"
-                if not os.path.exists(checksum_file):
-                    err(f"Index file '{path}' is empty, {checksum_file} does not exist")
-                index_checksum = read_checksum_file(checksum_file)
-                if index_checksum is None:
-                    err(
-                        f"Index file '{path}' is empty, {checksum_file} does not contain a checksum"
-                    )
-                index_checksum = Checksum(index_checksum)
-                msg(1, f"Index file '{path}' is empty, downloading from checksum")
-                index_buffer = buffer_cache.get_buffer(index_checksum.bytes())
-                if index_buffer is None:
-                    err(
-                        f"Index file '{path}' is empty, cannot download checksum in {checksum_file}, CacheMissError"
-                    )
-                else:
-                    err_msg = f"Index file '{path}' is empty, but {checksum_file} does not contain the checksum of a valid directory index"
-            else:
-                index_checksum = Checksum(calculate_checksum(index_buffer))
-                err_msg = f"File '{path}' is not a valid index file"
-
-            has_err = False
+paths = [path.rstrip(os.sep) for path in args.files_directories_and_checksums]
+for pathnr, path in enumerate(paths):
+    parsed_checksum = None
+    if not path.endswith(".INDEX"):
+        if path.endswith(".CHECKSUM"):
+            path2 = os.path.splitext(path)[0] + ".INDEX"
+        else:
             try:
-                index_data = json.loads(index_buffer.decode())
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                has_err = True
-            if not has_err:
-                if not isinstance(index_data, dict):
-                    has_err = True
+                parsed_checksum = Checksum(path)
+            except ValueError:
+                pass
+            path2 = path + ".INDEX"
+        if os.path.exists(path2) or (args.index_only and os.path.exists(os.path.splitext(path2)[0] + ".CHECKSUM")):
+            path = path2
+        elif args.directory and parsed_checksum:
+            path += ".INDEX"
+
+    if path.endswith(".INDEX"):
+        dirname = os.path.splitext(path)[0]
+        if pathnr < len(args.outputs):
+            dirname = args.outputs[pathnr]
+
+        directories.append(dirname)
+        if parsed_checksum:
+            index_checksum = parsed_checksum
+            index_buffer = None
+        else:
+            if not os.path.exists(path):
+                index_buffer = None
+                index_err = f"Cannot read index file '{path}'"
+            else:
+                with open(path) as f:
+                    data = f.read()
+                data = strip_textdata(data)
+                index_buffer = data.encode() + b'\n'
+                if not index_buffer.strip(b'\n'):
+                    index_buffer = None
+                    index_err = f"Index file '{path}' is empty"
+        if index_buffer is None:
+            checksum_file = os.path.splitext(path)[0] + ".CHECKSUM"
+            if not (parsed_checksum or args.directory) and not os.path.exists(checksum_file):
+                err(f"{index_err}, {checksum_file} does not exist")
+            if index_checksum is None:
+                index_checksum = read_checksum_file(checksum_file)
+            if index_checksum is None:
+                err(
+                    f"{index_err}, {checksum_file} does not contain a checksum"
+                )
+            index_checksum = Checksum(index_checksum)
+            if not (args.index_only or args.directory):
+                msg(0, f"{index_err}, downloading from checksum ...")
+            index_buffer = buffer_cache.get_buffer(index_checksum.bytes())
+            if index_buffer is None:
+                if parsed_checksum:
+                    err(f"Cannot download index buffer for {parsed_checksum}")
+                err(
+                    f"{index_err}, cannot download checksum in {checksum_file}, CacheMissError"
+                )
+            else:
+                if not (args.index_only or args.directory):
+                    msg(0, "... success")
+                if parsed_checksum:
+                    maybe_err_msg = f"Buffer with checksum {parsed_checksum} is not a valid index buffer"
                 else:
-                    for k, cs in index_data.items():
-                        try:
-                            cs2 = Checksum(cs)
-                            assert cs2.hex() is not None
-                        except Exception:
-                            has_err = True
-                            break
-            if has_err:
-                err(err_msg)
+                    with open(path, "wb") as f:
+                        f.write(index_buffer)                
+                    maybe_err_msg = f"{index_err}, but {checksum_file} does not contain the checksum of a valid directory index"
+
+        else:
+            index_checksum = Checksum(calculate_checksum(index_buffer))
+            maybe_err_msg = f"File '{path}' is not a valid index file"
+
+        if dirname != os.path.splitext(path)[0]:
+            if index_buffer is not None:
+                with open(dirname + ".INDEX", "wb") as f:
+                    f.write(index_buffer)
+            if args.index_only:
+                with open(dirname + ".CHECKSUM", "w") as f:
+                    f.write(index_checksum.hex() + "\n")
+
+        has_err = False
+        try:
+            index_data = json.loads(index_buffer.decode())
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            has_err = True
+        if not has_err:
+            if not isinstance(index_data, dict):
+                has_err = True
             else:
                 for k, cs in index_data.items():
-                    kk = os.path.join(dirname, k)
-                    to_download[kk] = cs
-            index_checksums[dirname] = index_checksum.hex()
-            continue
-        if path.endswith(".CHECKSUM"):
-            path = os.path.splitext(path)[0]
+                    try:
+                        cs2 = Checksum(cs)
+                        assert cs2.hex() is not None
+                    except Exception:
+                        has_err = True
+                        break
+        if has_err:
+            err(maybe_err_msg)
+        else:
+            for k, cs in index_data.items():
+                kk = os.path.join(dirname, k)
+                to_download[kk] = cs
+        index_checksums[dirname] = index_checksum.hex()
+        continue    
+    
+    checksum = None
+    if path.endswith(".CHECKSUM"):
+        path = os.path.splitext(path)[0]
+    elif parsed_checksum:
+        checksum = parsed_checksum
+    
+    if checksum is None:
         checksum_file = path + ".CHECKSUM"
         checksum = read_checksum_file(checksum_file)
         if checksum is None:
@@ -164,15 +228,19 @@ else:
                 f"File '{checksum_file}' does not contain a checksum"
             )
         checksum = Checksum(checksum)
-        to_download[path] = checksum.hex()
-        files.append(path)
+    
+    if pathnr < len(args.outputs):
+        path = args.outputs[pathnr]
+    to_download[path] = checksum.hex()
+    files.append(path)
 
 
 ################################################################
 
-for directory in directories:
-    if os.path.exists(directory):
-        shutil.rmtree(directory)
+if not args.index_only:
+    for directory in directories:
+        if os.path.exists(directory):
+            shutil.rmtree(directory)
 
 newdirs = {os.path.dirname(k) for k in to_download}
 for directory in directories:
@@ -183,12 +251,17 @@ for newdir in newdirs:
 
 ################################################################
 
-download(
-    files,
-    directories,
-    checksum_dict=to_download,
-    index_checksums=index_checksums,
-    max_download_size=max_download_size,
-    max_download_files=max_download_files,
-    auto_confirm=args.auto_confirm,
-)
+if args.index_only:
+    for path, checksum in to_download.items():
+        with open(path + ".CHECKSUM", "w") as f:
+            f.write(checksum + "\n")
+else:
+    download(
+        files,
+        directories,
+        checksum_dict=to_download,
+        index_checksums=index_checksums,
+        max_download_size=max_download_size,
+        max_download_files=max_download_files,
+        auto_confirm=args.auto_confirm,
+    )
