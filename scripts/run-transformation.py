@@ -66,6 +66,7 @@ args = parser.parse_args()
 import seamless
 from seamless import Checksum, CacheMissError
 from seamless.core.direct.run import get_dummy_manager, fingertip as do_fingertip
+from seamless.config import database
 checksum = Checksum(args.checksum)
 
 import logging
@@ -112,6 +113,13 @@ if fingertip and scratch:
     if not args.output:
         raise Exception("With --fingertip and --scratch, the output is a buffer, and --output is mandatory")
 
+if not fingertip and not args.output:
+    result = database.get_transformation_result(checksum.bytes())
+    if result is not None:
+        result = Checksum(result).hex()
+        print(result)
+        exit(0)
+    
 # To hold on fingertipped buffers for longer
 from seamless.core.cache.buffer_cache import buffer_cache
 buffer_cache.LIFETIME_TEMP = 600.0
