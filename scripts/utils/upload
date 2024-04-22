@@ -105,7 +105,7 @@ else:
             if has_err:
                 exit(1)
 
-paths = [path.rstrip(os.sep) for path in args.files_and_directories]
+paths = [path.rstrip(os.sep) for path in args.files_and_directories if not path.endswith(".CHECKSUM")]
 directories = [path for path in paths if os.path.isdir(path)]
     
 try:

@@ -2,8 +2,9 @@ import argparse
 import json
 import asyncio
 import sys
+import os
 parser = argparse.ArgumentParser()
-parser.add_argument("checksum")
+parser.add_argument("checksum", help='Seamless checksum or checksum file')
 parser.add_argument("--ncores",type=int,default=None)
 parser.add_argument("--direct-print", dest="direct_print", action="store_true")
 parser.add_argument(
@@ -67,7 +68,12 @@ import seamless
 from seamless import Checksum, CacheMissError
 from seamless.core.direct.run import get_dummy_manager, fingertip as do_fingertip
 from seamless.config import database
-checksum = Checksum(args.checksum)
+from seamless.cmd.file_load import read_checksum_file
+
+if args.checksum.endswith(".CHECKSUM") and os.path.exists(args.checksum):
+    checksum = Checksum(read_checksum_file(args.checksum))
+else:
+    checksum = Checksum(args.checksum)
 
 import logging
 logging.basicConfig()

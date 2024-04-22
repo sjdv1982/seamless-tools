@@ -66,6 +66,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--stdout",
+    help='Print all downloaded buffers to standard output',
+    action="store_true",
+    default=False
+)
+
+parser.add_argument(
     "--directory",
     help='Treat all raw checksum arguments as checksums to directory index buffers',
     action="store_true",
@@ -255,6 +262,15 @@ if args.index_only:
     for path, checksum in to_download.items():
         with open(path + ".CHECKSUM", "w") as f:
             f.write(checksum + "\n")
+elif args.stdout:
+    if len(directories):
+        err("Cannot download and print directory to stdout")
+    if len(files) > 1:
+        err("Cannot download and print multiple files to stdout")
+    else:
+        cs = to_download[files[0]]
+        file_buffer = buffer_cache.get_buffer(bytes.fromhex(cs))
+        sys.stdout.buffer.write(file_buffer)
 else:
     download(
         files,
@@ -263,5 +279,5 @@ else:
         index_checksums=index_checksums,
         max_download_size=max_download_size,
         max_download_files=max_download_files,
-        auto_confirm=args.auto_confirm,
+        auto_confirm=args.auto_confirm
     )

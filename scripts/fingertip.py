@@ -19,7 +19,16 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--verbose",
+    "--dunder",
+    help="""Dunder file.
+Contains additional information for transformations, in particular __meta__ and __env__.
+Note that __env__ must be specified as a checksum, the buffer of which must be available.
+Note that the same additional information will be applied to all necessary transformations."""
+)
+
+parser.add_argument(
+    "-v", "--verbose", 
+    dest="verbose",
     help="Verbose mode, printing out error messages",
     action="store_true"
 )
@@ -59,8 +68,13 @@ except Exception:
         )
     checksum = Checksum(checksum)
 
+dunder = None
+if args.dunder:
+    with open(args.dunder) as dunderfile:
+        dunder = json.load(dunderfile)
+
 try:
-    result_buffer = fingertip(checksum.bytes())
+    result_buffer = fingertip(checksum.bytes(), dunder=dunder)
 except CacheMissError:
     if args.verbose:
         traceback.print_exc()
