@@ -22,3 +22,4 @@ export READ_BUFFER_FOLDER_4="/NONE4"
 export READ_BUFFER_FOLDER_5="/NONE5"
 cd delegate
 docker compose stop
+docker container prune -f >& /dev/null
