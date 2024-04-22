@@ -33,7 +33,6 @@ containerID=$(docker run --rm -d \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
   -e SEAMLESS_ASSISTANT_IP=$SEAMLESS_ASSISTANT_IP \
   -e SEAMLESS_ASSISTANT_PORT=$SEAMLESS_ASSISTANT_PORT \
-  -e SEAMLESS_ASSISTANT_ID=$SEAMLESS_ASSISTANT_ID \
   -e SEAMLESS_SCRIPTS_DIR=/home/jovyan/seamless-scripts \
   --hostname localhost \
   --workdir /home/jovyan \
