@@ -9,6 +9,7 @@ from aiohttp import web
 import anyio
 import tempfile
 import dask
+
 from seamless import CacheMissError
 from seamless.highlevel import Checksum
 from seamless.core.cache.buffer_remote import can_read_buffer
@@ -18,6 +19,20 @@ from dask.distributed import WorkerPlugin
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((address, port)) == 0
+
+def get_conda_envs():
+    try:
+        from conda.cli import python_api as conda_python_api
+    except ImportError:
+        conda_python_api = None
+    if conda_python_api is None:
+        raise RuntimeError("Conda Python API not available")
+    info, stderr, return_code = conda_python_api.run_command(conda_python_api.Commands.INFO, ["-e", "--json"])
+    if return_code != 0:
+        raise RuntimeError("Conda error:\n" + stderr)
+    existing_envs = json.loads(info)["envs"]
+    existing_envs = [os.path.split(eenv)[1] for eenv in existing_envs]
+    return existing_envs
 
 def run_command(command):
     command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
@@ -106,6 +121,54 @@ python {SEAMLESS_SCRIPTS}/run-transformation.py \
             os.unlink(tf.name)
         
 
+def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, scratch):
+    from dask.distributed import get_worker
+    import os
+    import logging
+    logger = logging.getLogger("distributed.worker")
+
+    SEAMLESS_TOOLS_DIR = os.environ["SEAMLESS_TOOLS_DIR"]
+    SEAMLESS_SCRIPTS = SEAMLESS_TOOLS_DIR + "/scripts"
+    CONDA_ROOT = os.environ.get("CONDA_ROOT", None)
+    global_info = get_worker().plugins["seamless"].global_info
+    print(f"EXECUTE {checksum} in conda {conda_env_name}")
+    logger.info(f"EXECUTE {checksum} in conda {conda_env_name}")
+
+    try:
+        dundercmd=""
+        if dunder is not None:
+            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf.write(json.dumps(dunder))
+            tf.close()
+            dunderfile = tf.name
+            dundercmd = f"--dunder {dunderfile}"
+        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file.write(json.dumps(global_info))
+        global_info_file.close()
+        fingertipstr = "--fingertip" if fingertip else "" 
+        scratchstr = "--scratch" if scratch else ""
+        command = f"""
+source {CONDA_ROOT}/etc/profile.d/conda.sh
+conda activate {conda_env_name}
+python {SEAMLESS_SCRIPTS}/run-transformation.py \
+    {checksum} {dundercmd} \
+    --global_info {global_info_file.name} \
+    {fingertipstr} {scratchstr}"""    
+        print("RUN COMMAND", command)
+        logger.info("RUN COMMAND " + command)
+
+        if fingertip and scratch:
+            result, output = run_command_with_outputfile(command)
+        else: 
+            result = None
+            output = run_command(command)
+        print("DONE", checksum)
+        logger.info("DONE " + checksum)
+        return result, output
+    finally:
+        if dunder is not None:
+            os.unlink(tf.name)
+
 def _run_job(client, checksum, dunder, fingertip, scratch):
     from seamless.core.direct.run import fingertip as do_fingertip
     checksum = Checksum(checksum)
@@ -126,6 +189,7 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
     if env_checksum is not None:
         env_buffer = do_fingertip(env_checksum)
         env = json.loads(env_buffer.decode())
+    env_checksum2 = env_checksum if env_checksum is not None else ""
     docker_conf = env.get("docker")
     if is_bash:
         docker_conf = None
@@ -134,14 +198,45 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
 
     conda_env_name = env.get("conda_env_name")
     if conda_env_name is not None:
-        raise NotImplementedError
-    
+        existing_envs = client.submit(
+            get_conda_envs,
+            pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+        ).result()
+        if conda_env_name in existing_envs:
+            fut = client.submit(
+                execute_in_existing_conda, checksum.hex(), dunder, conda_env_name, 
+                fingertip=fingertip, scratch=scratch,
+                # Dask arguments
+                
+                key="{}-{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch), env_checksum2),
+                ## this will cause identical jobs to be scheduled only once. 
+                # Disable during development, or if you are playing around with worker deployment. (TODO: assistant command line option)
+
+                pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+            )
+            result, output = fut.result()
+            return result, output, transformation
+
+    if env.get("conda") is not None:
+        if conda_env_name is not None:
+            raise RuntimeError("""Non-existing conda environment specified.
+Please create it, or provide a conda environment definition that will be used as recipe.""")
+        else:
+            # The mini dask assistant can't support the creation of new conda environments
+            # using transformer environment definitions (in conda YAML) as a recipe
+            # Let's try to launch it in the scheduler's Seamless environment
+            pass
+    else:    
+        if conda_env_name is not None or docker_conf is not None:
+            raise RuntimeError("""Non-existing Docker image or conda environment specified.
+Please create it, or provide a conda environment definition that will be used as recipe.""")
+
     fut = client.submit(
         execute, checksum.hex(), dunder, 
         fingertip=fingertip, scratch=scratch,
         # Dask arguments
         
-        key="{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch)),
+        key="{}-{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch), env_checksum2),
         ## this will cause identical jobs to be scheduled only once. 
         # Disable during development, or if you are playing around with worker deployment. (TODO: assistant command line option)
 
