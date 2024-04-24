@@ -169,6 +169,132 @@ python {SEAMLESS_SCRIPTS}/run-transformation.py \
         if dunder is not None:
             os.unlink(tf.name)
 
+def execute_in_docker(checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env):
+    from dask.distributed import get_worker
+    import os
+    import logging
+
+    logger = logging.getLogger("distributed.worker")
+
+    global_info = get_worker().plugins["seamless"].global_info
+    print("EXECUTE", checksum)
+    logger.info("EXECUTE " + checksum)
+
+    try:
+        dundercmd=""
+        dundermount = ""
+        if dunder is not None:
+            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf.write(json.dumps(dunder))
+            tf.close()
+            dunderfile = tf.name
+            dundermount = f"-v {dunderfile}:{dunderfile}"
+            dundercmd = f"--dunder {dunderfile}"
+
+        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file.write(json.dumps(global_info))
+        global_info_file.close()
+
+        docker_image = docker_conf["name"]
+        fingertipstr = "--fingertip" if fingertip else ""
+        scratchstr = "--scratch" if scratch else ""
+        command = f"""
+SEAMLESS_DOCKER_IMAGE={docker_image}
+SEAMLESS_DOCKER_HOST_IP={os_env["SEAMLESS_DOCKER_HOST_IP"]}
+set +u
+source seamless-fill-environment-variables
+set -u
+
+docker run --rm \
+-e SEAMLESS_DATABASE_IP \
+-e SEAMLESS_DATABASE_PORT \
+-e SEAMLESS_READ_BUFFER_SERVERS \
+-e SEAMLESS_WRITE_BUFFER_SERVER \
+-e DOCKER_IMAGE={docker_image} \
+-v {global_info_file.name}:{global_info_file.name} \
+-u `id -u` \
+--group-add users \
+{dundermount} \
+{docker_image} \
+start.sh python /scripts/run-transformation.py \
+    {checksum} {dundercmd} \
+    --global_info {global_info_file.name} \
+    {fingertipstr} {scratchstr}"""    
+        if fingertip and scratch:
+            result, output = run_command_with_outputfile(command)
+            return result, output
+        else: 
+            output = run_command(command)
+            return None, output
+    finally:
+        if dunder is not None:
+            os.unlink(tf.name)
+
+def execute_in_docker_devel(checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env):
+    from dask.distributed import get_worker
+    import os
+    import logging
+    logger = logging.getLogger("distributed.worker")
+
+    global_info = get_worker().plugins["seamless"].global_info
+    print("EXECUTE", checksum)
+    logger.info("EXECUTE " + checksum)
+
+    try:
+        dundermount = ""
+        dundercmd=""
+        if dunder is not None:
+            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf.write(json.dumps(dunder))
+            tf.close()
+            dunderfile = tf.name
+            dundermount = f"-v {dunderfile}:{dunderfile}"
+            dundercmd = f"--dunder {dunderfile}"
+
+        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file.write(json.dumps(global_info))
+        global_info_file.close()
+
+        docker_image = docker_conf["name"]
+        fingertipstr = "--fingertip" if fingertip else "" 
+        scratchstr = "--scratch" if scratch else ""
+        command = f"""
+SEAMLESS_DOCKER_IMAGE={docker_image}
+SEAMLESS_DOCKER_HOST_IP={os_env["SEAMLESS_DOCKER_HOST_IP"]}
+set +u
+source seamless-fill-environment-variables
+set -u
+
+docker run --rm \
+-e SEAMLESS_DATABASE_IP \
+-e SEAMLESS_DATABASE_PORT \
+-e SEAMLESS_READ_BUFFER_SERVERS \
+-e SEAMLESS_WRITE_BUFFER_SERVER \
+-v $SEAMLESS_TOOLS_DIR/scripts:/scripts \
+-v $SEAMLESSDIR:/seamless \
+-v $SILKDIR:/silk \
+-e DOCKER_IMAGE={docker_image} \
+-e DOCKER_VERSION="$SEAMLESS_DOCKER_VERSION" \
+-e PYTHONPATH=/silk:/seamless \
+-v {global_info_file.name}:{global_info_file.name} \
+-u `id -u` \
+--group-add users \
+{dundermount} \
+{docker_image} \
+start.sh python /scripts/run-transformation.py \
+    {checksum} {dundercmd} \
+    --global_info {global_info_file.name} \
+    {fingertipstr} {scratchstr}"""
+        if fingertip and scratch:
+            result, output = run_command_with_outputfile(command)
+            return result, output
+        else: 
+            output = run_command(command)
+            return None, output
+    finally:
+        if dunder is not None:
+            os.unlink(tf.name)
+
 def _run_job(client, checksum, dunder, fingertip, scratch):
     from seamless.core.direct.run import fingertip as do_fingertip
     checksum = Checksum(checksum)
@@ -194,7 +320,28 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
     if is_bash:
         docker_conf = None
     if docker_conf is not None:
-        raise NotImplementedError
+        execute_in_docker_func = execute_in_docker
+        docker_image = docker_conf["name"]
+        if docker_image.find("seamless-devel") > -1:
+            execute_in_docker_func = execute_in_docker_devel
+
+        os_env = {}
+        for var in os.environ:
+            if var.startswith("SEAMLESS"):
+                os_env[var] = os.environ[var]
+        fut = client.submit(
+            execute_in_docker_func, checksum.hex(), dunder, env, docker_conf,
+            fingertip=fingertip, scratch=scratch, os_env=os_env,
+            # Dask arguments
+            
+            key="{}-{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch), env_checksum2),
+            ## this will cause identical jobs to be scheduled only once. 
+            # Disable during development, or if you are playing around with worker deployment. (TODO: assistant command line option)
+
+            pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+        )
+        result, output = fut.result()
+        return result, output, transformation
 
     conda_env_name = env.get("conda_env_name")
     if conda_env_name is not None:
