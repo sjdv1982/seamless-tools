@@ -48,8 +48,9 @@ for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
 conda activate $environment_name
+pip install aiohttp_cors docker matplotlib nglview snakemake==7.18.* itables
 pip install jsonschema==4.17.* requests==2.28.*
-pip install docker sphinx_rtd_theme
+pip install sphinx_rtd_theme
 pip install aiofiles  # to run fairserver tests
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
