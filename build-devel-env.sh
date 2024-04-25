@@ -39,7 +39,11 @@ echo "SILKDIR: location of the "silk" Git repo (https://github.com/sjdv1982/silk
 echo "SILKDIR=$SILKDIR"
 echo
 echo "Building \"$environment_name\" conda environment..."
-mamba env create -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
+mamba create -n $environment_name 'python=3.10' -y
+conda activate $environment_name
+echo 'python=3.10' > $CONDA_PREFIX/conda-meta/pinned
+conda deactivate
+mamba env update -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
 mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython scipy wurlitzer -y
 mamba install -n $environment_name -c conda-forge commentjson -y
 mamba install -n $environment_name -c conda-forge black mypy types-requests sphinx recommonmark -y
@@ -49,7 +53,7 @@ for i in $(seq ${CONDA_SHLVL}); do
 done
 conda activate $environment_name
 pip install aiohttp_cors docker matplotlib nglview snakemake==7.18.* itables
-pip install jsonschema==4.17.* requests==2.28.*
+pip install jsonschema==4.18.* requests==2.31.*
 pip install sphinx_rtd_theme
 pip install aiofiles  # to run fairserver tests
 conda env config vars set \

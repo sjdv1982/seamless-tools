@@ -71,7 +71,7 @@ mamba env update --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
 mamba install -c conda-forge gcc gxx gfortran cython scipy wurlitzer -y
 mamba env update --file $SEAMLESS_TOOLS_DIR/seamless-development-update.yaml  # also sets SEAMLESS_XXX vars
 mamba install -c conda-forge dask peewee fastapi uvicorn dask-jobqueue cloudpickle=3 -y
-pip install jsonschema==4.17.* requests==2.28.*
+pip install jsonschema==4.18.* requests==2.31.*
 pip install docker
 conda env config vars set \
   SEAMLESSDIR=$SEAMLESSDIR \
