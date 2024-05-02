@@ -17,3 +17,5 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
 USER jovyan
 RUN echo 'alias conda=mamba' >> /home/jovyan/.bashrc
+HEALTHCHECK --interval=5s --timeout=2s --start-period=30s --retries=3 \
+  CMD touch /cwd

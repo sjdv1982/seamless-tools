@@ -13,4 +13,5 @@ USER jovyan
 RUN /opt/conda/bin/conda init
 COPY docker/seamless-deps-environment.yml seamless-deps-environment.yml
 RUN source ~/.bashrc && mamba env update --name base --file seamless-deps-environment.yml
+RUN pip install zstandard --force-reinstall
 RUN pip install jsonschema==4.18.* requests==2.31.*

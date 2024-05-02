@@ -22,3 +22,5 @@ RUN echo 'export MYPYPATH=/seamless' >> /home/jovyan/.bashrc \
     && echo 'export PATH=~/seamless-bin:$PATH' >> /home/jovyan/.bashrc
 ENV PYTHONPATH /home/jovyan/software:$PYTHONPATH
 ENV XDG_CONFIG_HOME=/seamless
+HEALTHCHECK --interval=5s --timeout=2s --start-period=30s --retries=3 \
+  CMD touch /cwd
