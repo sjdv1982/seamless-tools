@@ -128,7 +128,7 @@ def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scrat
 
 _jobs = {}
 
-async def launch_job(client, checksum, tf_dunder, *, fingertip, scratch):
+async def launch_job(jobslaveserver, checksum, tf_dunder, *, fingertip, scratch):
     checksum = Checksum(checksum).hex()
     job = None
     if (checksum, fingertip, scratch) in _jobs:
@@ -139,7 +139,7 @@ async def launch_job(client, checksum, tf_dunder, *, fingertip, scratch):
             job = None
     if job is None:
         salt = random.random()
-        coro = anyio.to_thread.run_sync(run_job, client, Checksum(checksum), tf_dunder, fingertip, scratch)
+        coro = anyio.to_thread.run_sync(run_job, jobslaveserver, Checksum(checksum), tf_dunder, fingertip, scratch)
         job = asyncio.create_task(coro)
         _jobs[checksum, fingertip, scratch] = job, tf_dunder
     
@@ -154,7 +154,7 @@ async def launch_job(client, checksum, tf_dunder, *, fingertip, scratch):
         if remove_job:
             _jobs.pop((checksum, fingertip, scratch), None)
 
-def run_job(client, checksum, tf_dunder, fingertip, scratch):
+def run_job(jobslaveserver, checksum, tf_dunder, fingertip, scratch):
     from seamless.core.direct.run import fingertip as do_fingertip
 
     transformation_buffer = do_fingertip(checksum.bytes())
@@ -172,6 +172,11 @@ def run_job(client, checksum, tf_dunder, fingertip, scratch):
         if res in meta:
             resources[res] = meta[res]
     
+    client = jobslaveserver.client
+    if client.status not in ("running", "connecting", "newly-created"):
+        client = create_client()
+        jobslaveserver.client = client
+        time.sleep(5)
     with dask.annotate(resources=resources):
         result = client.submit(
             run_transformation_dask, checksum, tf_dunder=tf_dunder,
@@ -285,7 +290,7 @@ class JobSlaveServer:
             ###print("DUNDER", data["dunder"])
             '''
             tf_dunder = data["dunder"]
-            response = await launch_job(client, checksum, tf_dunder=tf_dunder, scratch=scratch, fingertip=fingertip)
+            response = await launch_job(self, checksum, tf_dunder=tf_dunder, scratch=scratch, fingertip=fingertip)
             return response
         except Exception as exc:
             traceback.print_exc() ###
@@ -295,6 +300,14 @@ class JobSlaveServer:
                 body=body
             )            
             
+
+def create_client():
+    client = Client(args.scheduler_address)
+    try:
+        client.register_plugin(SeamlessWorkerPlugin())
+    except AttributeError:
+        client.register_worker_plugin(SeamlessWorkerPlugin())
+    return client
 
 if __name__ == "__main__":
     import argparse
@@ -348,13 +361,7 @@ Meta information is mostly ignored. No support for arbitrary Dask resources.
     print("Connecting...")
     seamless.delegate(level=3)
 
-    client = Client(args.scheduler_address)
-    try:
-        client.register_plugin(SeamlessWorkerPlugin())
-    except AttributeError:
-        client.register_worker_plugin(SeamlessWorkerPlugin())
-
-    server = JobSlaveServer(client, args.host, args.port)
+    server = JobSlaveServer(create_client(), args.host, args.port)
     server.start()
 
     loop = asyncio.get_event_loop()
