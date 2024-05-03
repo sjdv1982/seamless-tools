@@ -44,7 +44,7 @@ conda activate $environment_name
 echo 'python=3.10' > $CONDA_PREFIX/conda-meta/pinned
 conda deactivate
 mamba env update -n $environment_name --file $SEAMLESSDIR/seamless-minimal-dependencies.yaml
-mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython scipy wurlitzer -y
+mamba install -n $environment_name -c conda-forge gcc gxx gfortran cython scipy wurlitzer r-base r-cairo rpy2 -y
 mamba install -n $environment_name -c conda-forge commentjson -y
 mamba install -n $environment_name -c conda-forge black mypy types-requests sphinx recommonmark -y
 mamba env update -n $environment_name --file $SEAMLESS_TOOLS_DIR/seamless-development-update.yaml  # also sets SEAMLESS_XXX vars
