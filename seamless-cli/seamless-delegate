@@ -36,7 +36,7 @@ Available assistants:
 
 set +u
 if [ -z "$DASK_SCHEDULER_ADDRESS" ]; then
-    if [[ $assistant == mini-dask-assistant* ]] ; then
+    if [[ $assistant == mini-dask-assistant* ]] || [[ $assistant == micro-dask-assistant* ]] ; then
         echo 'Undefined DASK_SCHEDULER_ADDRESS' > /dev/stderr
         echo 'If you wish to run a local Dask deployment:'
         echo '- Launch a local Dask scheduler'
