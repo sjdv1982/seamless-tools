@@ -12,8 +12,7 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
     cp -Lr /usr/local/src/seamless/examples /home/jovyan/seamless-examples && \
     cp -Lr /usr/local/src/seamless-tools/scripts /home/jovyan/seamless-scripts && \
     cp -Lr /usr/local/src/seamless-tools/tools /home/jovyan/seamless-tools && \
-    ln -s /opt/conda/lib/python3.10/site-packages/seamless /home/jovyan/software/seamless && \
-    ln -s /opt/conda/lib/python3.10/site-packages/seamless/graphs /seamless-graphs
+    ln -s /opt/conda/lib/python3.10/site-packages/seamless /home/jovyan/software/seamless
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
 USER jovyan
 RUN echo 'alias conda=mamba' >> /home/jovyan/.bashrc

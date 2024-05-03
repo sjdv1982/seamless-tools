@@ -10,7 +10,7 @@ parser.add_argument(
     "--delegate",
     help="""Delegate all computation and buffer storage to remote servers/folders.
 These servers/folders are read from environment variables.    
-Optionally, a delegation level can be provided (default: 4)
+Optionally, a delegation level can be provided (default: 4)0
 See the documentation of seamless.delegate(...) for more details.""",
     nargs="?",
     type=int,
@@ -34,7 +34,7 @@ parser.add_argument(
     help="""Bind a graph that reports the status of the main graph. 
 Optionally, provide a .seamless file, else the default status visualization graph is used.""",
     nargs="?",
-    const="/seamless-graphs/status-visualization.seamless"
+    const="$SEAMLESSDIR/graphs/status-visualization.seamless"
 )
 
 parser.add_argument(
@@ -99,8 +99,10 @@ for zipl in args.zips:
     for zipf in zipl:
         zips.append(zipf)
 
-if args.status_graph == "/seamless-graphs/status-visualization.seamless":
-    zipf = "/seamless-graphs/status-visualization.zip"
+if args.status_graph == "$SEAMLESSDIR/graphs/status-visualization.seamless":
+    from seamless.metalevel.stdgraph import stdgraph_dir
+    args.status_graph = os.path.join(stdgraph_dir, "status-visualization.seamless")
+    zipf = os.path.join(stdgraph_dir, "status-visualization.zip")
     if zipf not in zips:
         zips.append(zipf)
 
@@ -125,7 +127,7 @@ env = os.environ
 
 import seamless
 
-delegation_error = seamless.delegate(args.delegate)
+delegation_error = seamless.delegate(int(args.delegate))
 if delegation_error:
     exit(1)
 if args.status_graph or args.ncores:

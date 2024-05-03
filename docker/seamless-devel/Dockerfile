@@ -12,7 +12,6 @@ RUN rm -rf /usr/local/src/seamless-tools/.git && \
     cp -Lr /usr/local/src/seamless-tools/tools /home/jovyan/seamless-tools && \
     cp -Lr /usr/local/src/seamless-tools/seamless-cli /home/jovyan/seamless-cli
 RUN chown -R jovyan /home/jovyan && chmod -R g=u /home/jovyan
-RUN ln -s /seamless/seamless/graphs /seamless-graphs
 RUN mamba install -c rpbs silk -y
 RUN groupadd docker -g 999 && mkdir /seamless-pins
 USER jovyan
