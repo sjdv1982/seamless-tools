@@ -54,12 +54,15 @@ Contains additional information for the transformation, in particular __meta__ a
 Note that __env__ must be specified as a checksum, the buffer of which must be available"""
 )
 
+parser.add_argument("--undo", help="Undo this transformation", action="store_true", default=False)
+
 parser.add_argument(
     "--global_info", "--global-info",
     help="""Global info file.
 Contains information about the hardware and system, as generated
 by seamless.core.transformation.get_global_info or seamless-get-global-info.
-Providing this information saves 5-10 seconds."""
+In the absence of a delegation assistant, providing this information
+saves 5-10 seconds."""
 )
 
 args = parser.parse_args()
@@ -122,9 +125,21 @@ if fingertip and scratch:
 if not fingertip and not args.output:
     result = database.get_transformation_result(checksum.bytes())
     if result is not None:
+        if args.undo:
+            status, response = database.contest(checksum.bytes(), Checksum(result).bytes())
+            if status == 200:
+                print("Transformation undone", file=sys.stderr)
+                exit(0)
+            else:
+                print("Transformation unknown", file=sys.stderr)
+                exit(1)
         result = Checksum(result).hex()
         print(result)
         exit(0)
+    else:
+        if args.undo:
+            print("Transformation unknown", file=sys.stderr)
+            exit(1)
     
 # To hold on fingertipped buffers for longer
 from seamless.core.cache.buffer_cache import buffer_cache
@@ -165,5 +180,8 @@ if result is not None:
         else:            
             print(result)
 else:
-    print(f"Transformation failed", file=sys.stderr)
-    exit(0)
+    if args.undo:
+        print("Transformation unknown", file=sys.stderr)
+    else:
+        print(f"Transformation failed", file=sys.stderr)
+    exit(1)
