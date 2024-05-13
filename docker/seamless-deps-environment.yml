@@ -13,7 +13,7 @@ dependencies:
   - jsonschema=4.18.*  # for silk
 
   # from jupyter/base-notebook, recommended (parts of Seamless won't work)
-  - ipython=8.10.*
+  - ipython=8.15.*
   - ipykernel=6.21.*
 
   - cffi=1.15.*  
