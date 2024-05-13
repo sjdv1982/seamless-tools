@@ -42,7 +42,7 @@ containerID=$(docker run --rm -it -d \
   --group-add users \
   $SEAMLESS_DOCKER_CUSTOM_PARAMS \
   $SEAMLESS_DOCKER_IMAGE start.sh ipython3 -i -c '%run -i load-project.py
-await load()')
+load_ipython()')
 
 echo $containerID | docker exec -i $containerID /bin/bash -c 'cat > /home/jovyan/DOCKER_CONTAINER'
 docker attach $containerID

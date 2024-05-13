@@ -37,7 +37,6 @@ containerID=$(docker run --rm -it -d \
   -e SEAMLESS_DATABASE_PORT=$SEAMLESS_DATABASE_PORT \
   -e SEAMLESS_ASSISTANT_IP=$SEAMLESS_ASSISTANT_IP \
   -e SEAMLESS_ASSISTANT_PORT=$SEAMLESS_ASSISTANT_PORT \
-  
   -e SEAMLESS_SCRIPTS_DIR=/home/jovyan/seamless-scripts \
   -v `pwd`:/cwd \
   --workdir $workdir \
@@ -46,7 +45,7 @@ containerID=$(docker run --rm -it -d \
   --group-add users \
   $SEAMLESS_DOCKER_CUSTOM_PARAMS \
   $SEAMLESS_DOCKER_IMAGE start.sh ipython3 -i -c '%run -i load-project.py
-await load()')
+load_ipython()')
 
 echo $containerID | docker exec -i $containerID /bin/bash -c 'cat > /home/jovyan/DOCKER_CONTAINER'
 docker attach $containerID

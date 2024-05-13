@@ -2,8 +2,6 @@ import sys, os, shutil, json
 from seamless.highlevel import Context
 import argparse
 
-print("TODO: add database / assistant by default. save_vault only if no writeserver. /datasets to contain checksum files.", file=sys.stderr)
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "project_name",
@@ -94,17 +92,51 @@ else:
         f.write(gitignore)
 
 code = '''
-PROJNAME = "%s"
+PROJNAME = "{project_name}"
+
+DELEGATION_LEVEL = 0
+
+"""
+Change DELEGATION_LEVEL to the appropriate level:
+
+DELEGATION_LEVEL = 0
+Runs load_vault on project startup
+Runs save_vault on project save.
+All input/output buffers and results are held in memory.
+
+DELEGATION_LEVEL = 1
+External read buffer servers/folders may be configured. 
+On project startup, run load_vault if vault/ exists.
+On project save, run save_vault if vault/ exists
+
+DELEGATION_LEVEL = 2
+Vaults are being ignored on project load/save.
+Buffers are stored in an external buffer server.
+Such a server can be launched using "seamless-delegate none"
+
+DELEGATION_LEVEL = 3
+Vaults are being ignored on project load/save.
+Buffers are stored in an external buffer server.
+Results are stored as checksums in a database server.
+Such servers can be launched using "seamless-delegate none"
+
+DELEGATION_LEVEL = 4
+Vaults are being ignored on project load/save.
+All jobs, buffers and results are delegated to an external assistant
+Such an assistant can be launched using "seamless-delegate <name of assistant>" 
+"""
 
 import os, sys, shutil
 
 import seamless
+seamless.delegate(DELEGATION_LEVEL)
 
 from seamless.highlevel import Context, Cell, Transformer, Module, Macro
 
 ctx = None
 webctx = None
 save = None
+export = None
 
 def pr(*args):
     print(*args, file=sys.stderr)
@@ -115,60 +147,19 @@ async def define_graph(ctx):
     """
     pass
 
-def load_database():
-    # To connect to a Seamless database, specify the following environment variables:
-    # SEAMLESS_DATABASE_IP, SEAMLESS_DATABASE_PORT
-    #
-    # They are passed into the Seamless Docker container when you run 
-    #  seamless-load-project, seamless-jupyter, etc.
-    # Seamless provides default values for these environment variables
-    # These defaults will connect to the database started with seamless-database command.
-    # 
-    # Then, uncomment the following lines:
-    # To read buffers and transformation results from the database:
-    #
-    # seamless.database_cache.connect()  
-    #
-    # To write buffers and transformation results into the database:
-    #
-    # seamless.database_sink.connect()
-    return
-
-COMMUNION_MSG=""
-async def load_communion():
-    global COMMUNION_MSG
-    # To connect to a Seamless communion peer, such as jobless or a jobslave,
-    # specify the following environment variables:
-    # SEAMLESS_COMMUNION_IP
-    # SEAMLESS_COMMUNION_PORT
-    # or: SEAMLESS_COMMUNION_INCOMING (comma-separated list of multiple peers, as IP:port,IP:port,...)
-    #
-    # These are passed into the Seamless Docker container when you run 
-    #  seamless-load-project, seamless-jupyter, etc.
-    # If these environment variables are not defined, 
-    # Seamless provides default values for them.
-    # These default values will try to connect to jobless.
-    # 
-    # Then, uncomment the following lines:
-    #
-    # seamless.communion_server.configure_master({
-    #     "buffer": True,
-    #     "buffer_status": True,
-    #     "buffer_info": True,
-    #     "transformation_job": True,
-    #     "transformation_status": True,
-    #     "semantic_to_syntactic": True,
-    # })
-    # await seamless.communion_server.start_async()
-    # npeers = len(seamless.communion_server.peers)
-    # COMMUNION_MSG="\\n\\n{} communion peer(s) found.".format(npeers)
-    return
+def load_ipython():
+    import asyncio
+    import seamless
+    loop = seamless._original_event_loop
+    asyncio.set_event_loop(loop)
+    coro = load()
+    loop.run_until_complete(coro)
 
 async def load():
     from seamless.metalevel.bind_status_graph import bind_status_graph_async
     import json
 
-    global ctx, webctx, save
+    global ctx, webctx, save, export
 
     try:
         ctx
@@ -176,10 +167,8 @@ async def load():
         pass
     else:
         if ctx is not None:
-            pr('"ctx" already exists. To reload, do "ctx = None" or "del ctx" before load()')
+            pr('"ctx" already exists. To reload, do "ctx = None" or "del ctx" before "await load()"')
             return
-    load_database()    
-    await load_communion()
 
     for f in (
         "web/index-CONFLICT.html",
@@ -187,12 +176,15 @@ async def load():
         "web/webform-CONFLICT.txt",
     ):
         if os.path.exists(f):
-            if open(f).read().rstrip("\\n ") in ("", "No conflict"):
+            try:
+                if open(f).read().rstrip("\\n ") in ("", "No conflict"):
+                    continue
+            except UnicodeDecodeError:
                 continue
             dest = f + "-BAK"
             if os.path.exists(dest):
                 os.remove(dest)            
-            pr("Existing '{}' found, moving to '{}'".format(f, dest))
+            pr("Existing '{{}}' found, moving to '{{}}'".format(f, dest))
             shutil.move(f, dest)
     ctx = Context()
     empty_graph = ctx.get_graph()
@@ -206,11 +198,15 @@ async def load():
             pass
     new_graph = ctx.get_graph()
     graph_file = "graph/" + PROJNAME + ".seamless"
-    ctx.load_vault("vault")
+    if DELEGATION_LEVEL == 0: 
+        ctx.load_vault("vault")
+    elif DELEGATION_LEVEL == 1:
+        if os.path.exists("vault"):
+            ctx.load_vault("vault")
     if new_graph != empty_graph:
-        pr("*** define_graph() function detected. Not loading '{}'***\\n".format(graph_file))
+        pr("*** define_graph() function detected. Not loading '{{}}'***\\n".format(graph_file))
     else:
-        pr("*** define_graph() function is empty. Loading '{}' ***\\n".format(graph_file))
+        pr("*** define_graph() function is empty. Loading '{{}}' ***\\n".format(graph_file))
         graph = json.load(open(graph_file))        
         ctx.set_graph(graph, mounts=True, shares=True)
         await ctx.translation(force=True)
@@ -222,6 +218,7 @@ async def load():
         mounts=True,
         shares=True
     )
+    
     def save():
         import os, itertools, shutil
 
@@ -230,17 +227,35 @@ async def load():
                 return filename
             for n in itertools.count():
                 n2 = n if n else ""
-                new_filename = "{}.bak{}".format(filename, n2)
+                new_filename = "{{}}.bak{{}}".format(filename, n2)
                 if not os.path.exists(new_filename):
                     break
             shutil.move(filename, new_filename)
             return filename
 
+        ctx.translate()
         ctx.save_graph(backup("graph/" + PROJNAME + ".seamless"))
+        webctx.translate()
         webctx.save_graph(backup("graph/" + PROJNAME + "-webctx.seamless"))
-        ctx.save_vault("vault")
-        webctx.save_vault("vault")
+        if DELEGATION_LEVEL == 0: 
+            ctx.save_vault("vault")
+            webctx.save_vault("vault")
+        elif DELEGATION_LEVEL == 1:
+            if os.path.exists("vault"):
+                ctx.save_vault("vault")
+                webctx.save_vault("vault")
 
+    def export():
+        filename = "graph/{project_name}.zip"
+        ctx.save_zip(filename)
+        pr(f"{{filename}} saved")
+        filename = "graph/{project_name}-webctx.zip"
+        webctx.save_zip(filename)
+        pr(f"{{filename}} saved")
+
+    await ctx.translation(force=True)
+    await ctx.translation(force=True)
+    
     pr("""Project loaded.
 
     Main context is "ctx"
@@ -249,9 +264,10 @@ async def load():
     Open http://localhost:<REST server port> to see the web page
     Open http://localhost:<REST server port>/status/status.html to see the status
 
-    Run save() to save the project{}
-    """.format(COMMUNION_MSG))
-''' % (project_name,)
+    Run save() to save the project workflow file.
+    Run export() to generate zip files for web deployment.
+    """)
+'''.format(project_name=project_name)
 
 with open("load-project.py", "w") as f:
     f.write(code)
