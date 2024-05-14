@@ -110,20 +110,23 @@ On project startup, run load_vault if vault/ exists.
 On project save, run save_vault if vault/ exists
 
 DELEGATION_LEVEL = 2
-Vaults are being ignored on project load/save.
-Buffers are stored in an external buffer server.
+Buffers are stored in an external buffer server. 
 Such a server can be launched using "seamless-delegate none"
+Vaults are being ignored on project load/save. You are recommended to upload the vault/ directory 
+using "seamless-upload"
 
 DELEGATION_LEVEL = 3
-Vaults are being ignored on project load/save.
 Buffers are stored in an external buffer server.
 Results are stored as checksums in a database server.
 Such servers can be launched using "seamless-delegate none"
+Vaults are being ignored on project load/save. You are recommended to upload the vault/ directory 
+using "seamless-upload"
 
 DELEGATION_LEVEL = 4
-Vaults are being ignored on project load/save.
 All jobs, buffers and results are delegated to an external assistant
 Such an assistant can be launched using "seamless-delegate <name of assistant>" 
+Vaults are being ignored on project load/save. You are recommended to upload the vault/ directory 
+using "seamless-upload"
 """
 
 import os, sys, shutil
@@ -233,9 +236,15 @@ async def load():
             shutil.move(filename, new_filename)
             return filename
 
-        ctx.translate()
+        try:
+            ctx.translate()
+        except Exception:
+            pass
         ctx.save_graph(backup("graph/" + PROJNAME + ".seamless"))
-        webctx.translate()
+        try:
+            webctx.translate()
+        except Exception:
+            pass        
         webctx.save_graph(backup("graph/" + PROJNAME + "-webctx.seamless"))
         if DELEGATION_LEVEL == 0: 
             ctx.save_vault("vault")
