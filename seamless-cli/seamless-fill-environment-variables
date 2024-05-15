@@ -145,17 +145,3 @@ fi
 
 export HOST_USER_ID=`id -u`
 export HOST_GROUP_ID=`id -g`
-
-if [ -z "$_SEAMLESS_FILL_ENVIRONMENT_VARIABLES_NO_PRINTENV" ]; then
-
-printenv | sort | python3 -c '''
-import sys
-for l in sys.stdin.readlines():
-  ll = l.split("=")
-  if len(ll) == 2 and not len(ll[1].strip()):
-    continue
-  if ll[0].find("SEAMLESS") > -1 and ll[0].find("__CONDA") == -1: 
-    print(l,end="",file=sys.stderr)
-'''
-
-fi

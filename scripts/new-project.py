@@ -1,4 +1,7 @@
 import sys, os, shutil, json
+import seamless
+os.environ["SEAMLESS_SILENT"] = "1"
+seamless.delegate(False)
 from seamless.highlevel import Context
 import argparse
 
