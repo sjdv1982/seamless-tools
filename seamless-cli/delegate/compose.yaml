@@ -65,8 +65,17 @@ services:
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
+      volumes:
+        - ${READ_BUFFER_FOLDER_1:-/dummy1}:${READ_BUFFER_FOLDER_1:-/dummy1}:ro
+        - ${READ_BUFFER_FOLDER_2:-/dummy2}:${READ_BUFFER_FOLDER_2:-/dummy2}:ro
+        - ${READ_BUFFER_FOLDER_3:-/dummy3}:${READ_BUFFER_FOLDER_3:-/dummy3}:ro
+        - ${READ_BUFFER_FOLDER_4:-/dummy4}:${READ_BUFFER_FOLDER_4:-/dummy4}:ro
+        - ${READ_BUFFER_FOLDER_5:-/dummy5}:${READ_BUFFER_FOLDER_5:-/dummy5}:ro
+        - /var/run/docker.sock:/var/run/docker.sock # Docker access
+        - /tmp:/tmp  # temp dir to execute Docker transformers in
       group_add: 
         - users
+        - ${DOCKER_GROUP_ID:?}
       environment:
         - SEAMLESS_DATABASE_IP=${SEAMLESS_DATABASE_IP_MAPPED:?}
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
@@ -74,6 +83,10 @@ services:
         - SEAMLESS_WRITE_BUFFER_SERVER=${SEAMLESS_WRITE_BUFFER_SERVER_MAPPED:?}
         - ASSISTANT_HOST=0.0.0.0
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - DOCKER_IMAGE=rpbs/seamless
+        - DOCKER_VERSION=${DOCKER_VERSION:-""}
+        - SEAMLESS_READ_BUFFER_FOLDERS=${READ_BUFFER_FOLDER_1};${READ_BUFFER_FOLDER_2};${READ_BUFFER_FOLDER_3};${READ_BUFFER_FOLDER_4};${READ_BUFFER_FOLDER_5}
+
   mini-assistant-devel:
       build:
         context: ../assistants
@@ -112,14 +125,24 @@ services:
         - DOCKER_VERSION=${DOCKER_VERSION:-""}
         - SEAMLESS_READ_BUFFER_FOLDERS=${READ_BUFFER_FOLDER_1};${READ_BUFFER_FOLDER_2};${READ_BUFFER_FOLDER_3};${READ_BUFFER_FOLDER_4};${READ_BUFFER_FOLDER_5}
   mini-assistant:
-      group_add:
-      - users
       build:
         context: ../assistants
         dockerfile: mini-assistant.Dockerfile
+
       user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
+      volumes:
+        - ${READ_BUFFER_FOLDER_1:-/dummy1}:${READ_BUFFER_FOLDER_1:-/dummy1}:ro
+        - ${READ_BUFFER_FOLDER_2:-/dummy2}:${READ_BUFFER_FOLDER_2:-/dummy2}:ro
+        - ${READ_BUFFER_FOLDER_3:-/dummy3}:${READ_BUFFER_FOLDER_3:-/dummy3}:ro
+        - ${READ_BUFFER_FOLDER_4:-/dummy4}:${READ_BUFFER_FOLDER_4:-/dummy4}:ro
+        - ${READ_BUFFER_FOLDER_5:-/dummy5}:${READ_BUFFER_FOLDER_5:-/dummy5}:ro
+        - /var/run/docker.sock:/var/run/docker.sock # Docker access
+        - /tmp:/tmp  # temp dir to execute Docker transformers in
+      group_add: 
+        - users
+        - ${DOCKER_GROUP_ID:?}
       environment:
         - SEAMLESS_DATABASE_IP=${SEAMLESS_DATABASE_IP_MAPPED:?}
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
@@ -127,6 +150,12 @@ services:
         - SEAMLESS_WRITE_BUFFER_SERVER=${SEAMLESS_WRITE_BUFFER_SERVER_MAPPED:?}
         - ASSISTANT_HOST=0.0.0.0
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - SEAMLESS_ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - SEAMLESS_ASSISTANT_IP=localhost
+        - DOCKER_IMAGE=rpbs/seamless
+        - DOCKER_VERSION=${DOCKER_VERSION:-""}
+        - SEAMLESS_READ_BUFFER_FOLDERS=${READ_BUFFER_FOLDER_1};${READ_BUFFER_FOLDER_2};${READ_BUFFER_FOLDER_3};${READ_BUFFER_FOLDER_4};${READ_BUFFER_FOLDER_5}
+
   micro-dask-assistant-devel:
       group_add:
         - users
@@ -140,7 +169,7 @@ services:
         - ${SEAMLESSDIR:?}:/seamless
         - ${SEAMLESS_TOOLS_DIR:?}/tools:/home/jovyan/seamless-tools
         - ${SILKDIR:?}:/silk
-      environment:
+      environment:        
         - DASK_SCHEDULER_ADDRESS=${DASK_SCHEDULER_ADDRESS:?}
         - PYTHONPATH=/silk:/seamless
         - SEAMLESS_DATABASE_IP=${SEAMLESS_DATABASE_IP_MAPPED:?}

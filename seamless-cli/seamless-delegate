@@ -13,8 +13,10 @@ assistants = [
     "none",
     "micro-assistant", "micro-assistant-devel",
     "mini-assistant", "mini-assistant-devel",
-    "micro-dask-assistant-devel", "mini-dask-assistant-devel"
+    "micro-dask-assistant", "micro-dask-assistant-devel",
+    "mini-dask-assistant", "mini-dask-assistant-devel",
 ]
+assistants2 = [a for a in assistants if not a.endswith("-devel")]
 
 import sys
 if len(sys.argv) == 1:
@@ -30,7 +32,7 @@ Syntax: seamless-delegate <assistant>
 Available assistants:
 
 {}
-""".format(err, ", ".join(assistants)), file=sys.stderr)
+""".format(err, ", ".join(assistants2)), file=sys.stderr)
     exit(1)
 ''' $assistant
 
@@ -106,4 +108,5 @@ export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERV
 export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
 
 cd delegate
-docker compose up database hashserver $assistant -d  --build --wait
+build=$(python -c "x='--build' if '$assistant'.endswith('-devel') else ''; print(x)")
+docker compose up database hashserver $assistant -d  $build --wait
