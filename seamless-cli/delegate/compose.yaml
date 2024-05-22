@@ -162,7 +162,6 @@ services:
       build:
         context: ../assistants
         dockerfile: micro-dask-assistant-devel.Dockerfile
-      user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
       volumes:
@@ -176,18 +175,33 @@ services:
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
         - SEAMLESS_READ_BUFFER_SERVERS=${SEAMLESS_READ_BUFFER_SERVERS_MAPPED:?}
         - SEAMLESS_WRITE_BUFFER_SERVER=${SEAMLESS_WRITE_BUFFER_SERVER_MAPPED:?}
-        - SEAMLESS_DOCKER_HOST_IP=${SEAMLESS_DOCKER_HOST_IP:-""}
         - ASSISTANT_HOST=0.0.0.0
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
         - DOCKER_IMAGE=seamless-devel
-        - DOCKER_VERSION=${DOCKER_VERSION:-""}
+  micro-dask-assistant:
+      group_add:
+        - users
+      build:
+        context: ../assistants
+        dockerfile: micro-dask-assistant.Dockerfile
+      ports:
+        - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
+      environment:        
+        - DASK_SCHEDULER_ADDRESS=${DASK_SCHEDULER_ADDRESS:?}
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DATABASE_IP_MAPPED:?}
+        - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
+        - SEAMLESS_READ_BUFFER_SERVERS=${SEAMLESS_READ_BUFFER_SERVERS_MAPPED:?}
+        - SEAMLESS_WRITE_BUFFER_SERVER=${SEAMLESS_WRITE_BUFFER_SERVER_MAPPED:?}
+        - ASSISTANT_HOST=0.0.0.0
+        - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - DOCKER_IMAGE=rpbs/seamless
+    
   mini-dask-assistant-devel:
       group_add:
         - users
       build:
         context: ../assistants
         dockerfile: mini-dask-assistant-devel.Dockerfile
-      user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
       ports:
         - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
       volumes:
@@ -201,11 +215,28 @@ services:
         - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
         - SEAMLESS_READ_BUFFER_SERVERS=${SEAMLESS_READ_BUFFER_SERVERS_MAPPED:?}
         - SEAMLESS_WRITE_BUFFER_SERVER=${SEAMLESS_WRITE_BUFFER_SERVER_MAPPED:?}
-        - SEAMLESS_DOCKER_HOST_IP=${SEAMLESS_DOCKER_HOST_IP:-""}
         - ASSISTANT_HOST=0.0.0.0
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
         - DOCKER_IMAGE=seamless-devel
-        - DOCKER_VERSION=${DOCKER_VERSION:-""}
+
+  mini-dask-assistant:
+      group_add:
+        - users
+      build:
+        context: ../assistants
+        dockerfile: mini-dask-assistant.Dockerfile
+      ports:
+        - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
+      environment:
+        - DASK_SCHEDULER_ADDRESS=${DASK_SCHEDULER_ADDRESS:?}
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DATABASE_IP_MAPPED:?}
+        - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
+        - SEAMLESS_READ_BUFFER_SERVERS=${SEAMLESS_READ_BUFFER_SERVERS_MAPPED:?}
+        - SEAMLESS_WRITE_BUFFER_SERVER=${SEAMLESS_WRITE_BUFFER_SERVER_MAPPED:?}
+        - ASSISTANT_HOST=0.0.0.0
+        - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - DOCKER_IMAGE=rpbs/seamless
+
   minifront-dask-assistant-devel:
       group_add:
         - users
@@ -230,3 +261,22 @@ services:
         - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
         - DOCKER_IMAGE=seamless-devel
         - DOCKER_VERSION=${DOCKER_VERSION:-""}
+
+  minifront-dask-assistant:
+      group_add:
+        - users
+      build:
+        context: ../assistants
+        dockerfile: minifront-dask-assistant.Dockerfile
+      user: ${HOST_USER_ID:?}:${HOST_GROUP_ID:?}
+      ports:
+        - ${SEAMLESS_ASSISTANT_PORT:?}:${SEAMLESS_ASSISTANT_PORT:?}
+      environment:
+        - DASK_SCHEDULER_ADDRESS=${DASK_SCHEDULER_ADDRESS:?}
+        - SEAMLESS_DATABASE_IP=${SEAMLESS_DATABASE_IP_MAPPED:?}
+        - SEAMLESS_DATABASE_PORT=${DATABASE_PORT:?}
+        - SEAMLESS_READ_BUFFER_SERVERS=${SEAMLESS_READ_BUFFER_SERVERS_MAPPED:?}
+        - SEAMLESS_WRITE_BUFFER_SERVER=${SEAMLESS_WRITE_BUFFER_SERVER_MAPPED:?}
+        - ASSISTANT_HOST=0.0.0.0
+        - ASSISTANT_PORT=${SEAMLESS_ASSISTANT_PORT:?}
+        - DOCKER_IMAGE=rpbs/seamless

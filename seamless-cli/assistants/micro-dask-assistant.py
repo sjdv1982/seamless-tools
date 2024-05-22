@@ -359,7 +359,7 @@ Meta information is mostly ignored. No support for arbitrary Dask resources.
 
     import seamless
     print("Connecting...")
-    seamless.delegate(level=3)
+    seamless.delegate(level=3) # for can_read_result and input fingertipping
 
     server = JobSlaveServer(create_client(), args.host, args.port)
     server.start()

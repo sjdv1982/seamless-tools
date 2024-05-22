@@ -266,8 +266,8 @@ class SeamlessWorkerPlugin(WorkerPlugin):
             raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
 
         if "SEAMLESS_TRANSFORMATION_SOCKET" not in os.environ:
-            raise RuntimeError("""The Dask mini assistant requires SEAMLESS_TRANSFORMATION_SOCKET.
-You might be using a deployment script designed for the Dask micro assistant.""")
+            raise RuntimeError("""The Dask minifront assistant requires SEAMLESS_TRANSFORMATION_SOCKET in the deployment script.
+You might be using a deployment script designed for the Dask mini assistant or Dask micro assistant.""")
 
 if __name__ == "__main__":
     import argparse
