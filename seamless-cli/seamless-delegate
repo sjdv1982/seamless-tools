@@ -91,7 +91,6 @@ export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
 
 export DOCKER_VERSION=$(docker --version)
-ls hashserver/.git > /dev/null
 
 function mapping() {
 python -c 'import sys
@@ -108,6 +107,23 @@ export SEAMLESS_READ_BUFFER_SERVERS_MAPPED=$(mapping $SEAMLESS_READ_BUFFER_SERVE
 export SEAMLESS_WRITE_BUFFER_SERVER_MAPPED=$(mapping $SEAMLESS_WRITE_BUFFER_SERVER $SEAMLESS_DOCKER_HOST_IP)
 export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOCKER_HOST_IP)
 
-cd delegate
+if [[ -e delegate ]]; then
+    cd delegate
+else
+    cd $CONDA_PREFIX/shared/seamless-cli/delegate
+fi
+
+set +u
+if [ -z "$SEAMLESSDIR" ]; then 
+    export SEAMLESSDIR=/NONE
+fi    
+if [ -z "$SEAMLESS_TOOLS_DIR" ]; then 
+    export SEAMLESS_TOOLS_DIR=/NONE
+fi    
+if [ -z "$SILKDIR" ]; then 
+    export SILKDIR=/NONE
+fi    
+set -u
+
 build=$(python -c "x='--build' if '$assistant'.endswith('-devel') else ''; print(x)")
 docker compose up database hashserver $assistant -d  $build --wait

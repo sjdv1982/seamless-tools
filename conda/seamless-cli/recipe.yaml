@@ -1,10 +1,11 @@
-{% set version = "0.12" %}
+# version of meta.yaml for rattler-build. Keep in sync
+
 package:
     name: seamless-cli
-    version: {{ version }}
+    version: "0.12"
 
 build:
-  number: 1
+  number: 4
   noarch: python
 
 requirements:

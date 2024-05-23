@@ -27,16 +27,21 @@ container
 .PP
 Starts a bash shell in a new Seamless Docker container
 .PP
-\f[B]Uses the host network for the Docker container.
-Will only work under Linux.\f[R]
-.PP
 The ID of the Docker container is available to the Docker container
 itself, in the file \[ti]/DOCKER_CONTAINER.
 .PP
 The current directory is mounted to /cwd, and the command is executed
 there The name of the current directory is available in the container as
 $HOSTCWD.
-.SH BUGS
+.PP
+\f[B]NOTE: The new container has access to the Docker daemon.
+This is a security risk.
+Use seamless-bash-safe to avoid this.\f[R]
+.PP
+\f[B]NOTE: The new container claims the default ports for the Seamless
+web server.
+Use seamless-bash-no-webserver to avoid this.\f[R] .
+BUGS ====
 .PP
 See GitHub Issues: <https://github.com/sjdv1982/seamless/issues>
 .SH AUTHOR
@@ -44,5 +49,5 @@ See GitHub Issues: <https://github.com/sjdv1982/seamless/issues>
 Sjoerd de Vries <sjdv1982@gmail.com>
 .SH SEE ALSO
 .PP
-\f[B]seamless(1)\f[R], \f[B]seamless-ipython(1)\f[R],
+\f[B]seamless-bash-safe(1)\f[R], \f[B]seamless-ipython(1)\f[R],
 \f[B]seamless-jupyter(1)\f[R]
