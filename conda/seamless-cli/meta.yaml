@@ -1,10 +1,10 @@
-{% set version = "0.11.1" %}
+{% set version = "0.12" %}
 package:
     name: seamless-cli
     version: {{ version }}
 
 build:
-  number: 2
+  number: 1
   noarch: python
 
 requirements:
@@ -12,7 +12,5 @@ requirements:
     - python
   run:
     - openssl
-    - ruamel.yaml
-    - psutil
 about:
   summary: This is a collection of bash scripts wrapping the Seamless Docker image.

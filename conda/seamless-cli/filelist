@@ -6,6 +6,7 @@ seamless-bash
 seamless-bash-no-webserver
 seamless-bash-safe
 seamless-bash-safe-no-webserver
+seamless-buffer-size
 seamless-bufferdir-deploy-deepfolder
 seamless-bufferdir-remove-invalid-buffers
 seamless-checksum
@@ -51,13 +52,16 @@ assistants/micro-assistant-devel.Dockerfile
 assistants/micro-assistant.Dockerfile
 assistants/micro-assistant.py
 assistants/micro-dask-assistant-devel.Dockerfile
+assistants/micro-dask-assistant.Dockerfile
 assistants/micro-dask-assistant.py
 assistants/mini-assistant-devel.Dockerfile
 assistants/mini-assistant.Dockerfile
 assistants/mini-assistant.py
 assistants/mini-dask-assistant-devel.Dockerfile
+assistants/mini-dask-assistant.Dockerfile
 assistants/mini-dask-assistant.py
 assistants/minifront-dask-assistant-devel.Dockerfile
+assistants/minifront-dask-assistant.Dockerfile
 assistants/minifront-dask-assistant.py
 delegate/compose.yaml
 hashserver/Dockerfile
