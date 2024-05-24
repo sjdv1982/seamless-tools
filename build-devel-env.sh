@@ -52,7 +52,7 @@ for i in $(seq ${CONDA_SHLVL}); do
     conda deactivate
 done
 conda activate $environment_name
-pip install aiohttp_cors docker matplotlib nglview snakemake==7.18.* itables
+pip install aiohttp_cors docker matplotlib nglview snakemake==7.18.* itables==1.4.*
 pip install jsonschema==4.18.* requests==2.31.*
 pip install sphinx_rtd_theme
 pip install aiofiles  # to run fairserver tests
