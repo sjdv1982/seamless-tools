@@ -3,12 +3,7 @@ set -u -e -x
 
 comdir=../../seamless-cli
 docdir=$comdir/doc
-
-mkdir -p $PREFIX/etc/conda/activate.d
-
 cd $RECIPE_DIR
-
-cp $comdir/activate-seamless-mode.sh $PREFIX/etc/conda/activate.d
 
 cd $docdir
 rm -rf man/build/*.1

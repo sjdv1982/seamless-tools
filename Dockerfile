@@ -5,8 +5,7 @@ LABEL version="0.12"
 USER root
 RUN apt update && apt install less gcc g++ gfortran libjpeg9 gettext -y  # gettext for seamless-mode
 RUN cd /usr/local/src && apt install git -y && git clone https://github.com/sjdv1982/seamless.git --branch stable --depth 1 && rm seamless/.git -rf
-RUN grep -v 'rpbs::seamless-framework' /usr/local/src/seamless/conda/seamless-exact-environment.yml > /tmp/ENV.yml
-RUN mamba env update --name base --file /tmp/ENV.yml
+RUN mamba env update --name base --file /usr/local/src/seamless/conda/_seamless-dockerimage-environment.yml
 COPY . /usr/local/src/seamless-tools
 RUN rm -rf /usr/local/src/seamless-tools/.git && \
     mkdir /home/jovyan/software && \

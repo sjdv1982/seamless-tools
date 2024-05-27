@@ -1,0 +1,16 @@
+{% set version = "0.12" %}
+package:
+    name: seamless-scripts
+    version: {{ version }}
+
+build:
+  number: 3
+  noarch: python
+
+requirements:
+  build:
+    - python
+  run:
+    - seamless-framework
+about:
+  summary: This is a collection of Seamless scripts invoked by the seamless CLI.

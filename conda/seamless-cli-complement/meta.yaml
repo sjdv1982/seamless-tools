@@ -1,10 +1,10 @@
 {% set version = "0.12" %}
 package:
-    name: seamless-cli
+    name: seamless-cli-complement
     version: {{ version }}
 
 build:
-  number: 5
+  number: 2
   noarch: python
 
 requirements:

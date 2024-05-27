@@ -110,7 +110,7 @@ export SEAMLESS_DATABASE_IP_MAPPED=$(mapping $SEAMLESS_DATABASE_IP $SEAMLESS_DOC
 if [[ -e delegate ]]; then
     cd delegate
 else
-    cd $CONDA_PREFIX/shared/seamless-cli/delegate
+    cd $CONDA_PREFIX/share/seamless-cli/delegate
 fi
 
 set +u

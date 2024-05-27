@@ -1,10 +1,11 @@
-{% set version = "0.12" %}
+# version of meta.yaml for rattler-build. Keep in sync
+
 package:
-    name: seamless-cli
-    version: {{ version }}
+    name: seamless-cli-complement
+    version: "0.12"
 
 build:
-  number: 5
+  number: 1
   noarch: python
 
 requirements:
@@ -15,7 +16,6 @@ requirements:
     - psutil
     - peewee
     - sqlite
-    - aiohttp
-    - aiohttp-cors
+
 about:
   summary: This is a collection of bash scripts wrapping the Seamless Docker image.
