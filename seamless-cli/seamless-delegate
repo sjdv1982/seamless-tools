@@ -118,7 +118,7 @@ if [ -z "$SEAMLESSDIR" ]; then
     export SEAMLESSDIR=/NONE
 fi    
 if [ -z "$SEAMLESS_TOOLS_DIR" ]; then 
-    export SEAMLESS_TOOLS_DIR=/NONE
+    export SEAMLESS_TOOLS_DIR=../..
 fi    
 if [ -z "$SILKDIR" ]; then 
     export SILKDIR=/NONE
