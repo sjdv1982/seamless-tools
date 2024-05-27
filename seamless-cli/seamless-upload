@@ -3,6 +3,6 @@
 set -u -e
 
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
-echo 'WARNING: You are running seamless-upload wrapped inside a Docker image. Only the current directory will be accessible!' > /dev/stderr
+echo 'WARNING: You are running seamless-upload wrapped inside a Docker container. Only the current directory will be accessible!' > /dev/stderr
 
 $currdir/_seamless_run seamless-upload "$@"
