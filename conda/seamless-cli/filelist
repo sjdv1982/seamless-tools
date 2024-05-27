@@ -72,3 +72,5 @@ hashserver/compose.yaml
 hashserver/environment.yml
 hashserver/hash_file_response.py
 hashserver/hashserver.py
+database/database.Dockerfile
+database/database.py

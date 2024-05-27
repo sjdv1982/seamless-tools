@@ -16,6 +16,7 @@ mkdir -p $PREFIX/bin
 mkdir -p $PREFIX/share/seamless-cli/delegate
 mkdir -p $PREFIX/share/seamless-cli/assistants
 mkdir -p $PREFIX/share/seamless-cli/hashserver
+mkdir -p $PREFIX/share/seamless-cli/database
 mkdir -p $PREFIX/share/man/man1/
 
 for i in $(cat filelist); do
