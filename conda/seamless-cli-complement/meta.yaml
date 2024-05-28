@@ -5,7 +5,6 @@ package:
 
 build:
   number: 3
-  noarch: python
 
 requirements:
   build:
