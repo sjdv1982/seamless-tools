@@ -80,8 +80,11 @@ def execute(checksum, dunder, *, fingertip, scratch):
     import logging
     logger = logging.getLogger("distributed.worker")
 
-    SEAMLESS_TOOLS_DIR = os.environ["SEAMLESS_TOOLS_DIR"]
-    SEAMLESS_SCRIPTS = SEAMLESS_TOOLS_DIR + "/scripts" 
+    import os
+    if os.environ.get("DOCKER_IMAGE"): # we are running inside a Docker image
+        SEAMLESS_SCRIPTS_DIR = "/home/jovyan/seamless-scripts"
+    else:    
+        SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
     global_info = get_worker().plugins["seamless"].global_info
     print("EXECUTE", checksum)
     logger.info("EXECUTE " + checksum)
@@ -99,7 +102,7 @@ def execute(checksum, dunder, *, fingertip, scratch):
         fingertipstr = "--fingertip" if fingertip else "" 
         scratchstr = "--scratch" if scratch else ""
         command = f"""
-python {SEAMLESS_SCRIPTS}/run-transformation.py \
+python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
     {fingertipstr} {scratchstr}"""    
@@ -127,8 +130,12 @@ def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, sc
     import logging
     logger = logging.getLogger("distributed.worker")
 
-    SEAMLESS_TOOLS_DIR = os.environ["SEAMLESS_TOOLS_DIR"]
-    SEAMLESS_SCRIPTS = SEAMLESS_TOOLS_DIR + "/scripts"
+    if os.environ.get("DOCKER_IMAGE"): # we are running inside a Docker image
+        SEAMLESS_SCRIPTS_DIR = "/home/jovyan/seamless-scripts"
+    else:    
+        SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
+
+
     CONDA_ROOT = os.environ.get("CONDA_ROOT", None)
     global_info = get_worker().plugins["seamless"].global_info
     print(f"EXECUTE {checksum} in conda {conda_env_name}")
@@ -150,7 +157,7 @@ def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, sc
         command = f"""
 source {CONDA_ROOT}/etc/profile.d/conda.sh
 conda activate {conda_env_name}
-python {SEAMLESS_SCRIPTS}/run-transformation.py \
+python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
     {fingertipstr} {scratchstr}"""    
@@ -270,7 +277,7 @@ docker run --rm \
 -e SEAMLESS_DATABASE_PORT \
 -e SEAMLESS_READ_BUFFER_SERVERS \
 -e SEAMLESS_WRITE_BUFFER_SERVER \
--v $SEAMLESS_TOOLS_DIR/scripts:/scripts \
+-v $SEAMLESS_SCRIPTS_DIR:/scripts \
 -v $SEAMLESSDIR:/seamless \
 -v $SILKDIR:/silk \
 -e DOCKER_IMAGE={docker_image} \

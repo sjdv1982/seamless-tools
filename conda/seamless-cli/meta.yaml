@@ -4,7 +4,7 @@ package:
     version: {{ version }}
 
 build:
-  number: 4
+  number: 1
   noarch: python
 
 requirements:
@@ -16,6 +16,5 @@ requirements:
     - peewee
     - sqlite
     - aiohttp
-    - aiohttp-cors
 about:
   summary: This is a collection of bash scripts wrapping the Seamless Docker image.

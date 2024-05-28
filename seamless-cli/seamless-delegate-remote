@@ -68,4 +68,18 @@ if [[ -e delegate ]]; then
 else
     cd $CONDA_PREFIX/share/seamless-cli/delegate
 fi
-docker compose up $assistant --build -d --wait
+
+set +u
+if [ -z "$SEAMLESSDIR" ]; then 
+    export SEAMLESSDIR=/NONE
+fi    
+if [ -z "$SEAMLESS_TOOLS_DIR" ]; then 
+    export SEAMLESS_TOOLS_DIR=../..
+fi    
+if [ -z "$SILKDIR" ]; then 
+    export SILKDIR=/NONE
+fi    
+set -u
+
+build=$(python -c "x='--build' if '$assistant'.endswith('-devel') else ''; print(x)")
+docker compose up $assistant $build -d --wait
