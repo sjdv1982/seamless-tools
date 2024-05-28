@@ -63,5 +63,9 @@ export READ_BUFFER_FOLDER_3=''
 export READ_BUFFER_FOLDER_4=''
 export READ_BUFFER_FOLDER_5=''
 
-cd delegate
+if [[ -e delegate ]]; then
+    cd delegate
+else
+    cd $CONDA_PREFIX/share/seamless-cli/delegate
+fi
 docker compose up $assistant --build -d --wait
