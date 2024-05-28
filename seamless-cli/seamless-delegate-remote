@@ -7,9 +7,9 @@ assistant=$1
 
 python3 -c '''
 assistants = [
-    "micro-dask-assistant-devel",
-    "mini-dask-assistant-devel",
-    "minifront-dask-assistant-devel"
+    "micro-dask-assistant", "micro-dask-assistant-devel",
+    "mini-dask-assistant", "mini-dask-assistant-devel",
+    "minifront-dask-assistant", "minifront-dask-assistant-devel",
 ]
 
 import sys
