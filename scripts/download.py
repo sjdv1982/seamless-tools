@@ -19,7 +19,7 @@ from seamless.cmd.bytes2human import human2bytes
 from seamless.highlevel import Checksum
 
 from seamless.core.cache.buffer_cache import buffer_cache
-from seamless.cmd.message import message as msg, message_and_exit as err
+from seamless.cmd.message import set_header, set_verbosity, message as msg, message_and_exit as err
 from seamless.cmd.file_load import (
     strip_textdata,
     read_checksum_file,
@@ -87,6 +87,15 @@ parser.add_argument(
     default=False
 )
 
+parser.add_argument(
+    "-v",
+    dest="verbosity",
+    help="""Verbose mode.
+Multiple -v options increase the verbosity. The maximum is 3""",
+    action="count",
+    default=0,
+)
+
 parser.add_argument("files_directories_and_checksums", nargs=argparse.REMAINDER)
 
 args = parser.parse_args()
@@ -94,6 +103,10 @@ args = parser.parse_args()
 for path in args.files_directories_and_checksums:
     if path.startswith("-"):
         err("Options must be specified before files/directories")
+
+set_header("seamless-download")
+verbosity = min(args.verbosity, 3)
+set_verbosity(verbosity)
 
 max_download_files = os.environ.get("SEAMLESS_MAX_DOWNLOAD_FILES", "2000")
 max_download_files = int(max_download_files)
@@ -106,7 +119,7 @@ except AssistantConnectionError:
     try:
         seamless.delegate(level=3, raise_exceptions=True)
     except Exception:
-        has_err = seamless.delegate(level=2)
+        has_err = seamless.delegate(level=1)
         if has_err:
             exit(1)
 
@@ -238,16 +251,24 @@ for pathnr, path in enumerate(paths):
     
     if pathnr < len(args.outputs):
         path = args.outputs[pathnr]
+        
     to_download[path] = checksum.hex()
     files.append(path)
 
 
 ################################################################
 
+removed_files = []
 if not args.index_only:
     for directory in directories:
         if os.path.exists(directory):
-            shutil.rmtree(directory)
+            existing_files = [os.path.join(dirpath,f) for (dirpath, _, filenames) in os.walk(directory) for f in filenames]
+            for f in existing_files:
+                if f not in to_download:
+                    os.remove(f)
+                    removed_files.append(f)
+if len(removed_files):
+    msg(2, f"Removed {len(removed_files)} extra files in download directories")                    
 
 newdirs = {os.path.dirname(k) for k in to_download}
 for directory in directories:

@@ -7,7 +7,7 @@ import shutil
 os.environ["__SEAMLESS_FRUGAL"] = "1"
 import seamless
 from seamless.config import AssistantConnectionError
-from seamless.cmd.message import set_verbosity, message as msg, message_and_exit as err
+from seamless.cmd.message import set_header, set_verbosity, message as msg, message_and_exit as err
 from seamless.cmd.file_load import files_to_checksums
 from seamless.cmd.bytes2human import bytes2human, human2bytes
 from seamless.cmd.exceptions import SeamlessSystemExit
@@ -75,6 +75,7 @@ for a in args.files_and_directories:
     if a.startswith("-"):
         err(f"Option {a} must be specified before upload targets")
 
+set_header("seamless-upload")
 verbosity = min(args.verbosity, 3)
 set_verbosity(verbosity)
 msg(1, "Verbosity set to {}".format(verbosity))
