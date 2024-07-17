@@ -13,13 +13,13 @@ dependencies:
   - orjson=3.8.*
   - requests=2.31.*
   - aiohttp=3.7.*
+  - speg
+  - cson==0.8.*
   - datrie  # required to build some pip packages
   - pip
   - pip:
       # essential (all or most of Seamless won't work)
       - websockets==10.3.*
-      - cson==0.8.*
-      - speg
       - aiohttp_cors==0.7.*
       - bashlex
       # recommended (parts of Seamless won't work)

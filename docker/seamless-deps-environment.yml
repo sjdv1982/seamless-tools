@@ -51,12 +51,12 @@ dependencies:
   - r-cairo=1.6_0.*
   - rpy2==3.5.*
   - sympy
+  - speg
 
   - pip:
     # essential (all or most of Seamless won't work)
     - websockets==10.3.*
     - cson==0.8.*
-    - speg
     - aiohttp_cors==0.7.*
     # recommended (parts of Seamless won't work)
     - docker==7.0.*
