@@ -5,6 +5,7 @@ source ./seamless-fill-environment-variables
 set -u -e
 export DATABASE_PORT=$SEAMLESS_DATABASE_PORT
 export HASHSERVER_PORT=$SEAMLESS_HASHSERVER_PORT
+export HASHSERVER_EXTRA_DIRS="/NONE"
 export SEAMLESSDIR="/NONE"
 export SEAMLESS_TOOLS_DIR="/NONE"
 export SILKDIR="/NONE"
@@ -25,6 +26,20 @@ if [[ -e delegate ]]; then
     cd delegate
 else
     cd $CONDA_PREFIX/share/seamless-cli/delegate
+fi
+
+docker compose stop
+docker container prune -f >& /dev/null
+
+cd $currdir
+export HASHSERVER_DIRECTORY="/NONE"
+export HASHSERVER_HOST=-1
+export HASHSERVER_USER_ID=-1
+export HASHSERVER_GROUP_ID=-1
+if [[ -e hashserver ]]; then
+    cd hashserver
+else
+    cd $CONDA_PREFIX/share/seamless-cli/hashserver
 fi
 
 docker compose stop

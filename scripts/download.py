@@ -3,7 +3,7 @@
 # TODO: document
 # in particular, point out that:
 # - .INDEX file may contain comments and whitespace
-#    and if empty of anything else, 
+#    and if empty of anything else,
 #    the index is built from the .CHECKSUM file.
 
 import shutil
@@ -13,19 +13,23 @@ import json
 os.environ["__SEAMLESS_FRUGAL"] = "1"
 
 import seamless
-from seamless import calculate_checksum
+from seamless.checksum import calculate_checksum
 from seamless.config import AssistantConnectionError
 from seamless.cmd.bytes2human import human2bytes
-from seamless.highlevel import Checksum
+from seamless import Checksum
 
-from seamless.core.cache.buffer_cache import buffer_cache
-from seamless.cmd.message import set_header, set_verbosity, message as msg, message_and_exit as err
+from seamless.checksum.buffer_cache import buffer_cache
+from seamless.cmd.message import (
+    set_header,
+    set_verbosity,
+    message as msg,
+    message_and_exit as err,
+)
 from seamless.cmd.file_load import (
     strip_textdata,
     read_checksum_file,
 )
 from seamless.cmd.download import download
-from seamless.highlevel import Checksum
 
 import argparse
 
@@ -60,31 +64,31 @@ parser.add_argument(
     "-o",
     "--output",
     dest="outputs",
-    help='Explicitly specify output file or directory. Can be repeated in case of multiple downloads',
+    help="Explicitly specify output file or directory. Can be repeated in case of multiple downloads",
     action="append",
     default=[],
 )
 
 parser.add_argument(
     "--stdout",
-    help='Print all downloaded buffers to standard output',
+    help="Print all downloaded buffers to standard output",
     action="store_true",
-    default=False
+    default=False,
 )
 
 parser.add_argument(
     "--directory",
-    help='Treat all raw checksum arguments as checksums to directory index buffers',
+    help="Treat all raw checksum arguments as checksums to directory index buffers",
     action="store_true",
-    default=False
+    default=False,
 )
 
 parser.add_argument(
     "--index",
     dest="index_only",
-    help='For directories (deep buffers), only download the index, and write one checksum file per buffer.',
+    help="For directories (deep buffers), only download the index, and write one checksum file per buffer.",
     action="store_true",
-    default=False
+    default=False,
 )
 
 parser.add_argument(
@@ -141,7 +145,9 @@ for pathnr, path in enumerate(paths):
             except ValueError:
                 pass
             path2 = path + ".INDEX"
-        if os.path.exists(path2) or (args.index_only and os.path.exists(os.path.splitext(path2)[0] + ".CHECKSUM")):
+        if os.path.exists(path2) or (
+            args.index_only and os.path.exists(os.path.splitext(path2)[0] + ".CHECKSUM")
+        ):
             path = path2
         elif args.directory and parsed_checksum:
             path += ".INDEX"
@@ -163,20 +169,20 @@ for pathnr, path in enumerate(paths):
                 with open(path) as f:
                     data = f.read()
                 data = strip_textdata(data)
-                index_buffer = data.encode() + b'\n'
-                if not index_buffer.strip(b'\n'):
+                index_buffer = data.encode() + b"\n"
+                if not index_buffer.strip(b"\n"):
                     index_buffer = None
                     index_err = f"Index file '{path}' is empty"
         if index_buffer is None:
             checksum_file = os.path.splitext(path)[0] + ".CHECKSUM"
-            if not (parsed_checksum or args.directory) and not os.path.exists(checksum_file):
+            if not (parsed_checksum or args.directory) and not os.path.exists(
+                checksum_file
+            ):
                 err(f"{index_err}, {checksum_file} does not exist")
             if index_checksum is None:
                 index_checksum = read_checksum_file(checksum_file)
             if index_checksum is None:
-                err(
-                    f"{index_err}, {checksum_file} does not contain a checksum"
-                )
+                err(f"{index_err}, {checksum_file} does not contain a checksum")
             index_checksum = Checksum(index_checksum)
             if not (args.index_only or args.directory):
                 msg(0, f"{index_err}, downloading from checksum ...")
@@ -194,7 +200,7 @@ for pathnr, path in enumerate(paths):
                     maybe_err_msg = f"Buffer with checksum {parsed_checksum} is not a valid index buffer"
                 else:
                     with open(path, "wb") as f:
-                        f.write(index_buffer)                
+                        f.write(index_buffer)
                     maybe_err_msg = f"{index_err}, but {checksum_file} does not contain the checksum of a valid directory index"
 
         else:
@@ -232,26 +238,24 @@ for pathnr, path in enumerate(paths):
                 kk = os.path.join(dirname, k)
                 to_download[kk] = cs
         index_checksums[dirname] = index_checksum.hex()
-        continue    
-    
+        continue
+
     checksum = None
     if path.endswith(".CHECKSUM"):
         path = os.path.splitext(path)[0]
     elif parsed_checksum:
         checksum = parsed_checksum
-    
+
     if checksum is None:
         checksum_file = path + ".CHECKSUM"
         checksum = read_checksum_file(checksum_file)
         if checksum is None:
-            err(
-                f"File '{checksum_file}' does not contain a checksum"
-            )
+            err(f"File '{checksum_file}' does not contain a checksum")
         checksum = Checksum(checksum)
-    
+
     if pathnr < len(args.outputs):
         path = args.outputs[pathnr]
-        
+
     to_download[path] = checksum.hex()
     files.append(path)
 
@@ -262,13 +266,17 @@ removed_files = []
 if not args.index_only:
     for directory in directories:
         if os.path.exists(directory):
-            existing_files = [os.path.join(dirpath,f) for (dirpath, _, filenames) in os.walk(directory) for f in filenames]
+            existing_files = [
+                os.path.join(dirpath, f)
+                for (dirpath, _, filenames) in os.walk(directory)
+                for f in filenames
+            ]
             for f in existing_files:
                 if f not in to_download:
                     os.remove(f)
                     removed_files.append(f)
 if len(removed_files):
-    msg(2, f"Removed {len(removed_files)} extra files in download directories")                    
+    msg(2, f"Removed {len(removed_files)} extra files in download directories")
 
 newdirs = {os.path.dirname(k) for k in to_download}
 for directory in directories:
@@ -300,5 +308,5 @@ else:
         index_checksums=index_checksums,
         max_download_size=max_download_size,
         max_download_files=max_download_files,
-        auto_confirm=args.auto_confirm
+        auto_confirm=args.auto_confirm,
     )

@@ -10,7 +10,8 @@ assistant=$1
 
 python3 -c '''
 assistants = [
-    "none",
+    "stop",
+    "none", "none-devel",
     "micro-assistant", "micro-assistant-devel",
     "mini-assistant", "mini-assistant-devel",
     "micro-dask-assistant", "micro-dask-assistant-devel",
@@ -38,6 +39,10 @@ Available assistants:
 ''' $assistant
 
 set +u
+if [[ $assistant == stop ]] ; then
+  seamless-delegate-stop
+  exit 0
+fi
 if [ -z "$DASK_SCHEDULER_ADDRESS" ]; then
     if [[ $assistant == mini-dask-assistant* ]] || [[ $assistant == micro-dask-assistant* ]] ; then
         echo 'Undefined DASK_SCHEDULER_ADDRESS' > /dev/stderr
@@ -126,4 +131,7 @@ fi
 set -u
 
 build=$(python -c "x='--build' if '$assistant'.endswith('-devel') else ''; print(x)")
+if [[ $assistant == none-devel ]] ; then
+  assistant=''
+fi
 docker compose up database hashserver $assistant -d  $build --wait
