@@ -3,12 +3,23 @@ import asyncio, json, socket
 import signal
 import json
 import traceback
-from peewee import SqliteDatabase, Model, BlobField, CharField, TextField, FixedCharField, CompositeKey, DoesNotExist, IntegrityError
+from peewee import (
+    SqliteDatabase,
+    Model,
+    BlobField,
+    CharField,
+    TextField,
+    FixedCharField,
+    CompositeKey,
+    DoesNotExist,
+    IntegrityError,
+)
 from playhouse.sqlite_ext import JSONField
 
-Checksum = lambda *args, **kwargs: FixedCharField(max_length=64, *args, **kwargs)
+Checksum = lambda *Checksums: FixedCharField(max_length=64, *args, **kwargs)
 
 db = SqliteDatabase(None)
+
 
 # from the Seamless code
 def parse_checksum(checksum, as_bytes=False):
@@ -16,7 +27,7 @@ def parse_checksum(checksum, as_bytes=False):
     if isinstance(checksum, bytes):
         checksum = checksum.hex()
     if isinstance(checksum, str):
-        checksum = bytes.fromhex(checksum)
+        checksum = Checksum(checksum)
 
     if isinstance(checksum, bytes):
         assert len(checksum) == 32, len(checksum)
@@ -24,29 +35,43 @@ def parse_checksum(checksum, as_bytes=False):
             return checksum
         else:
             return checksum.hex()
-    
+
     if checksum is None:
         return
     raise TypeError(type(checksum))
 
+
 # from the Seamless code
 class SeamlessBufferInfo:
     __slots__ = (
-        "checksum", "length", "is_utf8", "is_json", "json_type", 
-        "is_json_numeric_array", "is_json_numeric_scalar",
-        "is_numpy", "dtype", "shape", "is_seamless_mixed", 
-        "str2text", "text2str", "binary2bytes", "bytes2binary",
-        "binary2json", "json2binary"
+        "checksum",
+        "length",
+        "is_utf8",
+        "is_json",
+        "json_type",
+        "is_json_numeric_array",
+        "is_json_numeric_scalar",
+        "is_numpy",
+        "dtype",
+        "shape",
+        "is_seamless_mixed",
+        "str2text",
+        "text2str",
+        "binary2bytes",
+        "bytes2binary",
+        "binary2json",
+        "json2binary",
     )
-    def __init__(self, checksum, params:dict={}):
+
+    def __init__(self, checksum, params: dict = {}):
         for slot in self.__slots__:
             setattr(self, slot, params.get(slot))
         if isinstance(checksum, str):
-            checksum = bytes.fromhex(checksum)
+            checksum = Checksum(checksum)
         self.checksum = checksum
-    
+
     def __setattr__(self, attr, value):
-        if value is not None:    
+        if value is not None:
             if attr == "length":
                 if not isinstance(value, int):
                     raise TypeError(type(value))
@@ -73,14 +98,14 @@ class SeamlessBufferInfo:
             v = getattr(other, attr)
             if v is not None:
                 setattr(self, attr, v)
-    
+
     def get(self, attr, default=None):
         value = getattr(self, attr)
         if value is None:
             return default
         else:
             return value
-    
+
     def as_dict(self):
         result = {}
         for attr in self.__slots__:
@@ -96,7 +121,7 @@ class BaseModel(Model):
     class Meta:
         database = db
         legacy_table_names = False
-    
+
     @classmethod
     def create(cls, **kwargs):
         if cls not in primary:
@@ -111,48 +136,60 @@ class BaseModel(Model):
             instance.update(**kwargs)
             instance.save()
 
+
 class Transformation(BaseModel):
     checksum = Checksum(primary_key=True)
     result = Checksum(index=True, unique=False)
+
 
 class RevTransformation(BaseModel):
     result = Checksum(index=True, unique=False)
     checksum = Checksum(unique=False)
 
+
 class Elision(BaseModel):
     checksum = Checksum(primary_key=True)
     result = Checksum()
+
 
 class BufferInfo(BaseModel):
     # store SeamlessBufferInfo as JSON
     checksum = Checksum(primary_key=True)
     buffer_info = TextField()
 
+
 class SyntacticToSemantic(BaseModel):
     syntactic = Checksum(index=True)
     celltype = TextField()
     subcelltype = TextField()
     semantic = Checksum(index=True)
+
     class Meta:
-            database = db
-            legacy_table_names = False
-            primary_key = CompositeKey(
-                'syntactic', 'celltype', 'subcelltype', 'semantic',
-            )
+        database = db
+        legacy_table_names = False
+        primary_key = CompositeKey(
+            "syntactic",
+            "celltype",
+            "subcelltype",
+            "semantic",
+        )
+
     @classmethod
     def create(cls, **kwargs):
         try:
             return super().create(**kwargs)
         except IntegrityError as exc:
             if exc.args[0].split()[0] != "UNIQUE":
-                raise exc from None 
+                raise exc from None
+
 
 class Compilation(BaseModel):
     checksum = Checksum(primary_key=True)
     result = Checksum(index=True)
 
+
 class Expression(BaseModel):
-    
+
     input_checksum = Checksum()
     path = CharField(max_length=100)
     celltype = CharField(max_length=20)
@@ -160,14 +197,19 @@ class Expression(BaseModel):
     target_celltype = CharField(max_length=20)
     target_hash_pattern = CharField(max_length=20)
     result = Checksum(index=True, unique=False)
+
     class Meta:
-            database = db
-            legacy_table_names = False
-            primary_key = CompositeKey(
-                'input_checksum', 'path', 'celltype', 'hash_pattern',
-                'target_celltype', 'target_hash_pattern'
-            )
-    
+        database = db
+        legacy_table_names = False
+        primary_key = CompositeKey(
+            "input_checksum",
+            "path",
+            "celltype",
+            "hash_pattern",
+            "target_celltype",
+            "target_hash_pattern",
+        )
+
     @classmethod
     def create(cls, **kwargs):
         try:
@@ -175,16 +217,21 @@ class Expression(BaseModel):
         except IntegrityError:
             kwargs2 = {}
             for k in (
-                'input_checksum', 'path', 'celltype', 'hash_pattern',
-                'target_celltype', 'target_hash_pattern'
+                "input_checksum",
+                "path",
+                "celltype",
+                "hash_pattern",
+                "target_celltype",
+                "target_hash_pattern",
             ):
                 kwargs2[k] = kwargs[k]
             instance = cls.get(**kwargs2)
             instance.result = kwargs["result"]
             instance.save()
 
+
 class StructuredCellJoin(BaseModel):
-    '''
+    """
     Structured cell join:
     input checksum: checksum of a dict containing:
     - auth: auth checksum
@@ -192,7 +239,8 @@ class StructuredCellJoin(BaseModel):
     - schema: schema checksum (if not empty)
     - hash_pattern: structured cell hash pattern (if not empty)
     result: value checksum of the structured cell
-    '''
+    """
+
     checksum = Checksum(primary_key=True)
     result = Checksum(index=True, unique=False)
 
@@ -208,16 +256,32 @@ class MetaData(BaseModel):
     checksum = Checksum(primary_key=True)
     metadata = JSONField()
 
+
 class ContestedTransformation(BaseModel):
     result = Checksum(index=True, unique=False)
     checksum = Checksum(index=True, unique=False)
     metadata = JSONField()
 
 
-model_classes = [Transformation, RevTransformation, Elision, BufferInfo, SyntacticToSemantic, Compilation, Expression, StructuredCellJoin, MetaData, ContestedTransformation]
+model_classes = [
+    Transformation,
+    RevTransformation,
+    Elision,
+    BufferInfo,
+    SyntacticToSemantic,
+    Compilation,
+    Expression,
+    StructuredCellJoin,
+    MetaData,
+    ContestedTransformation,
+]
 primary = {}
 for model_class in model_classes:
-    if model_class is Expression or model_class is SyntacticToSemantic or model_class is RevTransformation:
+    if (
+        model_class is Expression
+        or model_class is SyntacticToSemantic
+        or model_class is RevTransformation
+    ):
         continue
     for fieldname, field in model_class._meta.fields.items():
         if field.primary_key:
@@ -235,9 +299,11 @@ def err(*args, **kwargs):
 class DatabaseError(Exception):
     pass
 
+
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((address, port)) == 0
+
 
 types = (
     "protocol",
@@ -266,6 +332,7 @@ key_types = {
     "structured_cell_join": StructuredCellJoin,
 }
 
+
 def format_response(response, *, none_as_404=False):
     status = None
     if response is None:
@@ -289,20 +356,23 @@ def format_response(response, *, none_as_404=False):
 class DatabaseServer:
     future = None
     PROTOCOL = ("seamless", "database", "0.3")
+
     def __init__(self, host, port):
         self.host = host
         self.port = port
 
     async def _start(self):
-        if is_port_in_use(self.host, self.port): # KLUDGE
+        if is_port_in_use(self.host, self.port):  # KLUDGE
             print("ERROR: %s port %d already in use" % (self.host, self.port))
             raise Exception
 
         app = web.Application(client_max_size=10e9)
-        app.add_routes([
-            web.get('/{tail:.*}', self._handle_get),
-            web.put('/{tail:.*}', self._handle_put),
-        ])
+        app.add_routes(
+            [
+                web.get("/{tail:.*}", self._handle_get),
+                web.put("/{tail:.*}", self._handle_put),
+            ]
+        )
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, self.host, self.port)
@@ -316,9 +386,9 @@ class DatabaseServer:
 
     async def _handle_get(self, request):
         try:
-            #print("NEW GET REQUEST", hex(id(request)))
+            # print("NEW GET REQUEST", hex(id(request)))
             data = await request.read()
-            #print("NEW GET REQUEST", data)
+            # print("NEW GET REQUEST", data)
             status = 200
             type_ = None
             try:
@@ -326,7 +396,7 @@ class DatabaseServer:
                     rq = json.loads(data)
                 except Exception:
                     raise DatabaseError("Malformed request") from None
-                #print("NEW GET REQUEST DATA", rq)
+                # print("NEW GET REQUEST DATA", rq)
                 try:
                     type_ = rq["type"]
                     if type_ not in types:
@@ -342,7 +412,7 @@ class DatabaseServer:
                     try:
                         checksum = parse_checksum(checksum, as_bytes=False)
                     except ValueError:
-                        #import traceback; traceback.print_exc()
+                        # import traceback; traceback.print_exc()
                         raise DatabaseError("Malformed request") from None
                     response = await self._get(type_, checksum, rq)
             except DatabaseError as exc:
@@ -356,44 +426,43 @@ class DatabaseServer:
             if status == 200 and status2 is not None:
                 status = status2
             ###if status != 200: print(response)
-            return web.Response(
-                status=status,
-                body=response
-            )
+            return web.Response(status=status, body=response)
         finally:
-            #print("END GET REQUEST", hex(id(request)))
+            # print("END GET REQUEST", hex(id(request)))
             pass
 
     async def _handle_put(self, request):
         try:
-            #print("NEW PUT REQUEST", hex(id(request)))
+            # print("NEW PUT REQUEST", hex(id(request)))
             data = await request.read()
-            #print("NEW PUT REQUEST", data)
+            # print("NEW PUT REQUEST", data)
             status = 200
             try:
                 try:
                     rq = json.loads(data)
                 except Exception:
-                    import traceback; traceback.print_exc()
-                    #raise DatabaseError("Malformed request") from None
+                    import traceback
+
+                    traceback.print_exc()
+                    # raise DatabaseError("Malformed request") from None
                 if not isinstance(rq, dict):
-                    #import traceback; traceback.print_exc()
+                    # import traceback; traceback.print_exc()
                     raise DatabaseError("Malformed request")
 
-                #print("NEW PUT REQUEST DATA", rq)
+                # print("NEW PUT REQUEST DATA", rq)
                 try:
                     type_ = rq["type"]
                     if type_ not in types:
                         raise KeyError
                     checksum = rq["checksum"]
                 except KeyError:
-                    #import traceback; traceback.print_exc()
+                    # import traceback; traceback.print_exc()
                     raise DatabaseError("Malformed request") from None
-                 
+
                 try:
                     checksum = parse_checksum(checksum, as_bytes=False)
                 except ValueError:
-                    #import traceback; traceback.print_exc()
+                    # import traceback; traceback.print_exc()
                     raise DatabaseError("Malformed request") from None
 
                 response = await self._put(type_, checksum, rq)
@@ -403,13 +472,10 @@ class DatabaseServer:
             status2, response = format_response(response)
             if status == 200 and status2 is not None:
                 status = status2
-            #if status != 200: print(response)
-            return web.Response(
-                status=status,
-                body=response
-            )
+            # if status != 200: print(response)
+            return web.Response(status=status, body=response)
         finally:
-            #print("END PUT REQUEST", hex(id(request)))
+            # print("END PUT REQUEST", hex(id(request)))
             pass
 
     async def _get(self, type_, checksum, request):
@@ -418,18 +484,21 @@ class DatabaseServer:
                 return json.loads(BufferInfo[checksum].buffer_info)
             except DoesNotExist:
                 raise DatabaseError("Unknown key") from None
-            
 
         elif type_ == "semantic_to_syntactic":
             try:
                 celltype, subcelltype = request["celltype"], request["subcelltype"]
             except KeyError:
                 raise DatabaseError("Malformed semantic-to-syntactic request")
-            results = SyntacticToSemantic.select().where(
-                SyntacticToSemantic.semantic==checksum,
-                SyntacticToSemantic.celltype==celltype,
-                SyntacticToSemantic.subcelltype==subcelltype
-            ).execute()
+            results = (
+                SyntacticToSemantic.select()
+                .where(
+                    SyntacticToSemantic.semantic == checksum,
+                    SyntacticToSemantic.celltype == celltype,
+                    SyntacticToSemantic.subcelltype == subcelltype,
+                )
+                .execute()
+            )
             if results:
                 return [parse_checksum(result.syntactic) for result in results]
             raise DatabaseError("Unknown key")
@@ -439,39 +508,42 @@ class DatabaseServer:
                 celltype, subcelltype = request["celltype"], request["subcelltype"]
             except KeyError:
                 raise DatabaseError("Malformed syntactic-to-semantic request")
-            results = SyntacticToSemantic.select().where(
-                SyntacticToSemantic.syntactic==checksum,
-                SyntacticToSemantic.celltype==celltype,
-                SyntacticToSemantic.subcelltype==subcelltype
-            ).execute()
+            results = (
+                SyntacticToSemantic.select()
+                .where(
+                    SyntacticToSemantic.syntactic == checksum,
+                    SyntacticToSemantic.celltype == celltype,
+                    SyntacticToSemantic.subcelltype == subcelltype,
+                )
+                .execute()
+            )
             if results:
                 return [parse_checksum(result.semantic) for result in results]
             raise DatabaseError("Unknown key")
-
 
         elif type_ == "compilation":
             try:
                 return parse_checksum(Compilation[checksum].result)
             except DoesNotExist:
-                return None # None is also a valid response
-            
+                return None  # None is also a valid response
+
         elif type_ == "transformation":
             try:
                 return parse_checksum(Transformation[checksum].result)
             except DoesNotExist:
-                return None # None is also a valid response
+                return None  # None is also a valid response
 
         elif type_ == "elision":
             try:
                 return parse_checksum(Elision[checksum].result)
             except DoesNotExist:
-                return None # None is also a valid response
+                return None  # None is also a valid response
 
         elif type_ == "metadata":
             try:
                 return MetaData[checksum].metadata
             except DoesNotExist:
-                return None # None is also a valid response
+                return None  # None is also a valid response
 
         elif type_ == "expression":
             try:
@@ -482,22 +554,30 @@ class DatabaseServer:
                 target_hash_pattern = json.dumps(request.get("target_hash_pattern", ""))
             except KeyError:
                 raise DatabaseError("Malformed expression request")
-            result = Expression.select().where(
-                Expression.input_checksum == checksum,
-                Expression.path==path,
-                Expression.celltype==celltype,
-                Expression.hash_pattern==hash_pattern,
-                Expression.target_celltype==target_celltype,
-                Expression.target_hash_pattern==target_hash_pattern
-            ).execute()
+            result = (
+                Expression.select()
+                .where(
+                    Expression.input_checksum == checksum,
+                    Expression.path == path,
+                    Expression.celltype == celltype,
+                    Expression.hash_pattern == hash_pattern,
+                    Expression.target_celltype == target_celltype,
+                    Expression.target_hash_pattern == target_hash_pattern,
+                )
+                .execute()
+            )
             if not result:
                 return None
             return parse_checksum(result[0].result)
 
         elif type_ == "rev_expression":
-            expressions = Expression.select().where(
-                Expression.result == checksum,
-            ).execute()
+            expressions = (
+                Expression.select()
+                .where(
+                    Expression.result == checksum,
+                )
+                .execute()
+            )
             if not expressions:
                 return None
             result = []
@@ -515,18 +595,26 @@ class DatabaseServer:
             return result
 
         elif type_ == "rev_join":
-            joins = StructuredCellJoin.select().where(
-                StructuredCellJoin.result == checksum,
-            ).execute()
+            joins = (
+                StructuredCellJoin.select()
+                .where(
+                    StructuredCellJoin.result == checksum,
+                )
+                .execute()
+            )
             if not joins:
                 return None
             result = [join.checksum for join in joins]
             return result
 
         elif type_ == "rev_transformations":
-            transformations = RevTransformation.select().where(
-                RevTransformation.result == checksum,
-            ).execute()
+            transformations = (
+                RevTransformation.select()
+                .where(
+                    RevTransformation.result == checksum,
+                )
+                .execute()
+            )
             if not transformations:
                 return None
             result = [transformation.checksum for transformation in transformations]
@@ -536,7 +624,7 @@ class DatabaseServer:
             try:
                 return parse_checksum(StructuredCellJoin[checksum].result)
             except DoesNotExist:
-                return None # None is also a valid response
+                return None  # None is also a valid response
 
         else:
             raise DatabaseError("Unknown request type")
@@ -557,7 +645,7 @@ class DatabaseServer:
                     pass
                 value = json.dumps(value, sort_keys=True, indent=2)
             except Exception as exc:
-                raise DatabaseError("Malformed PUT buffer info request") from None            
+                raise DatabaseError("Malformed PUT buffer info request") from None
             BufferInfo.create(checksum=checksum, buffer_info=value)
 
         elif type_ == "semantic_to_syntactic":
@@ -569,33 +657,45 @@ class DatabaseServer:
             try:
                 celltype, subcelltype = request["celltype"], request["subcelltype"]
             except KeyError:
-                raise DatabaseError("Malformed PUT semantic-to-syntactic request") from None
+                raise DatabaseError(
+                    "Malformed PUT semantic-to-syntactic request"
+                ) from None
             for syntactic_checksum0 in value:
                 syntactic_checksum = parse_checksum(syntactic_checksum0, as_bytes=False)
                 with db.atomic():
-                    SyntacticToSemantic.create(semantic=checksum, celltype=celltype, subcelltype=subcelltype, syntactic=syntactic_checksum)
-        
+                    SyntacticToSemantic.create(
+                        semantic=checksum,
+                        celltype=celltype,
+                        subcelltype=subcelltype,
+                        syntactic=syntactic_checksum,
+                    )
+
         elif type_ == "compilation":
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed PUT compilation result request: value must be a checksum") from None
+                raise DatabaseError(
+                    "Malformed PUT compilation result request: value must be a checksum"
+                ) from None
             Compilation.create(checksum=checksum, result=value)
-        
+
         elif type_ == "transformation":
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed PUT transformation result request: value must be a checksum") from None
+                raise DatabaseError(
+                    "Malformed PUT transformation result request: value must be a checksum"
+                ) from None
             Transformation.create(checksum=checksum, result=value)
             RevTransformation.create(checksum=checksum, result=value)
-
 
         elif type_ == "elision":
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed PUT elision result request: value must be a checksum") from None
+                raise DatabaseError(
+                    "Malformed PUT elision result request: value must be a checksum"
+                ) from None
             Elision.create(checksum=checksum, result=value)
 
         elif type_ == "expression":
@@ -609,7 +709,7 @@ class DatabaseServer:
             except KeyError:
                 raise DatabaseError("Malformed expression request")
             try:
-                #assert celltype in celltypes TODO? also for target_celltype
+                # assert celltype in celltypes TODO? also for target_celltype
                 assert len(path) <= 100
                 if len(request["path"]):
                     assert celltype in ("mixed", "plain", "binary")
@@ -618,7 +718,9 @@ class DatabaseServer:
                 assert len(target_celltype) <= 20
                 assert len(target_hash_pattern) <= 20
             except AssertionError:
-                raise DatabaseError("Malformed expression request (constraint violation)")
+                raise DatabaseError(
+                    "Malformed expression request (constraint violation)"
+                )
             Expression.create(
                 input_checksum=checksum,
                 path=path,
@@ -626,14 +728,16 @@ class DatabaseServer:
                 hash_pattern=hash_pattern,
                 target_celltype=target_celltype,
                 target_hash_pattern=target_hash_pattern,
-                result=value
+                result=value,
             )
 
         elif type_ == "structured_cell_join":
             try:
                 value = parse_checksum(request["value"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed PUT structured_cell_join request: value must be a checksum") from None
+                raise DatabaseError(
+                    "Malformed PUT structured_cell_join request: value must be a checksum"
+                ) from None
             StructuredCellJoin.create(checksum=checksum, result=value)
 
         elif type_ == "metadata":
@@ -648,19 +752,19 @@ class DatabaseServer:
             try:
                 result = parse_checksum(request["result"], as_bytes=False)
             except (KeyError, ValueError):
-                raise DatabaseError("Malformed 'contest' request") from None            
+                raise DatabaseError("Malformed 'contest' request") from None
             in_transformations = False
             try:
                 tf = Transformation[checksum]
                 tf_result = parse_checksum(tf.result, as_bytes=False)
-                in_transformations = True                
+                in_transformations = True
             except DoesNotExist:
                 pass
             if in_transformations:
                 if tf_result != result:
                     return web.Response(
-                        status=404, 
-                        reason="Transformation does not have the contested result"
+                        status=404,
+                        reason="Transformation does not have the contested result",
                     )
             try:
                 metadata = MetaData[checksum].metadata
@@ -669,9 +773,7 @@ class DatabaseServer:
                 metadata = ""
                 in_metadata = False
             ContestedTransformation.create(
-                checksum=checksum,
-                result=result,
-                metadata=metadata              
+                checksum=checksum, result=result, metadata=metadata
             )
             if in_transformations:
                 tf.delete_instance()
@@ -681,16 +783,21 @@ class DatabaseServer:
             raise DatabaseError("Unknown request type")
         return "OK"
 
+
 if __name__ == "__main__":
     import argparse
+
     p = argparse.ArgumentParser()
-    p.add_argument("database_file", help="""File where the database is stored.
+    p.add_argument(
+        "database_file",
+        help="""File where the database is stored.
 The database contents are stored as a SQLite file.
-If it doesn't exist, a new file is created.""")
+If it doesn't exist, a new file is created.""",
+    )
     p.add_argument("--port", default=5522, type=int)
     p.add_argument("--host", default="0.0.0.0")
     args = p.parse_args()
-    
+
     database_file = args.database_file
     print("DATABASE FILE", database_file)
     db.init(database_file)
@@ -699,6 +806,7 @@ If it doesn't exist, a new file is created.""")
 
     def raise_system_exit(*args, **kwargs):
         raise SystemExit
+
     signal.signal(signal.SIGTERM, raise_system_exit)
     signal.signal(signal.SIGHUP, raise_system_exit)
     signal.signal(signal.SIGINT, raise_system_exit)
@@ -711,7 +819,7 @@ If it doesn't exist, a new file is created.""")
     logging.basicConfig()
     logging.getLogger("database").setLevel(logging.DEBUG)
     """
-    
+
     try:
         print("Press Ctrl+C to end")
         asyncio.get_event_loop().run_forever()

@@ -10,12 +10,10 @@ import seamless
 from seamless import parse_checksum
 from seamless.config import database, AssistantConnectionError
 from seamless.cmd.bytes2human import bytes2human
-from seamless.highlevel import Checksum
+from seamless.workflow.highlevel import Checksum
 
 from seamless.cmd.message import message_and_exit as err
-from seamless.cmd.file_load import (
-    read_checksum_file
-)
+from seamless.cmd.file_load import read_checksum_file
 
 import argparse
 
@@ -25,8 +23,8 @@ parser.add_argument(
     "-H",
     "--human-readable",
     dest="human_readable",
-    help='Print sizes in human readable format (e.g. 1kB)',
-    action="store_true"
+    help="Print sizes in human readable format (e.g. 1kB)",
+    action="store_true",
 )
 
 parser.add_argument("files_and_directories", nargs=argparse.REMAINDER)
@@ -44,19 +42,17 @@ checksum_list = []
 checksum_mapping = {}
 paths = [path.rstrip(os.sep) for path in args.files_and_directories]
 paths2 = []
-for path in paths:     
+for path in paths:
     if path.endswith(".CHECKSUM"):
         checksum_file = path
         path2 = os.path.splitext(path)[0]
-    else:            
+    else:
         checksum_file = path + ".CHECKSUM"
         path2 = path
     if os.path.exists(checksum_file) or path.endswith(".CHECKSUM"):
         checksum = read_checksum_file(checksum_file)
         if checksum is None:
-            err(
-                f"File '{checksum_file}' does not contain a checksum"
-            )
+            err(f"File '{checksum_file}' does not contain a checksum")
         checksum = Checksum(checksum).hex()
     else:
         try:
@@ -75,7 +71,7 @@ for checksum in checksum_list:
         length = buffer_info.get("length")
         if length:
             if args.human_readable:
-                buffer_size = bytes2human(length).replace(" ","")
+                buffer_size = bytes2human(length).replace(" ", "")
             else:
                 buffer_size = str(length)
             buffer_size = " " + buffer_size

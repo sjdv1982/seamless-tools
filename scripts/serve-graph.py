@@ -1,9 +1,8 @@
 import sys, os, json, subprocess, argparse
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "graph",
-    help="Seamless graph file to serve",
-    type=argparse.FileType('r')
+    "graph", help="Seamless graph file to serve", type=argparse.FileType("r")
 )
 
 parser.add_argument(
@@ -15,18 +14,18 @@ See the documentation of seamless.delegate(...) for more details.""",
     nargs="?",
     type=int,
     default=0,
-    const=4
+    const=4,
 )
 
 parser.add_argument(
     "--interactive",
     help="Do not enter a mainloop. Assumes that the script was opened with an interactive shell (e.g. ipython -i)",
-    action="store_true"
+    action="store_true",
 )
 parser.add_argument(
     "--debug",
     help="Serve graph in debugging mode. Turns on asyncio debugging, and sets the Seamless logger to DEBUG",
-    action="store_true"
+    action="store_true",
 )
 
 parser.add_argument(
@@ -34,7 +33,7 @@ parser.add_argument(
     help="""Bind a graph that reports the status of the main graph. 
 Optionally, provide a .seamless file, else the default status visualization graph is used.""",
     nargs="?",
-    const="$SEAMLESSDIR/graphs/status-visualization.seamless"
+    const="$SEAMLESSDIR/graphs/status-visualization.seamless",
 )
 
 parser.add_argument(
@@ -55,7 +54,7 @@ parser.add_argument(
     default=[],
 )
 
-parser.add_argument("--ncores",type=int,default=None)
+parser.add_argument("--ncores", type=int, default=None)
 
 parser.add_argument(
     "--no-shares",
@@ -74,7 +73,7 @@ parser.add_argument(
     "--buffer-server",
     dest="buffer_servers",
     help="Add an additional buffer read server",
-     action="append",
+    action="append",
     default=[],
 )
 
@@ -82,7 +81,7 @@ parser.add_argument(
     "--fair-server",
     dest="fair_servers",
     help="Add a FAIR server",
-     action="append",
+    action="append",
     default=[],
 )
 
@@ -90,7 +89,7 @@ parser.add_argument(
     "--no-lru",
     dest="no_lru",
     help="Disable LRU caches for checksum-to-buffer, value-to-checksum, value-to-buffer, and buffer-to-value",
-    action="store_true"
+    action="store_true",
 )
 
 args = parser.parse_args()
@@ -101,6 +100,7 @@ for zipl in args.zips:
 
 if args.status_graph == "$SEAMLESSDIR/graphs/status-visualization.seamless":
     from seamless.metalevel.stdgraph import stdgraph_dir
+
     args.status_graph = os.path.join(stdgraph_dir, "status-visualization.seamless")
     zipf = os.path.join(stdgraph_dir, "status-visualization.zip")
     if zipf not in zips:
@@ -113,13 +113,18 @@ for vaultl in args.vaults:
         vaults.append(vault)
 
 if not args.delegate and not zips and not vaults:
-    print("No buffer sources have been defined. Consider adding --delegate", file=sys.stderr)
+    print(
+        "No buffer sources have been defined. Consider adding --delegate",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 if args.debug:
     import asyncio
+
     asyncio.get_event_loop().set_debug(True)
     import logging
+
     logging.basicConfig()
     logging.getLogger("seamless").setLevel(logging.DEBUG)
 
@@ -140,9 +145,13 @@ for fair_server in args.fair_servers:
     seamless.fair.add_server(fair_server)
 
 if args.no_lru:
-    from seamless.core.protocol.calculate_checksum import calculate_checksum_cache, checksum_cache
+    from seamless.core.protocol.calculate_checksum import (
+        calculate_checksum_cache,
+        checksum_cache,
+    )
     from seamless.core.protocol.deserialize import deserialize_cache
     from seamless.core.protocol.serialize import serialize_cache
+
     calculate_checksum_cache.disable()
     checksum_cache.disable()
     deserialize_cache.disable()
@@ -161,9 +170,10 @@ if not args.no_shares:
         seamless.shareserver.DEFAULT_ADDRESS = shareserver_address
         print("Setting shareserver address to: {}".format(shareserver_address))
 
-import seamless.highlevel.stdlib
+import seamless.workflow.highlevel.stdlib
 
-from seamless.highlevel import load_graph, Context
+from seamless.workflow.highlevel import load_graph, Context
+
 graph = json.load(args.graph)
 if args.delegate == 4:
     for node in graph.get("nodes", []):
@@ -181,6 +191,7 @@ ctx.translate()
 
 if args.status_graph:
     from seamless.metalevel.bind_status_graph import bind_status_graph
+
     with open(args.status_graph) as f:
         status_graph = json.load(f)
     if args.delegate and (args.ncores is None or int(args.ncores)):
@@ -190,7 +201,8 @@ if args.status_graph:
                 meta["local"] = True
                 node["meta"] = meta
     webctx = bind_status_graph(
-        ctx, status_graph,
+        ctx,
+        status_graph,
         mounts=False,
         shares=True,
         zips=zips,
@@ -200,6 +212,7 @@ print("Serving graph...")
 if not args.interactive:
     print("Press Ctrl+C to end")
     import asyncio
+
     try:
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:

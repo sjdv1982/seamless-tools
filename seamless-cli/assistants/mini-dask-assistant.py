@@ -11,14 +11,16 @@ import tempfile
 import dask
 
 from seamless import CacheMissError
-from seamless.highlevel import Checksum
+from seamless.workflow.highlevel import Checksum
 from seamless.core.cache.buffer_remote import can_read_buffer
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
 
+
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((address, port)) == 0
+
 
 def get_conda_envs():
     try:
@@ -27,15 +29,18 @@ def get_conda_envs():
         conda_python_api = None
     if conda_python_api is None:
         raise RuntimeError("Conda Python API not available")
-    info, stderr, return_code = conda_python_api.run_command(conda_python_api.Commands.INFO, ["-e", "--json"])
+    info, stderr, return_code = conda_python_api.run_command(
+        conda_python_api.Commands.INFO, ["-e", "--json"]
+    )
     if return_code != 0:
         raise RuntimeError("Conda error:\n" + stderr)
     existing_envs = json.loads(info)["envs"]
     existing_envs = [os.path.split(eenv)[1] for eenv in existing_envs]
     return existing_envs
 
+
 def run_command(command):
-    command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    command_tf = tempfile.NamedTemporaryFile(mode="w", delete=False)
     try:
         command_tf.write("set -u -e\n")
         command_tf.write(command)
@@ -44,15 +49,16 @@ def run_command(command):
         return subprocess.check_output(
             command_tf.name,
             shell=True,
-            executable="/bin/bash", 
+            executable="/bin/bash",
             stderr=subprocess.STDOUT,
         )
     finally:
         os.unlink(command_tf.name)
 
+
 def run_command_with_outputfile(command):
-    command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
-    command_tf2 = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    command_tf = tempfile.NamedTemporaryFile(mode="w", delete=False)
+    command_tf2 = tempfile.NamedTemporaryFile(mode="w", delete=False)
     outfile = command_tf2.name
     try:
         command_tf.write("set -u -e\n")
@@ -63,7 +69,7 @@ def run_command_with_outputfile(command):
         output = subprocess.check_output(
             command_tf.name,
             shell=True,
-            executable="/bin/bash", 
+            executable="/bin/bash",
             stderr=subprocess.STDOUT,
         )
         if not os.path.exists(outfile):
@@ -74,44 +80,47 @@ def run_command_with_outputfile(command):
         os.unlink(command_tf.name)
         os.unlink(command_tf2.name)
 
+
 def execute(checksum, dunder, *, fingertip, scratch):
     from dask.distributed import get_worker
     import os
     import logging
+
     logger = logging.getLogger("distributed.worker")
 
     import os
-    if os.environ.get("DOCKER_IMAGE"): # we are running inside a Docker image
+
+    if os.environ.get("DOCKER_IMAGE"):  # we are running inside a Docker image
         SEAMLESS_SCRIPTS_DIR = "/home/jovyan/seamless-scripts"
-    else:    
+    else:
         SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
     global_info = get_worker().plugins["seamless"].global_info
     print("EXECUTE", checksum)
     logger.info("EXECUTE " + checksum)
     try:
-        dundercmd=""
+        dundercmd = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
             dundercmd = f"--dunder {dunderfile}"
-        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file = tempfile.NamedTemporaryFile("w+t", delete=False)
         global_info_file.write(json.dumps(global_info))
         global_info_file.close()
-        fingertipstr = "--fingertip" if fingertip else "" 
+        fingertipstr = "--fingertip" if fingertip else ""
         scratchstr = "--scratch" if scratch else ""
         command = f"""
 python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    {fingertipstr} {scratchstr}"""    
+    {fingertipstr} {scratchstr}"""
         print("RUN COMMAND", command)
         logger.info("RUN COMMAND " + command)
 
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
-        else: 
+        else:
             result = None
             output = run_command(command)
         print("DONE", checksum)
@@ -122,19 +131,19 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
         os.unlink(global_info_file.name)
         if dunder is not None:
             os.unlink(tf.name)
-        
+
 
 def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, scratch):
     from dask.distributed import get_worker
     import os
     import logging
+
     logger = logging.getLogger("distributed.worker")
 
-    if os.environ.get("DOCKER_IMAGE"): # we are running inside a Docker image
+    if os.environ.get("DOCKER_IMAGE"):  # we are running inside a Docker image
         SEAMLESS_SCRIPTS_DIR = "/home/jovyan/seamless-scripts"
-    else:    
+    else:
         SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
-
 
     CONDA_ROOT = os.environ.get("CONDA_ROOT", None)
     global_info = get_worker().plugins["seamless"].global_info
@@ -142,17 +151,17 @@ def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, sc
     logger.info(f"EXECUTE {checksum} in conda {conda_env_name}")
 
     try:
-        dundercmd=""
+        dundercmd = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
             dundercmd = f"--dunder {dunderfile}"
-        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file = tempfile.NamedTemporaryFile("w+t", delete=False)
         global_info_file.write(json.dumps(global_info))
         global_info_file.close()
-        fingertipstr = "--fingertip" if fingertip else "" 
+        fingertipstr = "--fingertip" if fingertip else ""
         scratchstr = "--scratch" if scratch else ""
         command = f"""
 source {CONDA_ROOT}/etc/profile.d/conda.sh
@@ -160,13 +169,13 @@ conda activate {conda_env_name}
 python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    {fingertipstr} {scratchstr}"""    
+    {fingertipstr} {scratchstr}"""
         print("RUN COMMAND", command)
         logger.info("RUN COMMAND " + command)
 
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
-        else: 
+        else:
             result = None
             output = run_command(command)
         print("DONE", checksum)
@@ -176,7 +185,10 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
         if dunder is not None:
             os.unlink(tf.name)
 
-def execute_in_docker(checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env):
+
+def execute_in_docker(
+    checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env
+):
     from dask.distributed import get_worker
     import os
     import logging
@@ -188,17 +200,17 @@ def execute_in_docker(checksum, dunder, env, docker_conf, *, fingertip, scratch,
     logger.info("EXECUTE " + checksum)
 
     try:
-        dundercmd=""
+        dundercmd = ""
         dundermount = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
             dundermount = f"-v {dunderfile}:{dunderfile}"
             dundercmd = f"--dunder {dunderfile}"
 
-        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file = tempfile.NamedTemporaryFile("w+t", delete=False)
         global_info_file.write(json.dumps(global_info))
         global_info_file.close()
 
@@ -226,21 +238,25 @@ docker run --rm \
 start.sh python /scripts/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    {fingertipstr} {scratchstr}"""    
+    {fingertipstr} {scratchstr}"""
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
             return result, output
-        else: 
+        else:
             output = run_command(command)
             return None, output
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
-def execute_in_docker_devel(checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env):
+
+def execute_in_docker_devel(
+    checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env
+):
     from dask.distributed import get_worker
     import os
     import logging
+
     logger = logging.getLogger("distributed.worker")
 
     global_info = get_worker().plugins["seamless"].global_info
@@ -249,21 +265,21 @@ def execute_in_docker_devel(checksum, dunder, env, docker_conf, *, fingertip, sc
 
     try:
         dundermount = ""
-        dundercmd=""
+        dundercmd = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
             dundermount = f"-v {dunderfile}:{dunderfile}"
             dundercmd = f"--dunder {dunderfile}"
 
-        global_info_file = tempfile.NamedTemporaryFile("w+t",delete=False)
+        global_info_file = tempfile.NamedTemporaryFile("w+t", delete=False)
         global_info_file.write(json.dumps(global_info))
         global_info_file.close()
 
         docker_image = docker_conf["name"]
-        fingertipstr = "--fingertip" if fingertip else "" 
+        fingertipstr = "--fingertip" if fingertip else ""
         scratchstr = "--scratch" if scratch else ""
         command = f"""
 SEAMLESS_DOCKER_IMAGE={docker_image}
@@ -295,15 +311,17 @@ start.sh python /scripts/run-transformation.py \
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
             return result, output
-        else: 
+        else:
             output = run_command(command)
             return None, output
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
+
 def _run_job(client, checksum, dunder, fingertip, scratch):
     from seamless.core.direct.run import fingertip as do_fingertip
+
     checksum = Checksum(checksum)
 
     transformation_buffer = do_fingertip(checksum.bytes())
@@ -337,15 +355,21 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
             if var.startswith("SEAMLESS"):
                 os_env[var] = os.environ[var]
         fut = client.submit(
-            execute_in_docker_func, checksum.hex(), dunder, env, docker_conf,
-            fingertip=fingertip, scratch=scratch, os_env=os_env,
+            execute_in_docker_func,
+            checksum.hex(),
+            dunder,
+            env,
+            docker_conf,
+            fingertip=fingertip,
+            scratch=scratch,
+            os_env=os_env,
             # Dask arguments
-            
-            key="{}-{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch), env_checksum2),
-            ## this will cause identical jobs to be scheduled only once. 
+            key="{}-{}-{}-{}".format(
+                checksum.hex(), int(fingertip), int(scratch), env_checksum2
+            ),
+            ## this will cause identical jobs to be scheduled only once.
             # Disable during development, or if you are playing around with worker deployment. (TODO: assistant command line option)
-
-            pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+            pure=False,  # will cause identical jobs to be re-run... but only if key is disabled?
         )
         result, output = fut.result()
         return result, output, transformation
@@ -354,52 +378,65 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
     if conda_env_name is not None:
         existing_envs = client.submit(
             get_conda_envs,
-            pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+            pure=False,  # will cause identical jobs to be re-run... but only if key is disabled?
         ).result()
         if conda_env_name in existing_envs:
             fut = client.submit(
-                execute_in_existing_conda, checksum.hex(), dunder, conda_env_name, 
-                fingertip=fingertip, scratch=scratch,
+                execute_in_existing_conda,
+                checksum.hex(),
+                dunder,
+                conda_env_name,
+                fingertip=fingertip,
+                scratch=scratch,
                 # Dask arguments
-                
-                key="{}-{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch), env_checksum2),
-                ## this will cause identical jobs to be scheduled only once. 
+                key="{}-{}-{}-{}".format(
+                    checksum.hex(), int(fingertip), int(scratch), env_checksum2
+                ),
+                ## this will cause identical jobs to be scheduled only once.
                 # Disable during development, or if you are playing around with worker deployment. (TODO: assistant command line option)
-
-                pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+                pure=False,  # will cause identical jobs to be re-run... but only if key is disabled?
             )
             result, output = fut.result()
             return result, output, transformation
 
     if env.get("conda") is not None:
         if conda_env_name is not None:
-            raise RuntimeError("""Non-existing conda environment specified.
-Please create it, or provide a conda environment definition that will be used as recipe.""")
+            raise RuntimeError(
+                """Non-existing conda environment specified.
+Please create it, or provide a conda environment definition that will be used as recipe."""
+            )
         else:
             # The mini dask assistant can't support the creation of new conda environments
             # using transformer environment definitions (in conda YAML) as a recipe
             # Let's try to launch it in the scheduler's Seamless environment
             pass
-    else:    
+    else:
         if conda_env_name is not None or docker_conf is not None:
-            raise RuntimeError("""Non-existing Docker image or conda environment specified.
-Please create it, or provide a conda environment definition that will be used as recipe.""")
+            raise RuntimeError(
+                """Non-existing Docker image or conda environment specified.
+Please create it, or provide a conda environment definition that will be used as recipe."""
+            )
 
     fut = client.submit(
-        execute, checksum.hex(), dunder, 
-        fingertip=fingertip, scratch=scratch,
+        execute,
+        checksum.hex(),
+        dunder,
+        fingertip=fingertip,
+        scratch=scratch,
         # Dask arguments
-        
-        key="{}-{}-{}-{}".format(checksum.hex(), int(fingertip), int(scratch), env_checksum2),
-        ## this will cause identical jobs to be scheduled only once. 
+        key="{}-{}-{}-{}".format(
+            checksum.hex(), int(fingertip), int(scratch), env_checksum2
+        ),
+        ## this will cause identical jobs to be scheduled only once.
         # Disable during development, or if you are playing around with worker deployment. (TODO: assistant command line option)
-
-        pure=False  # will cause identical jobs to be re-run... but only if key is disabled?
+        pure=False,  # will cause identical jobs to be re-run... but only if key is disabled?
     )
     result, output = fut.result()
     return result, output, transformation
 
+
 _jobs = {}
+
 
 async def launch_job(client, tf_checksum, tf_dunder, *, fingertip, scratch):
     tf_checksum = Checksum(tf_checksum).hex()
@@ -411,15 +448,17 @@ async def launch_job(client, tf_checksum, tf_dunder, *, fingertip, scratch):
             _jobs.pop((tf_checksum, fingertip, scratch))
             job = None
     if job is None:
-        coro = anyio.to_thread.run_sync(run_job, client, Checksum(tf_checksum), tf_dunder, fingertip, scratch)
+        coro = anyio.to_thread.run_sync(
+            run_job, client, Checksum(tf_checksum), tf_dunder, fingertip, scratch
+        )
         job = asyncio.create_task(coro)
         _jobs[tf_checksum, fingertip, scratch] = job, tf_dunder
-    
+
     remove_job = True
     try:
         return await asyncio.wait_for(asyncio.shield(job), timeout=10.0)
     except asyncio.TimeoutError:
-        result = web.Response(status=202) # just send it again, later
+        result = web.Response(status=202)  # just send it again, later
         remove_job = False
         return result
     finally:
@@ -429,45 +468,41 @@ async def launch_job(client, tf_checksum, tf_dunder, *, fingertip, scratch):
 
 def run_job(client, checksum, dunder, fingertip, scratch):
     try:
-        result, output, transformation = _run_job(client, checksum, dunder, fingertip, scratch)
+        result, output, transformation = _run_job(
+            client, checksum, dunder, fingertip, scratch
+        )
     except subprocess.CalledProcessError as exc:
         output = exc.output
         return web.Response(
-                status=400,
-                body=b"ERROR: Unknown error\nOutput:\n" + output 
-            )            
-        
+            status=400, body=b"ERROR: Unknown error\nOutput:\n" + output
+        )
+
     if result is not None:
         assert scratch and fingertip
     else:
         for trial in range(5):
-            result = seamless.util.verify_transformation_success(checksum, transformation)
+            result = seamless.util.verify_transformation_success(
+                checksum, transformation
+            )
             if result is not None:
                 break
             time.sleep(0.2)
 
         if not result:
             return web.Response(
-                status=400,
-                body=b"ERROR: Unknown error\nOutput:\n" + output 
-            )            
+                status=400, body=b"ERROR: Unknown error\nOutput:\n" + output
+            )
 
         result = Checksum(result).hex()
         if not scratch and not can_read_buffer(result):
-            return web.Response(
-                status=404,
-                body=f"CacheMissError: {result}"
-            )
+            return web.Response(status=404, body=f"CacheMissError: {result}")
 
-    return web.Response(
-        status=200,
-        body=result
-    )
-
+    return web.Response(status=200, body=result)
 
 
 class JobSlaveServer:
     future = None
+
     def __init__(self, client, host, port):
         self.client = client
         self.host = host
@@ -479,13 +514,16 @@ class JobSlaveServer:
             raise Exception
 
         from anyio import to_thread
+
         to_thread.current_default_thread_limiter().total_tokens = 1000
 
         app = web.Application(client_max_size=10e9)
-        app.add_routes([
-            web.get('/config', self._get_config),
-            web.put('/', self._put_job),
-        ])
+        app.add_routes(
+            [
+                web.get("/config", self._get_config),
+                web.put("/", self._put_job),
+            ]
+        )
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, self.host, self.port)
@@ -501,14 +539,12 @@ class JobSlaveServer:
         # Return an empty response.
         # This causes Seamless clients to load their delegation config
         #  from environment variables
-        return web.Response(
-            status=200
-        )
+        return web.Response(status=200)
 
-    async def _put_job(self, request:web.Request):     
+    async def _put_job(self, request: web.Request):
         try:
             data = await request.json()
-            
+
             tf_checksum = Checksum(data["checksum"])
             scratch = bool(data.get("scratch", False))
             fingertip = bool(data.get("fingertip", False))
@@ -521,34 +557,40 @@ class JobSlaveServer:
             jobcounter = JOBCOUNTER
             print("JOB", jobcounter, tf_checksum, scratch, fingertip)
             tf_dunder = data["dunder"]
-            response = await launch_job(self.client, tf_checksum, tf_dunder=tf_dunder, scratch=scratch, fingertip=fingertip)
+            response = await launch_job(
+                self.client,
+                tf_checksum,
+                tf_dunder=tf_dunder,
+                scratch=scratch,
+                fingertip=fingertip,
+            )
             return response
-        
+
         except Exception as exc:
-            traceback.print_exc() ###
-            body="ERROR: " + str(exc)
-            return web.Response(
-                status=400,
-                body=body
-            )            
-        
+            traceback.print_exc()  ###
+            body = "ERROR: " + str(exc)
+            return web.Response(status=400, body=body)
+
 
 class SeamlessWorkerPlugin(WorkerPlugin):
     async def setup(self, worker):
         import json
         import logging
         import multiprocessing
+
         logger = logging.getLogger("distributed.worker")
 
         try:
             from seamless.core.transformation import get_global_info
         except ImportError:
-            raise RuntimeError("Seamless must be installed on your Dask cluster") from None   
+            raise RuntimeError(
+                "Seamless must be installed on your Dask cluster"
+            ) from None
 
         def pr(msg):
             print(msg)
             logger.info(msg)
-        
+
         pr("Worker SETUP")
 
         with multiprocessing.Pool(1) as p:
@@ -558,33 +600,34 @@ class SeamlessWorkerPlugin(WorkerPlugin):
                     break
                 await asyncio.sleep(1)
             global_info = fut.get(timeout=1)
-        
+
         self.global_info = global_info
 
         pr("Seamless global info:")
         pr(json.dumps(self.global_info))
         pr("Worker up")
 
+
 if __name__ == "__main__":
     import argparse
+
     env = os.environ
-    parser = argparse.ArgumentParser(description="""Mini assistant.
+    parser = argparse.ArgumentParser(
+        description="""Mini assistant.
 Transformations are executed by repeatedly launching run-transformation.py in a subprocess.
                                      
 No support for using transformer environment definitions (conda YAML) as a recipe.
 
 However, provided names of Docker images and conda environments are respected.
 Note that non-bash transformers must have Seamless in their environment.
-""")
-                                     
-    parser.add_argument("--ncores",type=int,default=None)
+"""
+    )
+
+    parser.add_argument("--ncores", type=int, default=None)
 
     default_port = int(env.get("SEAMLESS_ASSISTANT_PORT", -1))
 
-    parser.add_argument(
-        "scheduler_address",
-        help="Dask scheduler address"
-    )
+    parser.add_argument("scheduler_address", help="Dask scheduler address")
 
     parser.add_argument(
         "--port",
@@ -603,25 +646,28 @@ Note that non-bash transformers must have Seamless in their environment.
     parser.add_argument(
         "--interactive",
         help="Do not enter a mainloop. Assumes that the script was opened with an interactive shell (e.g. ipython -i)",
-        action="store_true"
+        action="store_true",
     )
     parser.add_argument("--direct-print", dest="direct_print", action="store_true")
     parser.add_argument(
         "--verbose",
         help="Serve graph in verbose mode, setting the Seamless logger to INFO",
-        action="store_true"
+        action="store_true",
     )
     parser.add_argument(
         "--debug",
         help="Serve graph in debugging mode. Turns on asyncio debugging, and sets the Seamless logger to DEBUG",
-        action="store_true"
+        action="store_true",
     )
 
     args = parser.parse_args()
     if args.port == -1:
-        raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
+        raise ValueError(
+            "Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable"
+        )
 
     import seamless
+
     print("Connecting...")
     seamless.delegate(level=3)
 
@@ -631,7 +677,7 @@ Note that non-bash transformers must have Seamless in their environment.
         client.register_plugin(SeamlessWorkerPlugin(), name="seamless")
     except AttributeError:
         client.register_worker_plugin(SeamlessWorkerPlugin(), name="seamless")
-    
+
     server = JobSlaveServer(client, args.host, args.port)
     server.start()
 

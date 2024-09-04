@@ -8,8 +8,9 @@ import traceback
 from aiohttp import web
 import anyio
 from seamless import CacheMissError
-from seamless.highlevel import Checksum
+from seamless.workflow.highlevel import Checksum
 from seamless.core.cache.buffer_remote import can_read_buffer
+
 try:
     import docker
 except ImportError:
@@ -21,18 +22,21 @@ except ImportError:
 import tempfile
 
 import os
-if os.environ.get("DOCKER_IMAGE"): # we are running inside a Docker image
+
+if os.environ.get("DOCKER_IMAGE"):  # we are running inside a Docker image
     SEAMLESS_SCRIPTS_DIR = "/home/jovyan/seamless-scripts"
-else:    
+else:
     SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
 CONDA_ROOT = os.environ.get("CONDA_ROOT", None)
+
 
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((address, port)) == 0
 
+
 def run_command(command):
-    command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    command_tf = tempfile.NamedTemporaryFile(mode="w", delete=False)
     try:
         command_tf.write("set -u -e\n")
         command_tf.write(command)
@@ -41,15 +45,16 @@ def run_command(command):
         return subprocess.check_output(
             command_tf.name,
             shell=True,
-            executable="/bin/bash", 
+            executable="/bin/bash",
             stderr=subprocess.STDOUT,
         )
     finally:
         os.unlink(command_tf.name)
 
+
 def run_command_with_outputfile(command):
-    command_tf = tempfile.NamedTemporaryFile(mode='w', delete=False)
-    command_tf2 = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    command_tf = tempfile.NamedTemporaryFile(mode="w", delete=False)
+    command_tf2 = tempfile.NamedTemporaryFile(mode="w", delete=False)
     outfile = command_tf2.name
     try:
         command_tf.write("set -u -e\n")
@@ -60,7 +65,7 @@ def run_command_with_outputfile(command):
         output = subprocess.check_output(
             command_tf.name,
             shell=True,
-            executable="/bin/bash", 
+            executable="/bin/bash",
             stderr=subprocess.STDOUT,
         )
         if not os.path.exists(outfile):
@@ -71,16 +76,17 @@ def run_command_with_outputfile(command):
         os.unlink(command_tf.name)
         os.unlink(command_tf2.name)
 
+
 def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, scratch):
     try:
-        dundercmd=""
+        dundercmd = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
             dundercmd = f"--dunder {dunderfile}"
-        fingertipstr = "--fingertip" if fingertip else "" 
+        fingertipstr = "--fingertip" if fingertip else ""
         scratchstr = "--scratch" if scratch else ""
         command = f"""
 source {CONDA_ROOT}/etc/profile.d/conda.sh
@@ -92,33 +98,34 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
             return result, output
-        else: 
+        else:
             output = run_command(command)
             return None, output
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
+
 def execute(checksum, dunder, *, fingertip, scratch):
     try:
-        dundercmd=""
+        dundercmd = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
             dundercmd = f"--dunder {dunderfile}"
-        fingertipstr = "--fingertip" if fingertip else "" 
+        fingertipstr = "--fingertip" if fingertip else ""
         scratchstr = "--scratch" if scratch else ""
         command = f"""
 python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    {fingertipstr} {scratchstr}"""    
+    {fingertipstr} {scratchstr}"""
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
             return result, output
-        else: 
+        else:
             output = run_command(command)
             return None, output
 
@@ -126,15 +133,18 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
         if dunder is not None:
             os.unlink(tf.name)
 
+
 def execute_in_docker(checksum, dunder, env, docker_conf, *, fingertip, scratch):
     docker_image = docker_conf["name"]
     if docker_image.find("seamless-devel") > -1:
-        return execute_in_docker_devel(checksum, dunder, env, docker_conf, scratch=scratch)
+        return execute_in_docker_devel(
+            checksum, dunder, env, docker_conf, scratch=scratch
+        )
     try:
-        dundercmd=""
+        dundercmd = ""
         dundermount = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
@@ -159,30 +169,31 @@ docker run --rm \
 start.sh python /scripts/run-transformation.py \
     {checksum} {dundercmd} \
     --global_info {global_info_file.name} \
-    {fingertipstr} {scratchstr}"""    
+    {fingertipstr} {scratchstr}"""
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
             return result, output
-        else: 
+        else:
             output = run_command(command)
             return None, output
     finally:
         if dunder is not None:
             os.unlink(tf.name)
 
+
 def execute_in_docker_devel(checksum, dunder, env, docker_conf, *, fingertip, scratch):
     try:
         dundermount = ""
-        dundercmd=""
+        dundercmd = ""
         if dunder is not None:
-            tf = tempfile.NamedTemporaryFile("w+t",delete=False)
+            tf = tempfile.NamedTemporaryFile("w+t", delete=False)
             tf.write(json.dumps(dunder))
             tf.close()
             dunderfile = tf.name
             dundermount = f"-v {dunderfile}:{dunderfile}"
             dundercmd = f"--dunder {dunderfile}"
         docker_image = docker_conf["name"]
-        fingertipstr = "--fingertip" if fingertip else "" 
+        fingertipstr = "--fingertip" if fingertip else ""
         scratchstr = "--scratch" if scratch else ""
         command = f"""
 docker run --rm \
@@ -208,7 +219,7 @@ start.sh python /scripts/run-transformation.py \
         if fingertip and scratch:
             result, output = run_command_with_outputfile(command)
             return result, output
-        else: 
+        else:
             output = run_command(command)
             return None, output
     finally:
@@ -249,40 +260,52 @@ def _run_job(checksum, dunder, fingertip, scratch):
         except docker.errors.ImageNotFound:
             ok = False
         if ok:
-            result, output = execute_in_docker(checksum, dunder, env, docker_conf, fingertip=fingertip, scratch=scratch)
+            result, output = execute_in_docker(
+                checksum, dunder, env, docker_conf, fingertip=fingertip, scratch=scratch
+            )
             return result, output, transformation
 
     conda_env_name = env.get("conda_env_name")
     if conda_env_name is not None:
         if conda_python_api is None:
             raise RuntimeError("Conda Python API not available")
-        info, stderr, return_code = conda_python_api.run_command(conda_python_api.Commands.INFO, ["-e", "--json"])        
+        info, stderr, return_code = conda_python_api.run_command(
+            conda_python_api.Commands.INFO, ["-e", "--json"]
+        )
         if return_code != 0:
             raise RuntimeError("Conda error:\n" + stderr)
         existing_envs = json.loads(info)["envs"]
         existing_envs = [os.path.split(eenv)[1] for eenv in existing_envs]
         if conda_env_name in existing_envs:
-            result, output = execute_in_existing_conda(checksum, dunder, conda_env_name, fingertip=fingertip, scratch=scratch)
+            result, output = execute_in_existing_conda(
+                checksum, dunder, conda_env_name, fingertip=fingertip, scratch=scratch
+            )
             return result, output, transformation
-    
+
     if env.get("conda") is not None:
         if conda_env_name is not None:
-            raise RuntimeError("""Non-existing conda environment specified.
-Please create it, or provide a conda environment definition that will be used as recipe.""")
+            raise RuntimeError(
+                """Non-existing conda environment specified.
+Please create it, or provide a conda environment definition that will be used as recipe."""
+            )
         else:
             # The mini assistant does not support the creation of new conda environments
             # using transformer environment definitions (in conda YAML) as a recipe
             # Let's try to launch it in the default Seamless environment
             pass
-    else:    
+    else:
         if conda_env_name is not None or docker_conf is not None:
-            raise RuntimeError("""Non-existing Docker image or conda environment specified.
-Please create it, or provide a conda environment definition that will be used as recipe.""")
-    
+            raise RuntimeError(
+                """Non-existing Docker image or conda environment specified.
+Please create it, or provide a conda environment definition that will be used as recipe."""
+            )
+
     result, output = execute(checksum, dunder, fingertip=fingertip, scratch=scratch)
     return result, output, transformation
 
+
 _jobs = {}
+
 
 async def launch_job(data):
     checksum = Checksum(data["checksum"]).hex()
@@ -298,12 +321,12 @@ async def launch_job(data):
         job = asyncio.create_task(coro)
         _jobs[checksum] = job, data
         print("job ", checksum)
-        
+
     remove_job = True
     try:
         return await asyncio.wait_for(asyncio.shield(job), timeout=10.0)
     except asyncio.TimeoutError:
-        result = web.Response(status=202) # just send it again, later
+        result = web.Response(status=202)  # just send it again, later
         remove_job = False
         return result
     finally:
@@ -321,45 +344,40 @@ def run_job(data):
     except subprocess.CalledProcessError as exc:
         output = exc.output
         return web.Response(
-                status=400,
-                body=b"ERROR: Unknown error\nOutput:\n" + output 
-            )            
-        
+            status=400, body=b"ERROR: Unknown error\nOutput:\n" + output
+        )
+
     if result is not None:
         assert data.get("scratch") and data.get("fingertip")
     else:
         for trial in range(5):
-            result = seamless.util.verify_transformation_success(checksum, transformation)
+            result = seamless.util.verify_transformation_success(
+                checksum, transformation
+            )
             if result is not None:
                 break
             time.sleep(0.2)
 
         if not result:
             return web.Response(
-                status=400,
-                body=b"ERROR: Unknown error\nOutput:\n" + output 
-            )            
+                status=400, body=b"ERROR: Unknown error\nOutput:\n" + output
+            )
 
         result = Checksum(result).hex()
         if not scratch and not can_read_buffer(result):
-            return web.Response(
-                status=404,
-                body=f"CacheMissError: {result}"
-            )
+            return web.Response(status=404, body=f"CacheMissError: {result}")
 
-    return web.Response(
-        status=200,
-        body=result
-    )
-
+    return web.Response(status=200, body=result)
 
 
 class JobSlaveServer:
     future = None
+
     def __init__(self, host, port, sock):
         self.host = host
         self.port = port
         self.sock = sock
+
     async def _start(self):
         if self.sock is None:
             if is_port_in_use(self.host, self.port):
@@ -367,13 +385,16 @@ class JobSlaveServer:
                 raise Exception
 
         from anyio import to_thread
+
         to_thread.current_default_thread_limiter().total_tokens = 1000
 
         app = web.Application(client_max_size=10e9)
-        app.add_routes([
-            web.get('/config', self._get_config),
-            web.put('/', self._put_job),
-        ])
+        app.add_routes(
+            [
+                web.get("/config", self._get_config),
+                web.put("/", self._put_job),
+            ]
+        )
         runner = web.AppRunner(app)
         await runner.setup()
         if self.sock:
@@ -394,11 +415,9 @@ class JobSlaveServer:
         # Return an empty response.
         # This causes Seamless clients to load their delegation config
         #  from environment variables
-        return web.Response(
-            status=200
-        )
+        return web.Response(status=200)
 
-    async def _put_job(self, request:web.Request):  
+    async def _put_job(self, request: web.Request):
         try:
             data = await request.json()
             try:
@@ -406,32 +425,29 @@ class JobSlaveServer:
                 return response
             except RuntimeError as exc:
                 body = traceback.format_exception_only(exc)[-1]
-                return web.Response(
-                    status=400,
-                    body=body
-                )            
-            
+                return web.Response(status=400, body=body)
 
         except Exception as exc:
             traceback.print_exc()
-            return web.Response(
-                status=404,
-                body="ERROR: " + str(exc)
-            )
+            return web.Response(status=404, body="ERROR: " + str(exc))
+
 
 if __name__ == "__main__":
     import argparse
+
     env = os.environ
-    parser = argparse.ArgumentParser(description="""Mini assistant.
+    parser = argparse.ArgumentParser(
+        description="""Mini assistant.
 Transformations are executed by repeatedly launching run-transformation.py in a subprocess.
                                      
 No support for using transformer environment definitions (conda YAML) as a recipe.
 
 However, provided names of Docker images and conda environments are respected.
 Note that non-bash transformers must have Seamless in their environment.
-""")
-                                     
-    parser.add_argument("--ncores",type=int,default=None)
+"""
+    )
+
+    parser.add_argument("--ncores", type=int, default=None)
 
     default_port = int(env.get("SEAMLESS_ASSISTANT_PORT", -1))
 
@@ -458,30 +474,33 @@ Note that non-bash transformers must have Seamless in their environment.
     parser.add_argument(
         "--interactive",
         help="Do not enter a mainloop. Assumes that the script was opened with an interactive shell (e.g. ipython -i)",
-        action="store_true"
+        action="store_true",
     )
     parser.add_argument("--direct-print", dest="direct_print", action="store_true")
     parser.add_argument(
         "--verbose",
         help="Serve graph in verbose mode, setting the Seamless logger to INFO",
-        action="store_true"
+        action="store_true",
     )
     parser.add_argument(
         "--debug",
         help="Serve graph in debugging mode. Turns on asyncio debugging, and sets the Seamless logger to DEBUG",
-        action="store_true"
+        action="store_true",
     )
 
     args = parser.parse_args()
     if not args.socket:
         if args.port == -1:
-            raise ValueError("Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable")
+            raise ValueError(
+                "Network port is not defined, neither as --port nor as SEAMLESS_ASSISTANT_PORT variable"
+            )
 
     import seamless
+
     seamless.delegate(level=3)
-    
+
     from seamless.core.transformation import get_global_info
-    
+
     global_info = get_global_info()
     global_info_file = tempfile.NamedTemporaryFile("w+t")
     json.dump(global_info, global_info_file)

@@ -1,8 +1,9 @@
 import sys, os, shutil, json
 import seamless
+
 os.environ["SEAMLESS_SILENT"] = "1"
 seamless.delegate(False)
-from seamless.highlevel import Context
+from seamless.workflow.highlevel import Context
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -13,8 +14,10 @@ parser.add_argument(
 args = parser.parse_args()
 project_name = args.project_name
 
+
 def pr(*args):
     print(*args, file=sys.stderr)
+
 
 notebook = r"""{
  "cells": [
@@ -36,11 +39,7 @@ notebook = r"""{
  "nbformat_minor": 2
 }"""
 
-subpaths = [
-    "web",
-    "graph",
-    "vault"
-]
+subpaths = ["web", "graph", "vault"]
 for subpath in subpaths:
     if os.path.exists(subpath):
         pr("%s/ already exists, aborting..." % subpath)
@@ -50,6 +49,7 @@ for subpath in subpaths:
     os.mkdir(subpath)
 
 import seamless
+
 seamless_dir = os.path.dirname(seamless.__file__)
 
 empty = Context()
@@ -134,7 +134,7 @@ using "seamless-upload"
 
 import os, sys, shutil
 import seamless, seamless.config
-from seamless.highlevel import (Context, Cell, Transformer, Module, Macro, 
+from seamless.workflow.highlevel import (Context, Cell, Transformer, Module, Macro, 
                                 SimpleDeepCell, FolderCell, DeepCell, DeepFolderCell)
 
 def pr(*args):
@@ -285,7 +285,9 @@ async def load():
     Run save() to save the project workflow file.
     Run export() to generate zip files for web deployment.
     """)
-'''.format(project_name=project_name)
+'''.format(
+    project_name=project_name
+)
 
 with open("load-project.py", "w") as f:
     f.write(code)
@@ -293,7 +295,8 @@ with open("load-project.py", "w") as f:
 with open("{0}.ipynb".format(project_name), "w") as f:
     f.write(notebook)
 
-pr("""Project {0} created.
+pr(
+    """Project {0} created.
 
 - Use seamless-load-project to start up IPython
 or:
@@ -307,4 +310,7 @@ or:
 - Use seamless-jupyter-safe to start up Jupyter
   and in the Jupyter browser window,
   open /home/jovyan/cwd/{0}.ipynb
-""".format(project_name))
+""".format(
+        project_name
+    )
+)

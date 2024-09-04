@@ -3,6 +3,7 @@
 
 from snakemake.workflow import *
 
+
 # monkey-patch Workflow.execute
 # copied from workflow.py, Copyright 2022, Johannes Köster
 def execute(
@@ -112,17 +113,13 @@ def execute(
     else:
 
         def files(items):
-            relpath = (
-                lambda f: f
-                if os.path.isabs(f) or f.startswith("root://")
-                else os.path.relpath(f)
+            relpath = lambda f: (
+                f if os.path.isabs(f) or f.startswith("root://") else os.path.relpath(f)
             )
             return map(relpath, filterfalse(self.is_rule, items))
 
     if not targets and not target_jobs:
-        targets = (
-            [self.default_target] if self.default_target is not None else list()
-        )
+        targets = [self.default_target] if self.default_target is not None else list()
 
     if prioritytargets is None:
         prioritytargets = list()
@@ -161,9 +158,7 @@ def execute(
 
     if wait_for_files is not None:
         try:
-            snakemake.io.wait_for_files(
-                wait_for_files, latency_wait=self.latency_wait
-            )
+            snakemake.io.wait_for_files(wait_for_files, latency_wait=self.latency_wait)
         except IOError as e:
             logger.error(str(e))
             return False
@@ -171,7 +166,7 @@ def execute(
     dag = DAG(
         self,
         rules,
-        dryrun=True, #override
+        dryrun=True,  # override
         targetfiles=targetfiles,
         targetrules=targetrules,
         target_jobs_def=target_jobs,
@@ -218,68 +213,78 @@ def execute(
     )
 
     dag.init()
-    # abort Workflow.execute here. 
+    # abort Workflow.execute here.
     # return dag instead of executing it.
     return dag
+
+
 # /copy
 
 Workflow.execute = execute
 
 # Monkey-patch "run" section of rule
 run_functions = {}
+
+
 def block_content(self, token):
     if self.rulename not in run_functions:
         run_functions[self.rulename] = []
     run_functions[self.rulename].append(token.string)
     return self._block_content(token)
 
+
 import snakemake.parser
+
 snakemake.parser.Run._block_content = snakemake.parser.Run.block_content
 snakemake.parser.Run.block_content = block_content
 
 
 # Parse arguments
 import argparse
+
 parser = argparse.ArgumentParser(
     description="Snakemake2Seamless converter. Snakemake is a Python based language and execution "
-    "environment for GNU Make-like workflows")
+    "environment for GNU Make-like workflows"
+)
 
-parser.add_argument("target",
-                    nargs="*",
-                    default=None,
-                    help="Targets to build. May be rules or files.")
+parser.add_argument(
+    "target", nargs="*", default=None, help="Targets to build. May be rules or files."
+)
 
 
-parser.add_argument("--snakefile", "-s",
-                    metavar="FILE",
-                    default="Snakefile",
-                    help="The workflow definition in a snakefile.")
+parser.add_argument(
+    "--snakefile",
+    "-s",
+    metavar="FILE",
+    default="Snakefile",
+    help="The workflow definition in a snakefile.",
+)
 
-parser.add_argument("--seamless",
-                    default="snakegraph.seamless",
-                    help="Seamless graph file to generate.")
+parser.add_argument(
+    "--seamless", default="snakegraph.seamless", help="Seamless graph file to generate."
+)
 
-parser.add_argument("--zip",
-                    default="snakegraph.zip",
-                    help="Seamless zip file to generate.")
+parser.add_argument(
+    "--zip", default="snakegraph.zip", help="Seamless zip file to generate."
+)
 
 import sys
+
 args = parser.parse_args()
 assert parse
-dag = snakemake.snakemake(
-    args.snakefile,
-    targets=args.target,
-    use_singularity=True
-)
+dag = snakemake.snakemake(args.snakefile, targets=args.target, use_singularity=True)
 if dag == False:
     import sys
+
     sys.exit()
 
 import asyncio
+
 asyncio.set_event_loop(asyncio.new_event_loop())
 
 import seamless
-from seamless.highlevel import Context, Transformer, Cell
+from seamless.workflow.highlevel import Context, Transformer, Cell
+
 ctx = Context()
 ctx.fs = Context()
 fs = ctx.fs
@@ -290,25 +295,30 @@ ctx.results2 = Context()
 
 import inspect
 
+
 class Dummies:
     def __init__(self, d, keys, named):
         self._dict = d
         self._keys = keys
         self._named = named
+
     def __str__(self):
         d = self._dict
         if self._named:
-            return str({k:d[k] for k in self._keys})
+            return str({k: d[k] for k in self._keys})
         else:
             return " ".join([str(d[k]) for k in self._keys])
+
     def __getattr__(self, attr):
         if attr.startswith("_"):
             raise AttributeError(attr)
         if not attr in self._dict:
             raise AttributeError(attr)
         return self._dict[attr]
+
     def __eq__(self, other):
         return hasattr(other, "_dict") and self._dict == other._dict
+
     def _tf_params(self):
         default_pin = {
             "transfer_mode": "ref",
@@ -317,42 +327,44 @@ class Dummies:
         }
         return {self._dict[k]: default_pin.copy() for k in self._keys}
 
+
 def get_dummies(job):
     inkeys = list(job.input.keys())
     inkeys2 = ["_" + k for k in inkeys]
     input_named = True
     if not len(inkeys):
-        inkeys = ["input_%d" % n for n in range(1, len(job.input) + 1) ]
-        inkeys2 = ["_" + str(n) for n in range(1, len(job.input) + 1) ]
+        inkeys = ["input_%d" % n for n in range(1, len(job.input) + 1)]
+        inkeys2 = ["_" + str(n) for n in range(1, len(job.input) + 1)]
         input_named = False
     if len(inkeys2) == 1:
         inkeys2 = [""]
-    input = {k:v for k,v in zip(inkeys, job.input)}
-    for k,v in input.items():
+    input = {k: v for k, v in zip(inkeys, job.input)}
+    for k, v in input.items():
         if not isinstance(v, str):
             raise Exception("Inputs must be string: %s , input %s" % (job.name, k))
-    indummies = {k1:"inputfile" + k2 for k1,k2 in zip(inkeys, inkeys2)}
+    indummies = {k1: "inputfile" + k2 for k1, k2 in zip(inkeys, inkeys2)}
     indummies = Dummies(indummies, inkeys, input_named)
 
     outkeys = list(job.output.keys())
-    outkeys2 = ["_"+k for k in outkeys]
+    outkeys2 = ["_" + k for k in outkeys]
     output_named = True
     if not len(outkeys):
         output_named = False
-        outkeys = ["output_%d" % n for n in range(1, len(job.output) + 1) ]
-        outkeys2 = ["_" + str(n) for n in range(1, len(job.output) + 1) ]
+        outkeys = ["output_%d" % n for n in range(1, len(job.output) + 1)]
+        outkeys2 = ["_" + str(n) for n in range(1, len(job.output) + 1)]
     if len(outkeys2) == 1:
         outkeys2 = [""]
-    output = {k:v for k,v in zip(outkeys, job.output)}
-    for k,v in output.items():
+    output = {k: v for k, v in zip(outkeys, job.output)}
+    for k, v in output.items():
         if not isinstance(v, str):
             raise Exception("Outputs must be string: %s , output %s" % (job.name, k))
-    outdummies = {k1:"outputfile" + k2 for k1,k2 in zip(outkeys, outkeys2)}
+    outdummies = {k1: "outputfile" + k2 for k1, k2 in zip(outkeys, outkeys2)}
     outdummies = Dummies(outdummies, outkeys, output_named)
 
-    wildcard_dummies = {k:"wildcards_" + k for k in job.wildcards_dict}
+    wildcard_dummies = {k: "wildcards_" + k for k in job.wildcards_dict}
     wildcard_dummies = Dummies(wildcard_dummies, wildcard_dummies.keys(), True)
     return indummies, outdummies, wildcard_dummies
+
 
 rules = []
 rule_dummies = {}
@@ -372,33 +384,41 @@ for rule in rules:
     assert not rule.dynamic_output
     assert not rule.is_checkpoint
     if rule.shellcmd is None and rule.name in run_functions:
-        raise Exception("rule '%s' has a custom run function, this is not supported" % rule.name)
+        raise Exception(
+            "rule '%s' has a custom run function, this is not supported" % rule.name
+        )
     if rule.shellcmd is None:
         continue
     indummies, outdummies, wildcard_dummies = rule_dummies[rule]
-    shellcmd = rule.shellcmd.format(**{
-        "input": indummies, "output": outdummies, "wildcards": wildcard_dummies
-    })
+    shellcmd = rule.shellcmd.format(
+        **{"input": indummies, "output": outdummies, "wildcards": wildcard_dummies}
+    )
     if len(outdummies._keys) == 1:
-        shellcmd += ";cat %s > RESULT"  % list(outdummies._dict.values())[0]
+        shellcmd += ";cat %s > RESULT" % list(outdummies._dict.values())[0]
     else:
         outputs = " ".join(outdummies._dict.values())
-        shellcmd += ";mkdir RESULT; for i in %s; do ii=`dirname $i`; mkdir -p $ii`; mv $i $ii; done" % outputs
+        shellcmd += (
+            ";mkdir RESULT; for i in %s; do ii=`dirname $i`; mkdir -p $ii`; mv $i $ii; done"
+            % outputs
+        )
     if rule.is_containerized:
         shellcmd = "bash -c '" + shellcmd + "'"
 
     setattr(ctx.rules, rule.name, shellcmd)
 ctx.compute()
 
+
 def get_jobname(job):
     import re
+
     def clean(s):
         # From https://stackoverflow.com/a/3303361
         # Remove invalid characters
-        s = re.sub('[^0-9a-zA-Z_]', '', s)
+        s = re.sub("[^0-9a-zA-Z_]", "", s)
         # Remove leading characters until we find a letter or underscore
-        s = re.sub('^[^a-zA-Z_]+', '', s)
+        s = re.sub("^[^a-zA-Z_]+", "", s)
         return s
+
     rule = job.rule
     jobname = clean(rule.name)
     for wildcard in rule.wildcard_names:
@@ -408,9 +428,10 @@ def get_jobname(job):
         jobname += "_" + clean(wildcard_value)
     return jobname
 
-for job in sorted(dag.jobs,key=lambda job:get_jobname(job)):
+
+for job in sorted(dag.jobs, key=lambda job: get_jobname(job)):
     rule = job.rule
-    jobname =  get_jobname(job)
+    jobname = get_jobname(job)
     if not len(job.output):
         print("Skipped job '%s', as it has no outputs" % jobname)
         continue
@@ -425,8 +446,11 @@ for job in sorted(dag.jobs,key=lambda job:get_jobname(job)):
     docker_image = job.container_img
     if docker_image is not None:
         if not docker_image.startswith("docker://"):
-            raise Exception("Docker image '%s' (rule %s) does not start with docker://" % (docker_image, rule.name))
-        tf.docker_image = docker_image[len("docker://"):]
+            raise Exception(
+                "Docker image '%s' (rule %s) does not start with docker://"
+                % (docker_image, rule.name)
+            )
+        tf.docker_image = docker_image[len("docker://") :]
     tf.code = getattr(ctx.rules, rule.name)
 
     if not len(job.input.keys()):
@@ -434,8 +458,8 @@ for job in sorted(dag.jobs,key=lambda job:get_jobname(job)):
     else:
         jobinput = [job.input[k] for k in job.input.keys()]
     assert len(indummies._keys) == len(jobinput), (list(indummies._keys), jobinput)
-    inputs = {k:str(v) for k,v in zip(indummies._keys, jobinput)}
-    for k,v in inputs.items():
+    inputs = {k: str(v) for k, v in zip(indummies._keys, jobinput)}
+    for k, v in inputs.items():
         if not isinstance(v, str):
             if isinstance(v, list):
                 msg = "Rule '%s' (job '%s'): input '%s' is a list instead of a single filename, this is not yet supported"
@@ -449,8 +473,8 @@ for job in sorted(dag.jobs,key=lambda job:get_jobname(job)):
     else:
         joboutput = [job.output[k] for k in job.output.keys()]
     assert len(outdummies._keys) == len(joboutput), (list(outdummies._keys), joboutput)
-    outputs = {k:str(v) for k,v in zip(outdummies._keys, joboutput)}
-    for k,v in outputs.items():
+    outputs = {k: str(v) for k, v in zip(outdummies._keys, joboutput)}
+    for k, v in outputs.items():
         if not isinstance(v, str):
             if isinstance(v, list):
                 msg = "Rule '%s' (job '%s'): output '%s' is a list instead of a single filename, this is not yet supported"
@@ -459,8 +483,8 @@ for job in sorted(dag.jobs,key=lambda job:get_jobname(job)):
                 msg = "Rule '%s' (job '%s'): output '%s' should be a string, but it is: '%s'"
                 raise TypeError(msg % (rule.name, jobname, k, v))
 
-    for k,v in inputs.items():
-        kk = getattr(indummies,k)
+    for k, v in inputs.items():
+        kk = getattr(indummies, k)
         inp = getattr(fs, v, None)
         if not isinstance(inp, Cell):
             inp = Cell()
@@ -474,11 +498,11 @@ for job in sorted(dag.jobs,key=lambda job:get_jobname(job)):
     if not len(outputs):
         continue
 
-    multi_output = (len(outputs) > 1)
+    multi_output = len(outputs) > 1
 
     if multi_output:
-        for k,v in outputs.items():
-            kk = getattr(outdummies,k)
+        for k, v in outputs.items():
+            kk = getattr(outdummies, k)
             setattr(fs, v, getattr(result, kk))
     else:
         (v,) = outputs.values()

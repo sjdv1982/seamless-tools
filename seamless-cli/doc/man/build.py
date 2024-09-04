@@ -8,27 +8,30 @@ buffer_cache = "seamless-buffer-cache.zip"
 result_cache = "seamless-result-cache.dat"
 
 import glob, os
-from seamless.highlevel import Context, Transformer, Cell
-currdir=os.path.dirname(os.path.realpath(__file__))
+from seamless.workflow import Context, Transformer, Cell
+from seamless.checksum import Checksum
+
+currdir = os.path.dirname(os.path.realpath(__file__))
 print("MAN DOC CURRDIR", currdir)
 os.chdir(currdir)
 
 docfiles0 = glob.glob("{}/*.md".format(docdir))
-docfiles = [os.path.splitext(
-              os.path.split(f)[1]
-            )[0] for f in docfiles0]
+docfiles = [os.path.splitext(os.path.split(f)[1])[0] for f in docfiles0]
 print("DOCFILES", docfiles)
 
 # TODO: make a real API for this
 from seamless.core.cache.transformation_cache import transformation_cache
+
 if os.path.exists(result_cache):
     with open(result_cache) as f:
         for line in f:
             tf_checksum, result_checksum = line.split()
-            tf_checksum = bytes.fromhex(tf_checksum)
-            result_checksum = bytes.fromhex(result_checksum)
-            transformation_cache.transformation_results[tf_checksum] = \
-              result_checksum, False
+            tf_checksum = Checksum(tf_checksum)
+            result_checksum = Checksum(result_checksum)
+            transformation_cache.transformation_results[tf_checksum] = (
+                result_checksum,
+                False,
+            )
 
 # /TODO
 
@@ -68,12 +71,8 @@ from seamless.core.cache.transformation_cache import transformation_cache
 
 with open(result_cache, "w") as result_cache:
     for tf_checksum, (result_checksum, prelim) in sorted(
-    transformation_cache.transformation_results.items()
+        transformation_cache.transformation_results.items()
     ):
         if not prelim:
-            print(
-                tf_checksum.hex(),
-                result_checksum.hex(),
-                file=result_cache
-            )
+            print(tf_checksum.hex(), result_checksum.hex(), file=result_cache)
 # / TODO

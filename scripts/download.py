@@ -298,7 +298,7 @@ elif args.stdout:
         err("Cannot download and print multiple files to stdout")
     else:
         cs = to_download[files[0]]
-        file_buffer = buffer_cache.get_buffer(bytes.fromhex(cs))
+        file_buffer = buffer_cache.get_buffer(Checksum(cs))
         sys.stdout.buffer.write(file_buffer)
 else:
     download(
