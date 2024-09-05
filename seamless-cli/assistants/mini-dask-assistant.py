@@ -12,7 +12,7 @@ import dask
 
 from seamless import CacheMissError
 from seamless.workflow.highlevel import Checksum
-from seamless.core.cache.buffer_remote import can_read_buffer
+from seamless.workflow.core.cache.buffer_remote import can_read_buffer
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
 
@@ -320,7 +320,7 @@ start.sh python /scripts/run-transformation.py \
 
 
 def _run_job(client, checksum, dunder, fingertip, scratch):
-    from seamless.core.direct.run import fingertip as do_fingertip
+    from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
     checksum = Checksum(checksum)
 
@@ -581,7 +581,7 @@ class SeamlessWorkerPlugin(WorkerPlugin):
         logger = logging.getLogger("distributed.worker")
 
         try:
-            from seamless.core.transformation import get_global_info
+            from seamless.workflow.core.transformation import get_global_info
         except ImportError:
             raise RuntimeError(
                 "Seamless must be installed on your Dask cluster"

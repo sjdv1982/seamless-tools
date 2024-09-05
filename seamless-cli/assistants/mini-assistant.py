@@ -9,7 +9,7 @@ from aiohttp import web
 import anyio
 from seamless import CacheMissError
 from seamless.workflow.highlevel import Checksum
-from seamless.core.cache.buffer_remote import can_read_buffer
+from seamless.workflow.core.cache.buffer_remote import can_read_buffer
 
 try:
     import docker
@@ -228,7 +228,7 @@ start.sh python /scripts/run-transformation.py \
 
 
 def _run_job(checksum, dunder, fingertip, scratch):
-    from seamless.core.direct.run import fingertip as do_fingertip
+    from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
     transformation_buffer = do_fingertip(checksum.bytes())
     if transformation_buffer is None:
@@ -499,7 +499,7 @@ Note that non-bash transformers must have Seamless in their environment.
 
     seamless.delegate(level=3)
 
-    from seamless.core.transformation import get_global_info
+    from seamless.workflow.core.transformation import get_global_info
 
     global_info = get_global_info()
     global_info_file = tempfile.NamedTemporaryFile("w+t")

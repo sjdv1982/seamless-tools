@@ -1,9 +1,3 @@
-if [ -n "$DOCKER_IMAGE" ]; then
-  echo 'DOCKER_IMAGE environment variable has been set.' >> /dev/stderr
-  echo 'Running from inside a Docker container is not supported.' >> /dev/stderr
-  exit 1
-fi
-
 set -e
 
 assistant=$1
@@ -43,6 +37,13 @@ if [[ $assistant == stop ]] ; then
   seamless-delegate-stop
   exit 0
 fi
+
+if [ -n "$DOCKER_IMAGE" ]; then
+  echo 'DOCKER_IMAGE environment variable has been set.' >> /dev/stderr
+  echo 'Running from inside a Docker container is not supported.' >> /dev/stderr
+  exit 1
+fi
+
 if [ -z "$DASK_SCHEDULER_ADDRESS" ]; then
     if [[ $assistant == mini-dask-assistant* ]] || [[ $assistant == micro-dask-assistant* ]] ; then
         echo 'Undefined DASK_SCHEDULER_ADDRESS' > /dev/stderr

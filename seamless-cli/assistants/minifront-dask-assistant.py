@@ -15,7 +15,7 @@ from dask.distributed import WorkerPlugin
 import seamless
 from seamless import CacheMissError
 from seamless.workflow.highlevel import Checksum
-from seamless.core.cache.buffer_remote import can_read_buffer
+from seamless.workflow.core.cache.buffer_remote import can_read_buffer
 
 
 def is_port_in_use(address, port):
@@ -129,7 +129,7 @@ async def run_transformation_dask(
 
 
 def run_job(client, tf_checksum, tf_dunder, fingertip, scratch):
-    from seamless.core.direct.run import fingertip as do_fingertip
+    from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
     transformation_buffer = do_fingertip(tf_checksum.bytes())
     if transformation_buffer is None:

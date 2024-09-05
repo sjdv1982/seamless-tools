@@ -123,7 +123,7 @@ class JobSlaveServer:
             fingertip = bool(data.get("fingertip", False))
 
             """
-            from seamless.core.direct.run import fingertip
+            from seamless.workflow.core.direct.run import fingertip
             import json
             print("RQ", json.loads(fingertip(checksum.hex()).decode()))
             print("DUNDER", data["dunder"])
@@ -204,8 +204,11 @@ if __name__ == "__main__":
 
     import seamless
 
-    from seamless.core.transformation import get_global_info, execution_metadata0
-    from seamless.core.cache.transformation_cache import transformation_cache
+    from seamless.workflow.core.transformation import (
+        get_global_info,
+        execution_metadata0,
+    )
+    from seamless.workflow.core.cache.transformation_cache import transformation_cache
 
     transformation_cache.stateless = True
 
@@ -218,11 +221,11 @@ if __name__ == "__main__":
         seamless.set_ncores(args.ncores)
 
     if args.direct_print:
-        import seamless.core.execute
+        import seamless.workflow.core.execute
 
-        seamless.core.execute.DIRECT_PRINT = True
+        seamless.workflow.core.execute.DIRECT_PRINT = True
 
-    from seamless.core import context
+    from seamless.workflow.core import context
 
     ctx = context(toplevel=True)
 
@@ -237,7 +240,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGHUP, raise_system_exit)
     signal.signal(signal.SIGINT, raise_system_exit)
 
-    from seamless.core.manager import Manager
+    from seamless.workflow.core.manager import Manager
 
     _dummy_manager = Manager()
 

@@ -9,7 +9,7 @@ import anyio
 from aiohttp import web
 from seamless import CacheMissError
 from seamless.workflow.highlevel import Checksum
-from seamless.core.cache.buffer_remote import can_read_buffer
+from seamless.workflow.core.cache.buffer_remote import can_read_buffer
 import dask
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
@@ -33,15 +33,17 @@ class SeamlessWorkerPlugin(WorkerPlugin):
             seamless._original_event_loop = (
                 asyncio.get_event_loop()
             )  # EVIL but needed for restarts
-            from seamless.core.transformation import (
+            from seamless.workflow.core.transformation import (
                 get_global_info,
                 execution_metadata0,
             )
-            from seamless.core.cache.transformation_cache import transformation_cache
+            from seamless.workflow.core.cache.transformation_cache import (
+                transformation_cache,
+            )
             from seamless.util import set_unforked_process
             from seamless.metalevel.unbashify import get_bash_checksums
-            from seamless.core.direct.run import set_dummy_manager
-            from seamless.core.cache.buffer_cache import buffer_cache
+            from seamless.workflow.core.direct.run import set_dummy_manager
+            from seamless.workflow.core.cache.buffer_cache import buffer_cache
         except ImportError:
             raise RuntimeError(
                 "Seamless must be installed on your Dask cluster"
@@ -66,10 +68,13 @@ def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scrat
     import json
     import time
     import seamless
-    import seamless.core.direct.run
+    import seamless.workflow.core.direct.run
 
-    assert seamless.core.direct.run._dummy_manager is not None
-    from seamless.core.direct.run import get_dummy_manager, fingertip as do_fingertip
+    assert seamless.workflow.core.direct.run._dummy_manager is not None
+    from seamless.workflow.core.direct.run import (
+        get_dummy_manager,
+        fingertip as do_fingertip,
+    )
     from seamless import CacheMissError
 
     loop = asyncio.new_event_loop()
@@ -181,7 +186,7 @@ async def launch_job(jobslaveserver, checksum, tf_dunder, *, fingertip, scratch)
 
 
 def run_job(jobslaveserver, checksum, tf_dunder, fingertip, scratch):
-    from seamless.core.direct.run import fingertip as do_fingertip
+    from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
     transformation_buffer = do_fingertip(checksum.bytes())
     if transformation_buffer is None:
@@ -310,7 +315,7 @@ class JobSlaveServer:
             jobcounter = JOBCOUNTER
             print("JOB", jobcounter, checksum, scratch, fingertip)
             """
-            from seamless.core.direct.run import fingertip as do_fingertip
+            from seamless.workflow.core.direct.run import fingertip as do_fingertip
             import json
             print("RQ", json.loads(do_fingertip(checksum.hex()).decode()))
             ###print("DUNDER", data["dunder"])

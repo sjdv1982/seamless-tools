@@ -20,7 +20,7 @@ docfiles = [os.path.splitext(os.path.split(f)[1])[0] for f in docfiles0]
 print("DOCFILES", docfiles)
 
 # TODO: make a real API for this
-from seamless.core.cache.transformation_cache import transformation_cache
+from seamless.workflow.core.cache.transformation_cache import transformation_cache
 
 if os.path.exists(result_cache):
     with open(result_cache) as f:
@@ -67,7 +67,7 @@ print()
 ctx.save_zip(buffer_cache)
 
 # TODO: make a real API for this
-from seamless.core.cache.transformation_cache import transformation_cache
+from seamless.workflow.core.cache.transformation_cache import transformation_cache
 
 with open(result_cache, "w") as result_cache:
     for tf_checksum, (result_checksum, prelim) in sorted(

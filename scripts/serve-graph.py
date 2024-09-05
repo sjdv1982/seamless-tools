@@ -145,12 +145,12 @@ for fair_server in args.fair_servers:
     seamless.fair.add_server(fair_server)
 
 if args.no_lru:
-    from seamless.core.protocol.calculate_checksum import (
+    from seamless.workflow.core.protocol.calculate_checksum import (
         calculate_checksum_cache,
         checksum_cache,
     )
-    from seamless.core.protocol.deserialize import deserialize_cache
-    from seamless.core.protocol.serialize import serialize_cache
+    from seamless.workflow.core.protocol.deserialize import deserialize_cache
+    from seamless.workflow.core.protocol.serialize import serialize_cache
 
     calculate_checksum_cache.disable()
     checksum_cache.disable()
