@@ -16,7 +16,10 @@ from peewee import (
 )
 from playhouse.sqlite_ext import JSONField
 
-Checksum = lambda *Checksums: FixedCharField(max_length=64, *args, **kwargs)
+
+def ChecksumField(*args, **kwargs):
+    return FixedCharField(max_length=64, *args, **kwargs)
+
 
 db = SqliteDatabase(None)
 
@@ -27,7 +30,7 @@ def parse_checksum(checksum, as_bytes=False):
     if isinstance(checksum, bytes):
         checksum = checksum.hex()
     if isinstance(checksum, str):
-        checksum = Checksum(checksum)
+        checksum = bytes.fromhex(checksum)
 
     if isinstance(checksum, bytes):
         assert len(checksum) == 32, len(checksum)
@@ -67,7 +70,7 @@ class SeamlessBufferInfo:
         for slot in self.__slots__:
             setattr(self, slot, params.get(slot))
         if isinstance(checksum, str):
-            checksum = Checksum(checksum)
+            checksum = parse_checksum(checksum)
         self.checksum = checksum
 
     def __setattr__(self, attr, value):
@@ -138,31 +141,31 @@ class BaseModel(Model):
 
 
 class Transformation(BaseModel):
-    checksum = Checksum(primary_key=True)
-    result = Checksum(index=True, unique=False)
+    checksum = ChecksumField(primary_key=True)
+    result = ChecksumField(index=True, unique=False)
 
 
 class RevTransformation(BaseModel):
-    result = Checksum(index=True, unique=False)
-    checksum = Checksum(unique=False)
+    result = ChecksumField(index=True, unique=False)
+    checksum = ChecksumField(unique=False)
 
 
 class Elision(BaseModel):
-    checksum = Checksum(primary_key=True)
-    result = Checksum()
+    checksum = ChecksumField(primary_key=True)
+    result = ChecksumField()
 
 
 class BufferInfo(BaseModel):
     # store SeamlessBufferInfo as JSON
-    checksum = Checksum(primary_key=True)
+    checksum = ChecksumField(primary_key=True)
     buffer_info = TextField()
 
 
 class SyntacticToSemantic(BaseModel):
-    syntactic = Checksum(index=True)
+    syntactic = ChecksumField(index=True)
     celltype = TextField()
     subcelltype = TextField()
-    semantic = Checksum(index=True)
+    semantic = ChecksumField(index=True)
 
     class Meta:
         database = db
@@ -184,19 +187,19 @@ class SyntacticToSemantic(BaseModel):
 
 
 class Compilation(BaseModel):
-    checksum = Checksum(primary_key=True)
-    result = Checksum(index=True)
+    checksum = ChecksumField(primary_key=True)
+    result = ChecksumField(index=True)
 
 
 class Expression(BaseModel):
 
-    input_checksum = Checksum()
+    input_checksum = ChecksumField()
     path = CharField(max_length=100)
     celltype = CharField(max_length=20)
     hash_pattern = CharField(max_length=20)
     target_celltype = CharField(max_length=20)
     target_hash_pattern = CharField(max_length=20)
-    result = Checksum(index=True, unique=False)
+    result = ChecksumField(index=True, unique=False)
 
     class Meta:
         database = db
@@ -241,8 +244,8 @@ class StructuredCellJoin(BaseModel):
     result: value checksum of the structured cell
     """
 
-    checksum = Checksum(primary_key=True)
-    result = Checksum(index=True, unique=False)
+    checksum = ChecksumField(primary_key=True)
+    result = ChecksumField(index=True, unique=False)
 
 
 class MetaData(BaseModel):
@@ -253,13 +256,13 @@ class MetaData(BaseModel):
     # - hardware (GPU, memory)
     # - execution time (also if failed)
     # - last recorded progress (if failed)
-    checksum = Checksum(primary_key=True)
+    checksum = ChecksumField(primary_key=True)
     metadata = JSONField()
 
 
 class ContestedTransformation(BaseModel):
-    result = Checksum(index=True, unique=False)
-    checksum = Checksum(index=True, unique=False)
+    result = ChecksumField(index=True, unique=False)
+    checksum = ChecksumField(index=True, unique=False)
     metadata = JSONField()
 
 

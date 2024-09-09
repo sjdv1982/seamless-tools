@@ -21,6 +21,7 @@ services:
     environment:
       - HASHSERVER_HOST=0.0.0.0
       - HASHSERVER_PORT=${HASHSERVER_PORT:?}
+      - HASHSERVER_LAYOUT=${HASHSERVER_LAYOUT:-flat}  # for simplicity. Empty default is "prefix"
       - HASHSERVER_EXTRA_DIRS=""  # extra dirs cannot be mounted into the Docker image!
       - HASHSERVER_WRITABLE=1    
     volumes:

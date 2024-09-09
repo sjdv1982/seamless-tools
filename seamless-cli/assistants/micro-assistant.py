@@ -7,8 +7,7 @@ import traceback
 from aiohttp import web
 import json
 import seamless
-from seamless import CacheMissError
-from seamless.workflow.highlevel import Checksum
+from seamless import Checksum, CacheMissError
 
 
 def is_port_in_use(address, port):
@@ -31,7 +30,7 @@ async def run_transformation(checksum, tf_dunder, fingertip, scratch):
         if not k.startswith("__"):
             _, _, pin_checksum = v
             await _dummy_manager.cachemanager.fingertip(pin_checksum)
-    result_checksum = await seamless.run_transformation_async(
+    result_checksum = await seamless.direct.run_transformation_async(
         checksum, tf_dunder=tf_dunder, fingertip=fingertip, scratch=scratch
     )
     if scratch and fingertip:
