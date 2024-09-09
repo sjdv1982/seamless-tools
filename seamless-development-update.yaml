@@ -8,14 +8,12 @@ dependencies:
   - psutil=5.9.*
   - jinja2=3.1.*
   - traitlets=5.9.*
-  - jsonschema=4.18.*  # for silk
-  - numpy=1.24.*  
+  - jsonschema=4.18.* # for silk
+  - numpy=1.24.*
   - orjson=3.8.*
   - requests=2.31.*
   - aiohttp=3.7.*
-  - speg
-  - cson==0.8.*
-  - datrie  # required to build some pip packages
+  - datrie # required to build some pip packages
   - pip
   - pip:
       # essential (all or most of Seamless won't work)
@@ -27,7 +25,7 @@ dependencies:
       # extra
       - jupyterlab
       - jupyter-console
-      - ipython<=8.16.*
+      - ipython<=8.16
 variables:
   SEAMLESS_CONDA_ENVIRONMENT: 1
   SEAMLESS_DEFAULT_ASSISTANT_IP: 127.0.0.1

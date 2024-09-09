@@ -7,10 +7,10 @@ import time
 import traceback
 import anyio
 from aiohttp import web
-from seamless import CacheMissError
-from seamless.workflow.highlevel import Checksum
-from seamless.workflow.core.cache.buffer_remote import can_read_buffer
 import dask
+
+from seamless import Checksum, CacheMissError
+from seamless.checksum.buffer_remote import can_read_buffer
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
 
@@ -28,9 +28,9 @@ class SeamlessWorkerPlugin(WorkerPlugin):
 
         print("Worker SETUP")
         try:
-            import seamless
+            import seamless.workflow
 
-            seamless._original_event_loop = (
+            seamless.workflow._original_event_loop = (
                 asyncio.get_event_loop()
             )  # EVIL but needed for restarts
             from seamless.workflow.core.transformation import (
@@ -40,10 +40,10 @@ class SeamlessWorkerPlugin(WorkerPlugin):
             from seamless.workflow.core.cache.transformation_cache import (
                 transformation_cache,
             )
-            from seamless.util import set_unforked_process
-            from seamless.metalevel.unbashify import get_bash_checksums
+            from seamless.workflow.util import set_unforked_process
+            from seamless.workflow.metalevel.unbashify import get_bash_checksums
             from seamless.workflow.core.direct.run import set_dummy_manager
-            from seamless.workflow.core.cache.buffer_cache import buffer_cache
+            from seamless.checksum.buffer_cache import buffer_cache
         except ImportError:
             raise RuntimeError(
                 "Seamless must be installed on your Dask cluster"

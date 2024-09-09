@@ -161,8 +161,8 @@ async def define_graph(ctx):
 
 def load_ipython():
     import asyncio
-    import seamless
-    loop = seamless._original_event_loop
+    import seamless.workflow
+    loop = seamless.workflow._original_event_loop
     asyncio.set_event_loop(loop)
     coro = load()
     loop.run_until_complete(coro)

@@ -10,9 +10,8 @@ import anyio
 import tempfile
 import dask
 
-from seamless import CacheMissError
-from seamless.workflow.highlevel import Checksum
-from seamless.workflow.core.cache.buffer_remote import can_read_buffer
+from seamless import Checksum, CacheMissError
+from seamless.checksum.buffer_remote import can_read_buffer
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
 
