@@ -155,7 +155,7 @@ if not fingertip and not args.output:
             exit(1)
 
 # To hold on fingertipped buffers for longer
-from seamless.workflow.core.cache.buffer_cache import buffer_cache
+from seamless.checksum.buffer_cache import buffer_cache
 
 buffer_cache.LIFETIME_TEMP = 600.0
 buffer_cache.LIFETIME_TEMP_SMALL = 1200.0

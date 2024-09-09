@@ -128,7 +128,7 @@ def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scrat
                     raise CacheMissError(result_checksum)
             else:
                 for trial in range(5):
-                    result = seamless.util.verify_transformation_success(
+                    result = seamless.workflow.util.verify_transformation_success(
                         transformation_checksum, transformation
                     )
                     if result is not None:
@@ -225,7 +225,7 @@ def run_job(jobslaveserver, checksum, tf_dunder, fingertip, scratch):
 
     if not (scratch and fingertip):
         for trial in range(5):
-            result = seamless.util.verify_transformation_success(
+            result = seamless.workflow.util.verify_transformation_success(
                 checksum, transformation
             )
             if result is not None:

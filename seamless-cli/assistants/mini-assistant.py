@@ -7,9 +7,8 @@ import time
 import traceback
 from aiohttp import web
 import anyio
-from seamless import CacheMissError
-from seamless.workflow.highlevel import Checksum
-from seamless.workflow.core.cache.buffer_remote import can_read_buffer
+from seamless import Checksum, CacheMissError
+from seamless.checksum.buffer_remote import can_read_buffer
 
 try:
     import docker
@@ -351,7 +350,7 @@ def run_job(data):
         assert data.get("scratch") and data.get("fingertip")
     else:
         for trial in range(5):
-            result = seamless.util.verify_transformation_success(
+            result = seamless.workflow.util.verify_transformation_success(
                 checksum, transformation
             )
             if result is not None:

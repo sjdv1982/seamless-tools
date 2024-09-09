@@ -13,10 +13,9 @@ import json
 os.environ["__SEAMLESS_FRUGAL"] = "1"
 
 import seamless
-from seamless.checksum import calculate_checksum
+from seamless import Checksum, Buffer
 from seamless.config import AssistantConnectionError
 from seamless.cmd.bytes2human import human2bytes
-from seamless import Checksum
 
 from seamless.checksum.buffer_cache import buffer_cache
 from seamless.cmd.message import (
@@ -204,7 +203,7 @@ for pathnr, path in enumerate(paths):
                     maybe_err_msg = f"{index_err}, but {checksum_file} does not contain the checksum of a valid directory index"
 
         else:
-            index_checksum = Checksum(calculate_checksum(index_buffer))
+            index_checksum = Buffer(index_buffer).get_checksum()
             maybe_err_msg = f"File '{path}' is not a valid index file"
 
         if dirname != os.path.splitext(path)[0]:

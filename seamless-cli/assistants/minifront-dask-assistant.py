@@ -166,7 +166,7 @@ def run_job(client, tf_checksum, tf_dunder, fingertip, scratch):
         return result_value
     else:
         for trial in range(5):
-            result = seamless.util.verify_transformation_success(
+            result = seamless.workflow.util.verify_transformation_success(
                 tf_checksum, transformation
             )
             if result is not None:

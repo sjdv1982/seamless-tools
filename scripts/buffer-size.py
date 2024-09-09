@@ -7,10 +7,9 @@ import os
 os.environ["__SEAMLESS_FRUGAL"] = "1"
 
 import seamless
-from seamless import parse_checksum
+from seamless import Checksum
 from seamless.config import database, AssistantConnectionError
 from seamless.cmd.bytes2human import bytes2human
-from seamless.workflow.highlevel import Checksum
 
 from seamless.cmd.message import message_and_exit as err
 from seamless.cmd.file_load import read_checksum_file

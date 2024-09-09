@@ -481,7 +481,7 @@ def run_job(client, checksum, dunder, fingertip, scratch):
         assert scratch and fingertip
     else:
         for trial in range(5):
-            result = seamless.util.verify_transformation_success(
+            result = seamless.workflow.util.verify_transformation_success(
                 checksum, transformation
             )
             if result is not None:
