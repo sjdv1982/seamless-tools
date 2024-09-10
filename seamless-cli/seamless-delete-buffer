@@ -4,9 +4,11 @@ import argparse
 import os
 import sys
 
+
 def err(msg):
     print(msg, file=sys.stderr)
     exit(1)
+
 
 def parse_checksum(checksum):
     if os.path.exists(checksum):
@@ -29,6 +31,7 @@ def parse_checksum(checksum):
             err(f"Invalid checksum: {checksum}")
         return cs.hex()
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("bufferdir", help="Seamless buffer directory")
 parser.add_argument("checksums_and_or_checksum_files", nargs=argparse.REMAINDER)
@@ -43,10 +46,16 @@ for checksum in args.checksums_and_or_checksum_files:
     cs = parse_checksum(checksum)
     checksums.append(cs)
 
+prefix_file = os.path.join(bufferdir, ".HASHSERVER_PREFIX")
+has_prefix = os.path.exists(prefix_file)
 for checksum in checksums:
-    filename = os.path.join(bufferdir, checksum)
+    if has_prefix:
+        filename = os.path.join(bufferdir, checksum[:2], checksum)
+    else:
+        filename = os.path.join(bufferdir, checksum)
+
     if os.path.exists(filename):
         print(f"{checksum} : deleted", file=sys.stderr)
         os.remove(filename)
     else:
-        print(f"{checksum} : not found", file=sys.stderr)        
+        print(f"{checksum} : not found", file=sys.stderr)
