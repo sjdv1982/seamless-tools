@@ -149,8 +149,8 @@ if args.no_lru:
         calculate_checksum_cache,
         checksum_cache,
     )
-    from seamless.workflow.core.protocol.deserialize import deserialize_cache
-    from seamless.workflow.core.protocol.serialize import serialize_cache
+    from seamless.checksum.deserialize import deserialize_cache
+    from seamless.checksum.serialize import serialize_cache
 
     calculate_checksum_cache.disable()
     checksum_cache.disable()
