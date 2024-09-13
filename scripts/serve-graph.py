@@ -190,7 +190,7 @@ ctx.set_graph(graph, mounts=args.mounts, shares=(not args.no_shares))
 ctx.translate()
 
 if args.status_graph:
-    from seamless.metalevel.bind_status_graph import bind_status_graph
+    from seamless.workflow.metalevel.bind_status_graph import bind_status_graph
 
     with open(args.status_graph) as f:
         status_graph = json.load(f)

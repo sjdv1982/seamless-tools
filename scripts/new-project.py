@@ -168,7 +168,7 @@ def load_ipython():
     loop.run_until_complete(coro)
 
 async def load():
-    from seamless.metalevel.bind_status_graph import bind_status_graph_async
+    from seamless.workflow.metalevel.bind_status_graph import bind_status_graph_async
     import json
 
     global ctx, webctx, save, export
