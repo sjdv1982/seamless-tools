@@ -160,7 +160,7 @@ if args.no_lru:
 import seamless.shareserver
 
 if args.ncores is not None:
-    seamless.set_ncores(args.ncores)
+    seamless.config.set_ncores(args.ncores)
 
 if not args.no_shares:
     shareserver_address = env.get("SHARESERVER_ADDRESS")

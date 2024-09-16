@@ -217,7 +217,7 @@ if __name__ == "__main__":
     seamless.delegate(level=3)
 
     if args.ncores is not None and args.ncores > 0:
-        seamless.set_ncores(args.ncores)
+        seamless.config.set_ncores(args.ncores)
 
     if args.direct_print:
         import seamless.workflow.core.execute
