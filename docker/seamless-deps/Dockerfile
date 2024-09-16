@@ -1,4 +1,4 @@
-FROM jupyter/base-notebook@sha256:28be88ef3ea6a49c84d11489b2f9674d65806daa439e8b3ab3aeba4c1cd8cb66
+FROM jupyter/base-notebook@sha256:ae616b39021e6e2bd7a645f9ef8a802b1f5133bfa19f5ee4477de4a4d33f38e7
 LABEL author="Sjoerd de Vries <sjdv1982@gmail.com>"
 LABEL maintainer="Sjoerd de Vries <sjdv1982@gmail.com>"
 USER root
@@ -7,7 +7,7 @@ RUN sudo mkdir -m 0755 -p /etc/apt/keyrings \
    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
    && echo \
    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-jammy stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null \
+   jammy stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null \
    && sudo apt update && sudo apt install -y docker-ce-cli
 USER jovyan
 RUN /opt/conda/bin/conda init
