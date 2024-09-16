@@ -80,7 +80,22 @@ def run_command_with_outputfile(command):
         os.unlink(command_tf2.name)
 
 
-def execute(checksum, dunder, *, fingertip, scratch):
+async def verify_setup(worker=None):
+    from dask.distributed import get_worker
+
+    if worker is None:
+        worker = get_worker()
+    try:
+        global_info = worker.global_info
+        if not global_info:
+            raise AttributeError
+    except AttributeError:
+        worker.global_info = None
+        await setup(worker, force=True)
+        global_info = worker.global_info
+
+
+async def execute(checksum, dunder, *, fingertip, scratch):
     from dask.distributed import get_worker
     import os
     import logging
@@ -93,7 +108,10 @@ def execute(checksum, dunder, *, fingertip, scratch):
         SEAMLESS_SCRIPTS_DIR = "/home/jovyan/seamless-scripts"
     else:
         SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
-    global_info = get_worker().plugins["seamless"].global_info
+
+    await verify_setup()
+    global_info = get_worker().global_info
+
     print("EXECUTE", checksum)
     logger.info("EXECUTE " + checksum)
     try:
@@ -132,7 +150,9 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
             os.unlink(tf.name)
 
 
-def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, scratch):
+async def execute_in_existing_conda(
+    checksum, dunder, conda_env_name, *, fingertip, scratch
+):
     from dask.distributed import get_worker
     import os
     import logging
@@ -145,7 +165,8 @@ def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, sc
         SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
 
     CONDA_ROOT = os.environ.get("CONDA_ROOT", None)
-    global_info = get_worker().plugins["seamless"].global_info
+    await verify_setup()
+    global_info = get_worker().global_info
     print(f"EXECUTE {checksum} in conda {conda_env_name}")
     logger.info(f"EXECUTE {checksum} in conda {conda_env_name}")
 
@@ -185,7 +206,7 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
             os.unlink(tf.name)
 
 
-def execute_in_docker(
+async def execute_in_docker(
     checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env
 ):
     from dask.distributed import get_worker
@@ -194,7 +215,8 @@ def execute_in_docker(
 
     logger = logging.getLogger("distributed.worker")
 
-    global_info = get_worker().plugins["seamless"].global_info
+    await verify_setup()
+    global_info = get_worker().global_info
     print("EXECUTE", checksum)
     logger.info("EXECUTE " + checksum)
 
@@ -249,7 +271,7 @@ start.sh python /scripts/run-transformation.py \
             os.unlink(tf.name)
 
 
-def execute_in_docker_devel(
+async def execute_in_docker_devel(
     checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env
 ):
     from dask.distributed import get_worker
@@ -258,7 +280,8 @@ def execute_in_docker_devel(
 
     logger = logging.getLogger("distributed.worker")
 
-    global_info = get_worker().plugins["seamless"].global_info
+    await verify_setup()
+    global_info = get_worker().global_info
     print("EXECUTE", checksum)
     logger.info("EXECUTE " + checksum)
 
@@ -318,6 +341,18 @@ start.sh python /scripts/run-transformation.py \
             os.unlink(tf.name)
 
 
+def client_submit(client, *args, **kwargs):
+    MAX_RESUBMIT = 3
+    for _ in range(MAX_RESUBMIT - 1):
+        try:
+            return client.submit(*args, **kwargs)
+        except Exception:
+            if client.scheduler is None:
+                client.start()
+            client.restart()
+    return client.submit(*args, **kwargs)
+
+
 def _run_job(client, checksum, dunder, fingertip, scratch):
     from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
@@ -353,7 +388,8 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
         for var in os.environ:
             if var.startswith("SEAMLESS"):
                 os_env[var] = os.environ[var]
-        fut = client.submit(
+        fut = client_submit(
+            client,
             execute_in_docker_func,
             checksum.hex(),
             dunder,
@@ -375,12 +411,14 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
 
     conda_env_name = env.get("conda_env_name")
     if conda_env_name is not None:
-        existing_envs = client.submit(
+        existing_envs = client_submit(
+            client,
             get_conda_envs,
             pure=False,  # will cause identical jobs to be re-run... but only if key is disabled?
         ).result()
         if conda_env_name in existing_envs:
-            fut = client.submit(
+            fut = client_submit(
+                client,
                 execute_in_existing_conda,
                 checksum.hex(),
                 dunder,
@@ -416,7 +454,8 @@ Please create it, or provide a conda environment definition that will be used as
 Please create it, or provide a conda environment definition that will be used as recipe."""
             )
 
-    fut = client.submit(
+    fut = client_submit(
+        client,
         execute,
         checksum.hex(),
         dunder,
@@ -571,40 +610,42 @@ class JobSlaveServer:
             return web.Response(status=400, body=body)
 
 
+async def setup(worker, *, force):
+    import json
+    import logging
+    import multiprocessing
+
+    logger = logging.getLogger("distributed.worker")
+
+    try:
+        from seamless.workflow.core.transformation import get_global_info
+    except ImportError:
+        raise RuntimeError("Seamless must be installed on your Dask cluster") from None
+
+    def pr(msg):
+        print(msg)
+        logger.info(msg)
+
+    pr("Worker SETUP")
+
+    with multiprocessing.Pool(1) as p:
+        fut = p.apply_async(get_global_info, kwds={"force": force})
+        for _ in range(100):  # allow 100 seconds for get_global_info
+            if fut.ready():
+                break
+            await asyncio.sleep(1)
+        global_info = fut.get(timeout=1)
+
+    worker.global_info = global_info
+
+    pr("Seamless global info:")
+    pr(json.dumps(worker.global_info))
+    pr("Worker up")
+
+
 class SeamlessWorkerPlugin(WorkerPlugin):
     async def setup(self, worker):
-        import json
-        import logging
-        import multiprocessing
-
-        logger = logging.getLogger("distributed.worker")
-
-        try:
-            from seamless.workflow.core.transformation import get_global_info
-        except ImportError:
-            raise RuntimeError(
-                "Seamless must be installed on your Dask cluster"
-            ) from None
-
-        def pr(msg):
-            print(msg)
-            logger.info(msg)
-
-        pr("Worker SETUP")
-
-        with multiprocessing.Pool(1) as p:
-            fut = p.apply_async(get_global_info)
-            for _ in range(100):  # allow 100 seconds for get_global_info
-                if fut.ready():
-                    break
-                await asyncio.sleep(1)
-            global_info = fut.get(timeout=1)
-
-        self.global_info = global_info
-
-        pr("Seamless global info:")
-        pr(json.dumps(self.global_info))
-        pr("Worker up")
+        await verify_setup(worker)
 
 
 if __name__ == "__main__":

@@ -23,45 +23,64 @@ def is_port_in_use(address, port):
 ### Remote code
 
 
+def setup(worker):
+
+    print("Worker SETUP")
+    if getattr(worker, "global_info", None):
+        return
+    try:
+        import seamless.workflow
+
+        seamless.workflow._original_event_loop = (
+            asyncio.get_event_loop()
+        )  # EVIL but needed for restarts
+        from seamless.workflow.core.transformation import (
+            get_global_info,
+            execution_metadata0,
+        )
+        from seamless.workflow.core.cache.transformation_cache import (
+            transformation_cache,
+        )
+        from seamless.workflow.util import set_unforked_process
+        from seamless.workflow.metalevel.unbashify import get_bash_checksums
+        from seamless.workflow.core.direct.run import set_dummy_manager
+        from seamless.checksum.buffer_cache import buffer_cache
+    except ImportError:
+        raise RuntimeError("Seamless must be installed on your Dask cluster") from None
+
+    # To hold on fingertipped buffers for longer
+    buffer_cache.LIFETIME_TEMP = 600.0
+    buffer_cache.LIFETIME_TEMP_SMALL = 1200.0
+
+    seamless.config.set_ncores(worker.state.nthreads)
+    set_unforked_process()
+    seamless.delegate(level=3)
+    get_bash_checksums()
+    ###transformation_cache.stateless = True
+    global_info = get_global_info(force=True)
+    set_dummy_manager()
+    execution_metadata0["Executor"] = "micro-dask-assistant-worker"
+    print("Seamless global info:")
+    print(json.dumps(global_info))
+    worker.global_info = global_info
+    print("Worker up")
+
+
 class SeamlessWorkerPlugin(WorkerPlugin):
     def setup(self, worker):
+        setup(worker)
 
-        print("Worker SETUP")
+
+def client_submit(client, *args, **kwargs):
+    MAX_RESUBMIT = 3
+    for _ in range(MAX_RESUBMIT - 1):
         try:
-            import seamless.workflow
-
-            seamless.workflow._original_event_loop = (
-                asyncio.get_event_loop()
-            )  # EVIL but needed for restarts
-            from seamless.workflow.core.transformation import (
-                get_global_info,
-                execution_metadata0,
-            )
-            from seamless.workflow.core.cache.transformation_cache import (
-                transformation_cache,
-            )
-            from seamless.workflow.util import set_unforked_process
-            from seamless.workflow.metalevel.unbashify import get_bash_checksums
-            from seamless.workflow.core.direct.run import set_dummy_manager
-            from seamless.checksum.buffer_cache import buffer_cache
-        except ImportError:
-            raise RuntimeError(
-                "Seamless must be installed on your Dask cluster"
-            ) from None
-
-        # To hold on fingertipped buffers for longer
-        buffer_cache.LIFETIME_TEMP = 600.0
-        buffer_cache.LIFETIME_TEMP_SMALL = 1200.0
-
-        seamless.config.set_ncores(worker.state.nthreads)
-        set_unforked_process()
-        seamless.delegate(level=3)
-        get_bash_checksums()
-        ###transformation_cache.stateless = True
-        get_global_info()
-        set_dummy_manager()
-        execution_metadata0["Executor"] = "micro-dask-assistant-worker"
-        print("Worker up")
+            return client.submit(*args, **kwargs)
+        except Exception:
+            if client.scheduler is None:
+                client.start()
+            client.restart()
+    return client.submit(*args, **kwargs)
 
 
 def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scratch):
@@ -70,7 +89,10 @@ def run_transformation_dask(transformation_checksum, tf_dunder, fingertip, scrat
     import seamless
     import seamless.workflow.core.direct.run
 
-    assert seamless.workflow.core.direct.run._dummy_manager is not None
+    if seamless.workflow.core.direct.run._dummy_manager is None:
+        from dask.distributed import get_worker
+
+        setup(get_worker())
     from seamless.workflow.core.direct.run import (
         get_dummy_manager,
         fingertip as do_fingertip,
@@ -209,7 +231,8 @@ def run_job(jobslaveserver, checksum, tf_dunder, fingertip, scratch):
         jobslaveserver.client = client
         time.sleep(5)
     with dask.annotate(resources=resources):
-        result = client.submit(
+        result = client_submit(
+            client,
             run_transformation_dask,
             checksum,
             tf_dunder=tf_dunder,
