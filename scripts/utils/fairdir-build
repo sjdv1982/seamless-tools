@@ -20,7 +20,6 @@ the existing collections are re-used.
 import os
 import json
 import orjson
-import cson
 import csv
 from ruamel.yaml import YAML
 yaml = YAML(typ='safe')
@@ -32,21 +31,20 @@ import multiprocessing
 import concurrent.futures
 import copy
 import gc
-from seamless import calculate_checksum
+from seamless import Checksum, Buffer
+from seamless.util import cson
 from silk.mixed import MAGIC_SEAMLESS_MIXED, MAGIC_NUMPY
-from seamless import parse_checksum
-from seamless.core.cache.buffer_cache import buffer_cache
-from seamless.core.convert import try_convert
-from seamless.core.buffer_info import BufferInfo, convert_from_buffer_info
-from seamless.core.protocol.serialize import serialize_sync as serialize
-from seamless.core.protocol.deserialize import deserialize_sync as deserialize
-from seamless.core.protocol.calculate_checksum import calculate_checksum_cache, checksum_cache
+from seamless.checksum.buffer_cache import buffer_cache
+from seamless.checksum.convert import try_convert
+from seamless.checksum.buffer_info import BufferInfo, convert_from_buffer_info
+from seamless.checksum.cached_calculate_checksum import calculate_checksum_cache, checksum_cache
+
 
 calculate_checksum_cache.disable()
 checksum_cache.disable()
-from seamless.core.protocol.serialize import serialize_cache
+from seamless.checksum.serialize import serialize_cache
 serialize_cache.disable()
-from seamless.core.protocol.deserialize import deserialize_cache
+from seamless.checksum.deserialize import deserialize_cache
 deserialize_cache.disable()
 
 def err(*args, **kwargs):
@@ -82,7 +80,7 @@ def load_csv(filename):
     return result
 
 def get_plain_buffer(d:dict):
-    return serialize(d, "plain")
+    return Buffer(d, "plain").value
 
 def write_json(d:dict, filename):
     with open(filename, "wb") as f:
@@ -178,7 +176,7 @@ def do_operation(cmd, source_celltype, target_celltype, ops):
         else:
             with open(filename, "rb") as f:
                 buf = f.read()
-        buf_checksum = calculate_checksum(buf, hex=True)
+        buf_checksum = Buffer(buf).get_checksum().value
         if source_celltype != target_celltype:
             source_buf = buf
             source_checksum = buf_checksum
@@ -209,9 +207,10 @@ def do_operation(cmd, source_celltype, target_celltype, ops):
             elif isinstance(conversion_result, bytes):
                 result_checksum = conversion_result.hex()
             else:
-                value = deserialize(source_buf, bytes.fromhex(source_checksum), source_celltype, copy=False)                
-                result_buf = serialize(value, target_celltype)
-                result_checksum = calculate_checksum(result_buf, hex=True)
+                value = Buffer(source_buf, checksum=source_checksum).deserialize(source_celltype)
+                result_buf = Buffer(value, target_celltype)
+                result_checksum = result_buf.get_checksum()
+                result_buf = result_buf.value
                 
             if result_checksum != source_checksum:
                 if result_buf is None:
@@ -494,7 +493,7 @@ for root, dirnames, filenames in sorted(os.walk(dirpath, followlinks=False)):
             except OSError:
                 report("Error in {}".format(filepath))
                 continue
-            checksum = calculate_checksum(content, hex=True)
+            checksum = Buffer(content).get_checksum().value
             write_buffer_length(checksum, len(content))
             if inode in old_inode_table:
                 # If there is a buffer hardlink with the old checksum 
@@ -901,7 +900,8 @@ try:
             deepfolder_file = os.path.join(deepfolder_dir, source_collection_name) + ".json"
             if os.path.exists(deepfolder_file):
                 old_deepfolder = json.load(open(deepfolder_file))
-                old_deepfolder_checksum = calculate_checksum(get_plain_buffer(old_deepfolder), hex=True)
+                old_deepfolder_buf = get_plain_buffer(old_deepfolder)
+                old_deepfolder_checksum = Buffer(old_deepfolder_buf).get_checksum().value
                 old_deepfolder_inode = str(os.stat(deepfolder_file).st_ino)
             else:
                 old_deepfolder_checksum = None
@@ -920,7 +920,8 @@ try:
                 msg = 'Action "deepfolder": source collection "{}" must be default or copied'
                 err(msg.format(source_collection_name))
 
-            deepfolder_checksum = calculate_checksum(get_plain_buffer(deepfolder), hex=True)
+            deepfolder_buf = get_plain_buffer(deepfolder)
+            deepfolder_checksum = Buffer(deepfolder_buf).get_checksum().value
             print("Computed deepfolder for {}: deep buffer checksum {}".format(source_collection_name, deepfolder_checksum))
             if old_deepfolder_checksum is not None and deepfolder_checksum != old_deepfolder_checksum:
                 remove_stale_buffer_hardlink(COLLECTION_BUFFER_DIR, old_deepfolder_checksum, old_deepfolder_inode)
@@ -938,7 +939,8 @@ try:
             deepcell_file = os.path.join(deepcell_dir, target_collection_name) + ".json"
             if os.path.exists(deepcell_file):
                 old_deepcell = json.load(open(deepcell_file))
-                old_deepcell_checksum = calculate_checksum(get_plain_buffer(old_deepcell), hex=True)
+                old_deepcell_buf = get_plain_buffer(old_deepcell)
+                old_deepcell_checksum = Buffer(old_deepcell_buf).get_checksum().value
                 old_deepcell_inode = str(os.stat(deepcell_file).st_ino)
             else:
                 old_deepcell_checksum = None
@@ -1004,7 +1006,8 @@ try:
                 )
                 deepcell[target_entry] = checksum
 
-            deepcell_checksum = calculate_checksum(get_plain_buffer(deepcell), hex=True)
+            deepcell_buf = get_plain_buffer(deepcell)
+            deepcell_checksum = Buffer(deepcell_buf).get_checksum().value
             print("Computed deepcell for {} -> {}: deep buffer checksum {}".format(source_collection_name, target_collection_name, deepcell_checksum))
             if old_deepcell_checksum is not None and deepcell_checksum != old_deepcell_checksum:
                 remove_stale_buffer_hardlink(COLLECTION_BUFFER_DIR, old_deepcell_checksum, old_deepcell_inode)

@@ -24,10 +24,9 @@ per-dataset, as the index is rather large and is more often incremented instead 
 import os
 import csv
 import sys
-import cson
 import json
-from seamless import calculate_checksum
-from seamless.core.protocol.serialize import serialize_sync as serialize
+from seamless import Checksum, Buffer
+from seamless.util import cson
 
 def err(*args, **kwargs):
     print("ERROR: " + args[0], *args[1:], **kwargs, file=sys.stderr)
@@ -160,7 +159,7 @@ else:
 with open(deep_buffer_file, "rb") as f:
     deep_buffer = f.read()
 deep_buffer_size = len(deep_buffer)
-deep_buffer_checksum = calculate_checksum(deep_buffer, hex=True)
+deep_buffer_checksum = Buffer(deep_buffer).get_checksum().value
 deep_buffer_dict = json.loads(deep_buffer.decode())
 distribution_nkeys = len(deep_buffer_dict)
 
@@ -259,8 +258,9 @@ while pos < latest_keyorder_size:
                 keyorder.append(final_key)
 keyorder += added_keys[added_key_pos:]        
 
-keyorder_buffer = serialize(keyorder, "plain")
-keyorder_checksum = calculate_checksum(keyorder_buffer, hex=True)
+keyorder_buffer = Buffer(keyorder, "plain")
+keyorder_checksum = keyorder_buffer.get_checksum().value
+keyorder_buffer = keyorder_buffer.value
 print("Key order checksum: {}".format(keyorder_checksum))
 with open(os.path.join(FAIRDIR, "keyorder", keyorder_checksum), "wb") as f:
     f.write(keyorder_buffer)
@@ -303,8 +303,9 @@ if raw_access_index is not None:
             continue
         checksum = deep_buffer_dict[key]
         access_index[checksum] = value
-    access_index_buffer = serialize(access_index, "plain")
-    access_index_checksum = calculate_checksum(access_index_buffer, hex=True)
+    access_index_buffer = Buffer(access_index, "plain")
+    access_index_checksum = access_index_buffer.get_checksum().value
+    access_index_buffer = access_index_buffer.value
     print("Access index checksum: {}".format(access_index_checksum))
     with open(os.path.join(FAIRDIR, "access_index", access_index_checksum), "wb") as f:
         f.write(access_index_buffer)
