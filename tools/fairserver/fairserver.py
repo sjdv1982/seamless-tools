@@ -57,12 +57,13 @@ import aiohttp_cors
 import json
 import aiofiles
 import os
-import cson
 import traceback
 from ruamel.yaml import YAML
 import glob
 from functools import partial
 import copy
+from fairserver_extern import pycson as cson
+
 yaml = YAML(typ='safe')
 
 PORT=61918 # F-A-I-R
