@@ -1,0 +1,19 @@
+[MASTER]
+
+init-hook='import sys, os; sys.path.append(os.environ.get("SEAMLESSDIR"), "")'
+jobs=8
+# Pickle collected data for later comparisons.
+persistent=yes
+
+[MESSAGES CONTROL]
+
+disable=import-error,import-outside-toplevel,
+  wildcard-import,unused-wildcard-import,
+  protected-access,invalid-name,broad-except,unspecified-encoding,
+  unnecessary-lambda-assignment,global-statement,
+  use-implicit-booleaness-not-len,
+  consider-using-f-string,too-many-branches,too-many-arguments,
+  logging-fstring-interpolation,
+  logging-format-interpolation,
+  pointless-string-statement,
+  no-member  #necessary, since ignored-classes is not quite working
