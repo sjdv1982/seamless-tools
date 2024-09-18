@@ -1,6 +1,6 @@
 [MASTER]
 
-init-hook='import sys, os; sys.path.append(os.environ.get("SEAMLESSDIR"), "")'
+init-hook='import sys, os; sys.path.append(os.environ.get("SEAMLESSDIR", ""))'
 jobs=8
 # Pickle collected data for later comparisons.
 persistent=yes

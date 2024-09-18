@@ -1,4 +1,10 @@
-import sys, os, json, subprocess, argparse
+import sys
+import os
+import json
+import subprocess
+import argparse
+import asyncio
+import seamless
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -30,7 +36,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--status-graph",
-    help="""Bind a graph that reports the status of the main graph. 
+    help="""Bind a graph that reports the status of the main graph.
 Optionally, provide a .seamless file, else the default status visualization graph is used.""",
     nargs="?",
     const="$SEAMLESSDIR/graphs/status-visualization.seamless",
@@ -99,7 +105,7 @@ for zipl in args.zips:
         zips.append(zipf)
 
 if args.status_graph == "$SEAMLESSDIR/graphs/status-visualization.seamless":
-    from seamless.metalevel.stdgraph import stdgraph_dir
+    from seamless.workflow.metalevel.stdgraph import stdgraph_dir
 
     args.status_graph = os.path.join(stdgraph_dir, "status-visualization.seamless")
     zipf = os.path.join(stdgraph_dir, "status-visualization.zip")
@@ -120,8 +126,6 @@ if not args.delegate and not zips and not vaults:
     sys.exit(1)
 
 if args.debug:
-    import asyncio
-
     asyncio.get_event_loop().set_debug(True)
     import logging
 
@@ -129,8 +133,6 @@ if args.debug:
     logging.getLogger("seamless").setLevel(logging.DEBUG)
 
 env = os.environ
-
-import seamless
 
 delegation_error = seamless.delegate(int(args.delegate))
 if delegation_error:
@@ -145,7 +147,7 @@ for fair_server in args.fair_servers:
     seamless.fair.add_server(fair_server)
 
 if args.no_lru:
-    from seamless.workflow.core.protocol.calculate_checksum import (
+    from seamless.checksum.calculate_checksum import (
         calculate_checksum_cache,
         checksum_cache,
     )
@@ -157,7 +159,7 @@ if args.no_lru:
     deserialize_cache.disable()
     serialize_cache.disable()
 
-import seamless.shareserver
+import seamless.workflow.shareserver
 
 if args.ncores is not None:
     seamless.config.set_ncores(args.ncores)
@@ -167,12 +169,12 @@ if not args.no_shares:
     if shareserver_address is not None:
         if shareserver_address == "HOSTNAME":
             shareserver_address = subprocess.getoutput("hostname -I | awk '{print $1}'")
-        seamless.shareserver.DEFAULT_ADDRESS = shareserver_address
+        seamless.workflow.shareserver.DEFAULT_ADDRESS = shareserver_address
         print("Setting shareserver address to: {}".format(shareserver_address))
 
-import seamless.workflow.highlevel.stdlib
+import seamless.workflow.stdlib
 
-from seamless.workflow.highlevel import load_graph, Context
+from seamless.workflow.highlevel import Context
 
 graph = json.load(args.graph)
 if args.delegate == 4:
@@ -211,7 +213,6 @@ if args.status_graph:
 print("Serving graph...")
 if not args.interactive:
     print("Press Ctrl+C to end")
-    import asyncio
 
     try:
         asyncio.get_event_loop().run_forever()
