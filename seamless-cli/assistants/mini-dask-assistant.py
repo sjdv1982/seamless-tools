@@ -23,6 +23,11 @@ logging.basicConfig(format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# TODO: investigate why connections get discarded...
+import urllib3
+
+logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
+
 
 def is_port_in_use(address, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -368,6 +373,9 @@ def client_submit(client, *args, **kwargs):
 
 
 def _run_job(jobslaveserver, checksum, dunder, fingertip, scratch):
+    import urllib3
+
+    urllib3.disable_warnings()
     from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
     checksum = Checksum(checksum)
