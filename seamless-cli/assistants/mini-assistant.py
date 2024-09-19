@@ -9,6 +9,7 @@ from aiohttp import web
 import anyio
 from seamless import Checksum, CacheMissError
 from seamless.checksum.buffer_remote import can_read_buffer
+import logging
 
 try:
     import docker
@@ -21,6 +22,10 @@ except ImportError:
 import tempfile
 
 import os
+
+logging.basicConfig(format="%(asctime)s %(message)s")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 if os.environ.get("DOCKER_IMAGE"):  # we are running inside a Docker image
     SEAMLESS_SCRIPTS_DIR = "/home/jovyan/seamless-scripts"
@@ -307,6 +312,7 @@ _jobs = {}
 
 
 async def launch_job(data):
+    global JOBCOUNTER
     checksum = Checksum(data["checksum"]).hex()
     job = None
     if checksum in _jobs:
@@ -316,10 +322,16 @@ async def launch_job(data):
             _jobs.pop(checksum)
             job = None
     if job is None:
+        try:
+            JOBCOUNTER += 1
+        except NameError:
+            JOBCOUNTER = 1
+
+        logger.info(f"JOB {JOBCOUNTER} {checksum}")
+
         coro = anyio.to_thread.run_sync(run_job, data)
         job = asyncio.create_task(coro)
         _jobs[checksum] = job, data
-        print("job ", checksum)
 
     remove_job = True
     try:
@@ -414,6 +426,11 @@ class JobSlaveServer:
         # Return an empty response.
         # This causes Seamless clients to load their delegation config
         #  from environment variables
+        logger = logging.getLogger(__name__)
+        data = request.rel_url.query
+        agent = data.get("agent", "Anonymous")
+        if agent != "HEALTHCHECK":
+            logger.info(f"Connection from agent '{agent}'")
         return web.Response(status=200)
 
     async def _put_job(self, request: web.Request):
@@ -500,7 +517,7 @@ Note that non-bash transformers must have Seamless in their environment.
 
     from seamless.workflow.core.transformation import get_global_info
 
-    global_info = get_global_info()
+    global_info = get_global_info(force=True)
     global_info_file = tempfile.NamedTemporaryFile("w+t")
     json.dump(global_info, global_info_file)
     global_info_file.flush()

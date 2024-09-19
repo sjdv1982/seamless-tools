@@ -6,8 +6,14 @@ import sys
 import traceback
 from aiohttp import web
 import json
+import logging
 import seamless
 from seamless import Checksum, CacheMissError
+
+
+logging.basicConfig(format="%(asctime)s %(message)s")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def is_port_in_use(address, port):
@@ -40,6 +46,7 @@ async def run_transformation(checksum, tf_dunder, fingertip, scratch):
 
 
 async def launch_job(checksum, tf_dunder, *, fingertip, scratch):
+    global JOBCOUNTER
     checksum = Checksum(checksum).hex()
     job = None
     if checksum in _jobs:
@@ -49,6 +56,13 @@ async def launch_job(checksum, tf_dunder, *, fingertip, scratch):
             _jobs.pop(checksum)
             job = None
     if job is None:
+        try:
+            JOBCOUNTER += 1
+        except NameError:
+            JOBCOUNTER = 1
+
+        logger.info(f"JOB {JOBCOUNTER} {checksum}")
+
         coro = run_transformation(
             Checksum(checksum),
             fingertip=fingertip,
@@ -111,6 +125,11 @@ class JobSlaveServer:
         # Return an empty response.
         # This causes Seamless clients to load their delegation config
         #  from environment variables
+        logger = logging.getLogger(__name__)
+        data = request.rel_url.query
+        agent = data.get("agent", "Anonymous")
+        if agent != "HEALTHCHECK":
+            logger.info(f"Connection from agent '{agent}'")
         return web.Response(status=200)
 
     async def _put_job(self, request: web.Request):

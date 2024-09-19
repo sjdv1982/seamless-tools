@@ -3,17 +3,25 @@ import os
 import socket
 import subprocess
 import json
+import threading
 import time
 import traceback
 from aiohttp import web
 import anyio
 import tempfile
 import dask
+import logging
 
 from seamless import Checksum, CacheMissError
 from seamless.checksum.buffer_remote import can_read_buffer
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
+from dask.distributed import Lock
+
+
+logging.basicConfig(format="%(asctime)s %(message)s")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def is_port_in_use(address, port):
@@ -80,7 +88,15 @@ def run_command_with_outputfile(command):
         os.unlink(command_tf2.name)
 
 
-async def verify_setup(worker=None):
+setup_lock = Lock()
+
+
+def verify_setup(worker=None):
+    with setup_lock:
+        return _verify_setup(worker)
+
+
+def _verify_setup(worker=None):
     from dask.distributed import get_worker
 
     if worker is None:
@@ -91,11 +107,11 @@ async def verify_setup(worker=None):
             raise AttributeError
     except AttributeError:
         worker.global_info = None
-        await setup(worker, force=True)
+        setup(worker, force=True)
         global_info = worker.global_info
 
 
-async def execute(checksum, dunder, *, fingertip, scratch):
+def execute(checksum, dunder, *, fingertip, scratch):
     from dask.distributed import get_worker
     import os
     import logging
@@ -109,7 +125,7 @@ async def execute(checksum, dunder, *, fingertip, scratch):
     else:
         SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
 
-    await verify_setup()
+    verify_setup()
     global_info = get_worker().global_info
 
     print("EXECUTE", checksum)
@@ -150,9 +166,7 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
             os.unlink(tf.name)
 
 
-async def execute_in_existing_conda(
-    checksum, dunder, conda_env_name, *, fingertip, scratch
-):
+def execute_in_existing_conda(checksum, dunder, conda_env_name, *, fingertip, scratch):
     from dask.distributed import get_worker
     import os
     import logging
@@ -165,7 +179,7 @@ async def execute_in_existing_conda(
         SEAMLESS_SCRIPTS_DIR = os.environ["SEAMLESS_SCRIPTS_DIR"]
 
     CONDA_ROOT = os.environ.get("CONDA_ROOT", None)
-    await verify_setup()
+    verify_setup()
     global_info = get_worker().global_info
     print(f"EXECUTE {checksum} in conda {conda_env_name}")
     logger.info(f"EXECUTE {checksum} in conda {conda_env_name}")
@@ -206,7 +220,7 @@ python {SEAMLESS_SCRIPTS_DIR}/run-transformation.py \
             os.unlink(tf.name)
 
 
-async def execute_in_docker(
+def execute_in_docker(
     checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env
 ):
     from dask.distributed import get_worker
@@ -215,7 +229,7 @@ async def execute_in_docker(
 
     logger = logging.getLogger("distributed.worker")
 
-    await verify_setup()
+    verify_setup()
     global_info = get_worker().global_info
     print("EXECUTE", checksum)
     logger.info("EXECUTE " + checksum)
@@ -271,7 +285,7 @@ start.sh python /scripts/run-transformation.py \
             os.unlink(tf.name)
 
 
-async def execute_in_docker_devel(
+def execute_in_docker_devel(
     checksum, dunder, env, docker_conf, *, fingertip, scratch, os_env
 ):
     from dask.distributed import get_worker
@@ -280,7 +294,7 @@ async def execute_in_docker_devel(
 
     logger = logging.getLogger("distributed.worker")
 
-    await verify_setup()
+    verify_setup()
     global_info = get_worker().global_info
     print("EXECUTE", checksum)
     logger.info("EXECUTE " + checksum)
@@ -353,7 +367,7 @@ def client_submit(client, *args, **kwargs):
     return client.submit(*args, **kwargs)
 
 
-def _run_job(client, checksum, dunder, fingertip, scratch):
+def _run_job(jobslaveserver, checksum, dunder, fingertip, scratch):
     from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
     checksum = Checksum(checksum)
@@ -375,6 +389,13 @@ def _run_job(client, checksum, dunder, fingertip, scratch):
         env_buffer = do_fingertip(env_checksum)
         env = json.loads(env_buffer.decode())
     env_checksum2 = env_checksum if env_checksum is not None else ""
+
+    client = jobslaveserver.client
+    if client.status not in ("running", "connecting", "newly-created"):
+        client = Client(jobslaveserver.scheduler_address)
+        jobslaveserver.client = client
+        time.sleep(5)
+
     docker_conf = env.get("docker")
     if is_bash:
         docker_conf = None
@@ -476,7 +497,8 @@ Please create it, or provide a conda environment definition that will be used as
 _jobs = {}
 
 
-async def launch_job(client, tf_checksum, tf_dunder, *, fingertip, scratch):
+async def launch_job(jobslaveserver, tf_checksum, tf_dunder, *, fingertip, scratch):
+    global JOBCOUNTER
     tf_checksum = Checksum(tf_checksum).hex()
     job = None
     if (tf_checksum, fingertip, scratch) in _jobs:
@@ -486,8 +508,19 @@ async def launch_job(client, tf_checksum, tf_dunder, *, fingertip, scratch):
             _jobs.pop((tf_checksum, fingertip, scratch))
             job = None
     if job is None:
+        try:
+            JOBCOUNTER += 1
+        except NameError:
+            JOBCOUNTER = 1
+
+        logger.info(f"JOB {JOBCOUNTER} {tf_checksum}")
         coro = anyio.to_thread.run_sync(
-            run_job, client, Checksum(tf_checksum), tf_dunder, fingertip, scratch
+            run_job,
+            jobslaveserver,
+            Checksum(tf_checksum),
+            tf_dunder,
+            fingertip,
+            scratch,
         )
         job = asyncio.create_task(coro)
         _jobs[tf_checksum, fingertip, scratch] = job, tf_dunder
@@ -504,10 +537,12 @@ async def launch_job(client, tf_checksum, tf_dunder, *, fingertip, scratch):
             _jobs.pop((tf_checksum, fingertip, scratch), None)
 
 
-def run_job(client, checksum, dunder, fingertip, scratch):
+def run_job(jobslaveserver, checksum, dunder, fingertip, scratch):
+    import seamless
+
     try:
         result, output, transformation = _run_job(
-            client, checksum, dunder, fingertip, scratch
+            jobslaveserver, checksum, dunder, fingertip, scratch
         )
     except subprocess.CalledProcessError as exc:
         output = exc.output
@@ -545,10 +580,11 @@ class JobSlaveServer:
         self.client = client
         self.host = host
         self.port = port
+        self.scheduler_address = client.scheduler.address
 
     async def _start(self):
         if is_port_in_use(self.host, self.port):
-            print("ERROR: %s port %d already in use" % (self.host, self.port))
+            logger.error("%s port %d already in use" % (self.host, self.port))
             raise Exception
 
         from anyio import to_thread
@@ -577,6 +613,11 @@ class JobSlaveServer:
         # Return an empty response.
         # This causes Seamless clients to load their delegation config
         #  from environment variables
+        logger = logging.getLogger(__name__)
+        data = request.rel_url.query
+        agent = data.get("agent", "Anonymous")
+        if agent != "HEALTHCHECK":
+            logger.info(f"Connection from agent '{agent}'")
         return web.Response(status=200)
 
     async def _put_job(self, request: web.Request):
@@ -587,16 +628,9 @@ class JobSlaveServer:
             scratch = bool(data.get("scratch", False))
             fingertip = bool(data.get("fingertip", False))
 
-            global JOBCOUNTER
-            try:
-                JOBCOUNTER += 1
-            except NameError:
-                JOBCOUNTER = 1
-            jobcounter = JOBCOUNTER
-            print("JOB", jobcounter, tf_checksum, scratch, fingertip)
             tf_dunder = data["dunder"]
             response = await launch_job(
-                self.client,
+                self,
                 tf_checksum,
                 tf_dunder=tf_dunder,
                 scratch=scratch,
@@ -610,7 +644,7 @@ class JobSlaveServer:
             return web.Response(status=400, body=body)
 
 
-async def setup(worker, *, force):
+def setup(worker, *, force):
     import json
     import logging
     import multiprocessing
@@ -633,7 +667,7 @@ async def setup(worker, *, force):
         for _ in range(100):  # allow 100 seconds for get_global_info
             if fut.ready():
                 break
-            await asyncio.sleep(1)
+            time.sleep(1)
         global_info = fut.get(timeout=1)
 
     worker.global_info = global_info
@@ -644,8 +678,8 @@ async def setup(worker, *, force):
 
 
 class SeamlessWorkerPlugin(WorkerPlugin):
-    async def setup(self, worker):
-        await verify_setup(worker)
+    def setup(self, worker):
+        _verify_setup(worker)
 
 
 if __name__ == "__main__":
@@ -662,8 +696,6 @@ However, provided names of Docker images and conda environments are respected.
 Note that non-bash transformers must have Seamless in their environment.
 """
     )
-
-    parser.add_argument("--ncores", type=int, default=None)
 
     default_port = int(env.get("SEAMLESS_ASSISTANT_PORT", -1))
 

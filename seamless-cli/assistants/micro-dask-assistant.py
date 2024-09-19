@@ -1,18 +1,23 @@
 import asyncio
 import json
 import os
-import random
 import socket
 import time
 import traceback
 import anyio
 from aiohttp import web
 import dask
+import logging
 
 from seamless import Checksum, CacheMissError
 from seamless.checksum.buffer_remote import can_read_buffer
 from dask.distributed import Client
 from dask.distributed import WorkerPlugin
+
+
+logging.basicConfig(format="%(asctime)s %(message)s")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def is_port_in_use(address, port):
@@ -179,6 +184,7 @@ _jobs = {}
 
 
 async def launch_job(jobslaveserver, checksum, tf_dunder, *, fingertip, scratch):
+    global JOBCOUNTER
     checksum = Checksum(checksum).hex()
     job = None
     if (checksum, fingertip, scratch) in _jobs:
@@ -188,7 +194,12 @@ async def launch_job(jobslaveserver, checksum, tf_dunder, *, fingertip, scratch)
             _jobs.pop((checksum, fingertip, scratch))
             job = None
     if job is None:
-        salt = random.random()
+        try:
+            JOBCOUNTER += 1
+        except NameError:
+            JOBCOUNTER = 1
+
+        logger.info(f"JOB {JOBCOUNTER} {checksum}")
         coro = anyio.to_thread.run_sync(
             run_job, jobslaveserver, Checksum(checksum), tf_dunder, fingertip, scratch
         )
@@ -208,6 +219,7 @@ async def launch_job(jobslaveserver, checksum, tf_dunder, *, fingertip, scratch)
 
 
 def run_job(jobslaveserver, checksum, tf_dunder, fingertip, scratch):
+    import seamless
     from seamless.workflow.core.direct.run import fingertip as do_fingertip
 
     transformation_buffer = do_fingertip(checksum.bytes())
@@ -227,7 +239,7 @@ def run_job(jobslaveserver, checksum, tf_dunder, fingertip, scratch):
 
     client = jobslaveserver.client
     if client.status not in ("running", "connecting", "newly-created"):
-        client = create_client()
+        client = create_client(jobslaveserver.scheduler_address)
         jobslaveserver.client = client
         time.sleep(5)
     with dask.annotate(resources=resources):
@@ -288,10 +300,11 @@ class JobSlaveServer:
         self.client = client
         self.host = host
         self.port = port
+        self.scheduler_address = client.scheduler.address
 
     async def _start(self):
         if is_port_in_use(self.host, self.port):
-            print("ERROR: %s port %d already in use" % (self.host, self.port))
+            logger.error("%s port %d already in use" % (self.host, self.port))
             raise Exception
 
         from anyio import to_thread
@@ -320,6 +333,11 @@ class JobSlaveServer:
         # Return an empty response.
         # This causes Seamless clients to load their delegation config
         #  from environment variables
+        logger = logging.getLogger(__name__)
+        data = request.rel_url.query
+        agent = data.get("agent", "Anonymous")
+        if agent != "HEALTHCHECK":
+            logger.info(f"Connection from agent '{agent}'")
         return web.Response(status=200)
 
     async def _put_job(self, request: web.Request):
@@ -330,13 +348,6 @@ class JobSlaveServer:
             scratch = bool(data.get("scratch", False))
             fingertip = bool(data.get("fingertip", False))
 
-            global JOBCOUNTER
-            try:
-                JOBCOUNTER += 1
-            except NameError:
-                JOBCOUNTER = 1
-            jobcounter = JOBCOUNTER
-            print("JOB", jobcounter, checksum, scratch, fingertip)
             """
             from seamless.workflow.core.direct.run import fingertip as do_fingertip
             import json
@@ -358,8 +369,8 @@ class JobSlaveServer:
             return web.Response(status=400, body=body)
 
 
-def create_client():
-    client = Client(args.scheduler_address)
+def create_client(scheduler_address):
+    client = Client(scheduler_address)
     try:
         client.register_plugin(SeamlessWorkerPlugin())
     except AttributeError:
@@ -422,7 +433,7 @@ Meta information is mostly ignored. No support for arbitrary Dask resources.
     print("Connecting...")
     seamless.delegate(level=3)  # for can_read_result and input fingertipping
 
-    server = JobSlaveServer(create_client(), args.host, args.port)
+    server = JobSlaveServer(create_client(args.scheduler_address), args.host, args.port)
     server.start()
 
     loop = asyncio.get_event_loop()
