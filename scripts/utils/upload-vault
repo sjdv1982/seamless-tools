@@ -3,13 +3,19 @@
 import argparse
 import os
 import sys
+
 parser = argparse.ArgumentParser()
 parser.add_argument("vault_directory")
-parser.add_argument("--flat", action="store_true", help="Directory is a flat directory containing checksum-named buffer files")
+parser.add_argument(
+    "--flat",
+    action="store_true",
+    help="Directory is a flat directory containing checksum-named buffer files",
+)
 args = parser.parse_args()
 
 import seamless
 from seamless.config import AssistantConnectionError
+
 try:
     seamless.delegate(raise_exceptions=True)
 except AssistantConnectionError:
@@ -20,8 +26,8 @@ except AssistantConnectionError:
         if has_err:
             exit(1)
 
-from seamless.core.cache.buffer_cache import buffer_cache
-from seamless.vault import load_vault, load_vault_flat
+from seamless.checksum.buffer_cache import buffer_cache
+from seamless.workflow.vault import load_vault, load_vault_flat
 
 try:
     vault = args.vault_directory
@@ -50,5 +56,6 @@ If the directory contains flat checksum-named buffer files,
         buffer_cache.decref(bytes.fromhex(checksum))
 except ValueError:
     import traceback
+
     traceback.print_exc(0)
     sys.exit(1)

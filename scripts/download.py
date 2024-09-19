@@ -6,7 +6,6 @@
 #    and if empty of anything else,
 #    the index is built from the .CHECKSUM file.
 
-import shutil
 import sys, os
 import json
 
@@ -32,7 +31,10 @@ from seamless.cmd.download import download
 
 import argparse
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="seamless-download",
+    description="Download buffers from a remote buffer folder/server",
+)
 
 parser.add_argument(
     "-y",
@@ -99,13 +101,22 @@ Multiple -v options increase the verbosity. The maximum is 3""",
     default=0,
 )
 
-parser.add_argument("files_directories_and_checksums", nargs=argparse.REMAINDER)
+parser.add_argument(
+    "files_directories_and_checksums",
+    nargs=argparse.REMAINDER,
+    help="files/directories/checksums that define the buffers to download",
+)
 
 args = parser.parse_args()
 
+if not len(args.files_directories_and_checksums):
+    print("At least one file, directory or checksum is required", file=sys.stderr)
+    parser.print_usage(file=sys.stderr)
+    sys.exit(1)
+
 for path in args.files_directories_and_checksums:
     if path.startswith("-"):
-        err("Options must be specified before files/directories")
+        err("Options must be specified before files/directories/checksums")
 
 set_header("seamless-download")
 verbosity = min(args.verbosity, 3)

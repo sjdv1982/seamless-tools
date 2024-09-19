@@ -6,7 +6,10 @@ import argparse
 import asyncio
 import seamless
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="seamless-serve-graph",
+    description="Serve a webserver from a .seamless graph file",
+)
 parser.add_argument(
     "graph", help="Seamless graph file to serve", type=argparse.FileType("r")
 )

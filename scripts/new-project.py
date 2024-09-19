@@ -48,8 +48,6 @@ for subpath in subpaths:
 for subpath in subpaths:
     os.mkdir(subpath)
 
-import seamless
-
 seamless_dir = os.path.dirname(seamless.__file__)
 
 empty = Context()

@@ -3,6 +3,7 @@
 # TODO: document
 
 import os
+import sys
 
 os.environ["__SEAMLESS_FRUGAL"] = "1"
 
@@ -16,7 +17,10 @@ from seamless.cmd.file_load import read_checksum_file
 
 import argparse
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="seamless-buffer-size",
+    description="Get the buffer size of one or more checksum files",
+)
 
 parser.add_argument(
     "-H",
@@ -26,9 +30,15 @@ parser.add_argument(
     action="store_true",
 )
 
-parser.add_argument("files_and_directories", nargs=argparse.REMAINDER)
+parser.add_argument("checksum_files", nargs=argparse.REMAINDER)
 
 args = parser.parse_args()
+
+if not len(args.checksum_files):
+    print("At least one checksum file required", file=sys.stderr)
+    parser.print_usage(file=sys.stderr)
+    sys.exit(1)
+
 
 try:
     seamless.delegate(raise_exceptions=True)
@@ -39,7 +49,7 @@ except AssistantConnectionError:
 
 checksum_list = []
 checksum_mapping = {}
-paths = [path.rstrip(os.sep) for path in args.files_and_directories]
+paths = [path.rstrip(os.sep) for path in args.checksum_files]
 paths2 = []
 for path in paths:
     if path.endswith(".CHECKSUM"):

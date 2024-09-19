@@ -1,12 +1,14 @@
 #!/usr/bin/env -S python3 -u
 
 import argparse
+
 parser = argparse.ArgumentParser()
 parser.add_argument("zipfile")
 args = parser.parse_args()
 
 import seamless
 from seamless.config import AssistantConnectionError
+
 try:
     seamless.delegate(raise_exceptions=True)
 except AssistantConnectionError:
@@ -17,9 +19,10 @@ except AssistantConnectionError:
         if has_err:
             exit(1)
 
-from seamless.core.cache.buffer_cache import buffer_cache
+from seamless.checksum.buffer_cache import buffer_cache
 
 from seamless.highlevel import Context
+
 ctx = Context()
 checksums = ctx.add_zip(args.zipfile, incref=True)
 print("Added {} buffers".format(len(checksums)))

@@ -4,7 +4,9 @@ import asyncio
 import sys
 import os
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="seamless-run-transformation", description="Run a transformation from checksum"
+)
 parser.add_argument("checksum", help="Seamless checksum or checksum file")
 parser.add_argument("--ncores", type=int, default=None)
 parser.add_argument("--direct-print", dest="direct_print", action="store_true")
