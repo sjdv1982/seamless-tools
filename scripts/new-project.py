@@ -6,7 +6,10 @@ seamless.delegate(False)
 from seamless.workflow.highlevel import Context
 import argparse
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="seamless-new-project",
+    description="Create a new Seamless webserver project inside the current directory",
+)
 parser.add_argument(
     "project_name",
     help="Name of the project",
@@ -55,13 +58,13 @@ empty.save_graph("graph/{0}.seamless".format(project_name))
 del empty
 
 f = "webgen.seamless"
-source = os.path.join(seamless_dir, "graphs", f)
+source = os.path.join(seamless_dir, "workflow", "graphs", f)
 dest = os.path.join("graph", "{0}-webctx.seamless".format(project_name))
 shutil.copy(source, dest)
 graph = json.load(open(dest))
 
 ctx = Context()
-ctx.add_zip(os.path.join(seamless_dir, "graphs", "webgen.zip"))
+ctx.add_zip(os.path.join(seamless_dir, "workflow", "graphs", "webgen.zip"))
 ctx.set_graph(graph)
 ctx.save_vault("vault")
 
@@ -198,14 +201,7 @@ async def load():
             shutil.move(f, dest)
     ctx = Context()
     empty_graph = ctx.get_graph()
-    try:
-        seamless._defining_graph = True
-        await define_graph(ctx)
-    finally:
-        try:
-            del seamless._defining_graph
-        except AttributeError:
-            pass
+    await define_graph(ctx)
     new_graph = ctx.get_graph()
     graph_file = "graph/" + PROJNAME + ".seamless"
     if DELEGATION_LEVEL == 0: 
@@ -272,13 +268,14 @@ async def load():
     await ctx.translation(force=True)
     await ctx.translation(force=True)
     
-    pr("""Project loaded.
+    _rest_port = seamless.workflow.shareserver.shareserver.rest_port
+    pr(f"""Project loaded.
 
     Main context is "ctx"
     Web/status context is "webctx"
 
-    Open http://localhost:<REST server port> to see the web page
-    Open http://localhost:<REST server port>/status/status.html to see the status
+    Open http://localhost:{{_rest_port}} to see the web page
+    Open http://localhost:{{_rest_port}}/status/status.html to see the status
 
     Run save() to save the project workflow file.
     Run export() to generate zip files for web deployment.
