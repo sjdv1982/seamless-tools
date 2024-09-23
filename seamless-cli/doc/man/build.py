@@ -9,7 +9,7 @@ result_cache = "seamless-result-cache.dat"
 
 import glob, os
 from seamless.workflow import Context, Transformer, Cell
-from seamless.checksum import Checksum
+from seamless import Checksum
 
 currdir = os.path.dirname(os.path.realpath(__file__))
 print("MAN DOC CURRDIR", currdir)

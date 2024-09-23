@@ -7,6 +7,10 @@ cd $RECIPE_DIR
 
 cd $docdir
 rm -rf man/build/*.1
+#export SEAMLESSDIR=$HOME/seamless
+#export SILKDIR=$HOME/silk
+#export SEAMLESS_TOOLS_DIR=$HOME/seamless-tools
+#export SEAMLESS_DOCKER_IMAGE=seamless-devel
 seamless-run-no-webserver python3 man/build.py
 cd man
 ls build/*.1
