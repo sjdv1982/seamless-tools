@@ -23,8 +23,8 @@ OR seamless-framework + seamless-cli-bin + seamless-cli-complement + rpbs/seamle
 4. Do `conda activate seamless-build`. In case of `seamless-cli-bin`, go to /seamless/conda instead.
 
 5. Then launch `conda build -c conda-forge seamless-cli`.
-In case of `seamless-cli-bin`, do `conda build -c conda-forge -c rpbs seamless-cli-bin`. Note the output file (.tar.bz2).
-If you forget it, run `conda build seamless-cli --output`
+In case of `seamless-cli-bin` and `seamless-scripts`, do `conda build -c conda-forge -c rpbs ...`. Note the output file (.tar.bz2).
+If you forget it, run `conda build ... --output`
 
 *5a. Alternively, you can install and use `rattler-build`. It has a slightly different `meta.yaml` file called `recipe.yaml`. The command is as follows*:
 

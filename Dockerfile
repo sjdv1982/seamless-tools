@@ -23,6 +23,6 @@ RUN echo 'alias conda=mamba' >> /home/jovyan/.bashrc \
     && echo 'export PATH=~/seamless-cli:$PATH' >> /home/jovyan/.bashrc \
     && echo 'export PATH=~/seamless-bin:$PATH' >> /home/jovyan/.bashrc \
     && echo 'source activate-seamless-mode.sh' >> /home/jovyan/.bashrc
-ENV PYTHONPATH /home/jovyan/software:$PYTHONPATH
+ENV PYTHONPATH=/home/jovyan/software
 HEALTHCHECK --interval=5s --timeout=2s --start-period=30s --retries=3 \
     CMD touch /cwd
