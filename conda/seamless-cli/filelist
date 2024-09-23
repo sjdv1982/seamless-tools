@@ -74,3 +74,4 @@ hashserver/hash_file_response.py
 hashserver/hashserver.py
 database/database.Dockerfile
 database/database.py
+database/database_models.py
