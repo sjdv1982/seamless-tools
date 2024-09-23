@@ -61,6 +61,10 @@ fi
 if [ -z "$SEAMLESS_READ_BUFFER_FOLDERS" ]; then
     SEAMLESS_READ_BUFFER_FOLDERS=""
 fi
+
+abs_hashserver_dir=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]) if len(sys.argv) > 1 else '')" ${SEAMLESS_HASHSERVER_DIRECTORY})
+abs_db_dir=$(python -c "import sys, os; print(os.path.realpath(sys.argv[1]) if len(sys.argv) > 1 else '')" ${SEAMLESS_DATABASE_DIRECTORY})
+
 set -u
 python -c 'import os, sys; inp=sys.argv[1].split(";"); _= exit(1) if len(inp) > 5 else None' $SEAMLESS_READ_BUFFER_FOLDERS "" || (echo 'SEAMLESS_READ_BUFFER_FOLDERS contains more than 5 folders, this cannot be mapped into the assistant Docker container'; exit 1)
 export READ_BUFFER_FOLDER_1=$(python -c 'import os, sys; inp=sys.argv[1].split(";"); print(os.path.abspath(inp[0]) if len(inp) > 0 else "")' $SEAMLESS_READ_BUFFER_FOLDERS "")
@@ -73,6 +77,10 @@ currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.ar
 cd $currdir
 set +u -e
 source ./seamless-fill-environment-variables
+
+
+export SEAMLESS_HASHSERVER_DIRECTORY=$abs_hashserver_dir
+export SEAMLESS_DATABASE_DIRECTORY=$abs_db_dir
 
 if [ -n "$SEAMLESS_CONFIG_DIRECTORY" ]; then
     if [ -z "$SEAMLESS_HASHSERVER_DIRECTORY" ]; then
