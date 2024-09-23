@@ -20,7 +20,7 @@ from seamless import Checksum
 
 import argparse
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(prog="seamless-upload", description="Upload files to a remote buffer server or folder")
 
 parser.add_argument(
     "-v",
@@ -48,6 +48,21 @@ parser.add_argument(
     help="""Destination directory.
     Normally, files and directories are uploaded to a buffer write server.
     However, you may instead provide a destination directory. This option implies -y.""",
+)
+
+parser.add_argument(
+    "--hardlink",
+    help="""Create hardlinks in the destination directory.
+    By default, files and directories get copied into the destination directory.
+    With this option, hardlinks are created instead.
+
+    WARNING: never modify the original file in-place!!!
+    Examples of in-place modification: 
+        - "rsync --in-place",
+        - appending to a file using ">>".
+    This will lead to checksum corruption!!
+    """,
+    action="store_true"
 )
 
 parser.add_argument(
@@ -83,6 +98,9 @@ for a in args.files_and_directories:
     if a.startswith("-"):
         err(f"Option {a} must be specified before upload targets")
 
+if args.hardlink and not args.dest:
+    err("--hardlink requires a destination folder")
+
 set_header("seamless-upload")
 verbosity = min(args.verbosity, 3)
 set_verbosity(verbosity)
@@ -100,7 +118,7 @@ if args.dest:
     os.environ.pop("SEAMLESS_WRITE_BUFFER_SERVER", None)
     os.environ.pop("SEAMLESS_WRITE_BUFFER_FOLDER", None)
     os.environ["SEAMLESS_READ_BUFFER_FOLDERS"] = args.dest
-    has_err = seamless.delegate(level=2)
+    has_err = seamless.delegate(level=1)
     if has_err:
         exit(1)
 else:
@@ -129,6 +147,7 @@ try:
         directories=directories,
         auto_confirm=args.auto_confirm,
         destination_folder=args.dest,
+        hardlink_destination=args.hardlink,
     )
 except SeamlessSystemExit as exc:
     err(*exc.args)
