@@ -1,8 +1,8 @@
 # version of meta.yaml for rattler-build. Keep in sync
 
 package:
-    name: seamless-cli-complement
-    version: "0.12"
+  name: seamless-cli-complement
+  version: "0.13"
 
 build:
   number: 1

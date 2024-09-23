@@ -1,11 +1,11 @@
 # version of meta.yaml for rattler-build. Keep in sync
 
 package:
-    name: seamless-cli
-    version: "0.12"
+  name: seamless-cli
+  version: "0.13"
 
 build:
-  number: 4
+  number: 1
   noarch: python
 
 requirements:

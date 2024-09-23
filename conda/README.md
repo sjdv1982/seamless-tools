@@ -3,9 +3,9 @@ How to build the CLI Conda packages
 
 The following conda packages are being built:
 
-- seamless-cli. The full command line tool package from ../seamless-cli . 
+- seamless-cli. The full command line tool package from ../seamless-cli .
     Invokes Docker, calling the underlying tools from the rpbs/seamless Docker image.
-- seamless-cli-bin. A re-implementation of a subset of seamless-cli, 
+- seamless-cli-bin. A re-implementation of a subset of seamless-cli,
     which does not invoke Docker, but calls the underlying tools directly.
     The following tools are unique to seamless-cli-bin: seamless-fairdir-add-distribution seamless-fairdir-build
 - seamless-scripts. The underlying tools invoked by seamless-cli-bin
@@ -22,15 +22,17 @@ OR seamless-framework + seamless-cli-bin + seamless-cli-complement + rpbs/seamle
 
 4. Do `conda activate seamless-build`. In case of `seamless-cli-bin`, go to /seamless/conda instead.
 
-5. Then launch `conda build -c conda-forge seamless-cli`. Note the output file (.tar.bz2).
+5. Then launch `conda build -c conda-forge seamless-cli`.
+In case of `seamless-cli-bin`, do `conda build -c conda-forge -c rpbs seamless-cli-bin`. Note the output file (.tar.bz2).
 If you forget it, run `conda build seamless-cli --output`
 
-*5a. Alternively, you can install and use `rattler-build`. It has a slightly different `meta.yaml` file called `recipe.yaml`. The command is as follows*: 
+*5a. Alternively, you can install and use `rattler-build`. It has a slightly different `meta.yaml` file called `recipe.yaml`. The command is as follows*:
 
 ```bash
 cd seamless-cli
 rattler-build build --output-dir /tmp/
 ```
+
 *And you will find the $filename.tar.bz2 file as /tmp/noarch/$filename.conda.*
 ***NOTE: As of May 2024, this generates a deficient package with no dependencies. Anaconda refuses to accept it.***
 
