@@ -10,10 +10,4 @@ set -u -e
 vault_dir=`python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' $1`
 shift 1
 
-docker run --rm \
-  $SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL \
-  -v $vault_dir:$vault_dir \
-  --workdir /cwd \
-  -u `id -u` \
-  --group-add users \
-  $SEAMLESS_DOCKER_IMAGE start.sh python3 /home/jovyan/seamless-scripts/utils/upload-vault.py $vault_dir $*
+$currdir/_seamless_run seamless-upload-vault $vault_dir $*

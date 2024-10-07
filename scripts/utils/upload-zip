@@ -21,7 +21,7 @@ except AssistantConnectionError:
 
 from seamless.checksum.buffer_cache import buffer_cache
 
-from seamless.highlevel import Context
+from seamless.workflow import Context
 
 ctx = Context()
 checksums = ctx.add_zip(args.zipfile, incref=True)

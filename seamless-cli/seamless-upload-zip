@@ -18,10 +18,4 @@ else
   cd ${zipfile_dir}
 fi
 
-docker run --rm \
-  $SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL \
-  -v `pwd`:/cwd \
-  --workdir /cwd \
-  -u `id -u` \
-  --group-add users \
-  $SEAMLESS_DOCKER_IMAGE start.sh python3 /home/jovyan/seamless-scripts/utils/upload-zip.py ${zipfile_name}
+$currdir/_seamless_run seamless-upload-zip ${zipfile_name}
