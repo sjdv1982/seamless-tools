@@ -3,8 +3,10 @@
 set -e
 
 currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
+if [ -z "$SEAMLESS_DOCKER_PUBLISH_SHARESERVER_PORTS" ]; then
+  $currdir/seamless-detect-used-ports 5813 5138
+fi
 source $currdir/seamless-fill-environment-variables
-$currdir/seamless-detect-used-ports 5813 5138
 
 function mapping() {
   python -c 'import sys
