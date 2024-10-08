@@ -135,6 +135,7 @@ using "seamless-upload"
 
 import os, sys, shutil
 import seamless, seamless.config
+from seamless import Checksum, Buffer
 from seamless.workflow.highlevel import (Context, Cell, Transformer, Module, Macro, 
                                 SimpleDeepCell, FolderCell, DeepCell, DeepFolderCell)
 
@@ -144,6 +145,8 @@ def pr(*args):
 _curr_delegation_level = seamless.config.get_delegation_level()
 if _curr_delegation_level is None:
     seamless.delegate(DELEGATION_LEVEL)
+    if DELEGATION_LEVEL == 4:
+        seamless.config.unblock_local()
 elif int(_curr_delegation_level) != DELEGATION_LEVEL:
     pr("DELEGATION_LEVEL overridden to {{}} by previous seamless.delegate() call".format(_curr_delegation_level))
     DELEGATION_LEVEL = int(_curr_delegation_level)

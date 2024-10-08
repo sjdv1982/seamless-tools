@@ -14,6 +14,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 import seamless
+from seamless import Checksum
 from seamless.config import AssistantConnectionError
 
 try:
@@ -53,7 +54,7 @@ If the directory contains flat checksum-named buffer files,
                 raise ValueError(msg) from None
     print("Added {} buffers".format(len(checksums)))
     for checksum in checksums:
-        buffer_cache.decref(bytes.fromhex(checksum))
+        buffer_cache.decref(Checksum(checksum).bytes())
 except ValueError:
     import traceback
 
