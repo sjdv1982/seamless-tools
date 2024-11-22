@@ -188,7 +188,9 @@ for pathnr, path in enumerate(paths):
             if not (parsed_checksum or args.directory) and not os.path.exists(
                 checksum_file
             ):
-                err(f"{index_err}, {checksum_file} does not exist")
+                err(
+                    f"{index_err}, {checksum_file} does not exist"  # pylint: disable=used-before-assignment
+                )
             if index_checksum is None:
                 index_checksum = read_checksum_file(checksum_file)
             if index_checksum is None:
@@ -242,7 +244,7 @@ for pathnr, path in enumerate(paths):
                         has_err = True
                         break
         if has_err:
-            err(maybe_err_msg)
+            err(maybe_err_msg)  # pylint: disable=possibly-used-before-assignment
         else:
             for k, cs in index_data.items():
                 kk = os.path.join(dirname, k)
