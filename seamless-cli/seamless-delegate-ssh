@@ -6,6 +6,7 @@ assistant=$1
 
 python3 -c '''
 assistants = [
+    "none",
     "micro-dask-assistant", "micro-dask-assistant-devel",
     "mini-dask-assistant", "mini-dask-assistant-devel",
     "minifront-dask-assistant", "minifront-dask-assistant-devel",
@@ -50,6 +51,7 @@ trap "echo exiting $pid_ssh_db $pid_ssh_hashserver; kill $pid_ssh_db $pid_ssh_ha
 sleep 1
 
 if [ $assistant != "none" ]; then
+    seamless-delegate-stop
     export DASK_SCHEDULER_PORT=5599
     ssh -L '*:'$DASK_SCHEDULER_PORT:localhost:$SEAMLESS_SSH_DASK_SCHEDULER_PORT -N $SEAMLESS_SSH_DASK_SCHEDULER_HOST &
     pid_ssh_dask_scheduler=$!
@@ -60,5 +62,7 @@ if [ $assistant != "none" ]; then
     $currdir/seamless-delegate-remote $assistant
 fi
 
-echo 'Delegation over SSH is active. Press Ctrl-C to end'
+echo '''Delegation over SSH is active. 
+In another terminal, you can use seamless, without special environment variables.
+Press Ctrl-C to end'''
 wait
