@@ -7,7 +7,7 @@ The following conda packages are being built:
     Invokes Docker, calling the underlying tools from the rpbs/seamless Docker image.
 - seamless-cli-bin. A re-implementation of a subset of seamless-cli,
     which does not invoke Docker, but calls the underlying tools directly.
-    The following tools are unique to seamless-cli-bin: seamless-fairdir-add-distribution seamless-fairdir-build
+    The following tools are unique to seamless-cli-bin: seamless-fairdir-add-distribution seamless-fairdir-build, seamless-multi, seamless-queue, seamless-queue-finish
 - seamless-scripts. The underlying tools invoked by seamless-cli-bin
 - seamless-cli-complement. The subset of seamless-cli that is *not* in seamless-cli-bin.
 
