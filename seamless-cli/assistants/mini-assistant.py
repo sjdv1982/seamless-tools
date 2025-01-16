@@ -142,7 +142,7 @@ def execute_in_docker(checksum, dunder, env, docker_conf, *, fingertip, scratch)
     docker_image = docker_conf["name"]
     if docker_image.find("seamless-devel") > -1:
         return execute_in_docker_devel(
-            checksum, dunder, env, docker_conf, scratch=scratch
+            checksum, dunder, env, docker_conf, fingertip=fingertip, scratch=scratch
         )
     try:
         dundercmd = ""
