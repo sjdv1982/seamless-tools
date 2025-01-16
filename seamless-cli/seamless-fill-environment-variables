@@ -99,7 +99,7 @@ export SEAMLESS_DOCKER_RUN_PARAMS_X_TRUSTED="""-v /var/run/docker.sock:/var/run/
 --group-add $(getent group docker | cut -d: -f3)"""
 
 export SEAMLESS_DOCKER_RUN_PARAMS_X_DEVEL='' 
-if [ "$SEAMLESS_DOCKER_IMAGE" == seamless-devel ]; then
+if [[ "$SEAMLESS_DOCKER_IMAGE" == seamless-devel* ]]; then
   if [ -z "$SEAMLESSDIR" ]; then
     echo 'SEAMLESSDIR undefined'
     exit 1
