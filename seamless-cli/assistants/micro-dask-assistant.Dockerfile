@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM rpbs/seamless:0.13
-RUN pip install "dask[distributed]" 'distributed>=2024.9.0' anyio 'tornado>=6.3' lz4 cloudpickle==3
+RUN pip install "dask[distributed]" 'distributed==2024.11.*' anyio 'tornado>=6.3' lz4 cloudpickle==3
 COPY micro-dask-assistant.py .
 CMD start.sh python -u micro-dask-assistant.py $DASK_SCHEDULER_ADDRESS --port $ASSISTANT_PORT --host $ASSISTANT_HOST
 HEALTHCHECK --interval=5s --timeout=2s --start-period=60s --retries=3 \
