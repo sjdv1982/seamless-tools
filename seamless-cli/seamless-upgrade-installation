@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+currdir=`python3 -c 'import os,sys;print(os.path.dirname(os.path.realpath(sys.argv[1])))' $0`
+cd $currdir
+source ./seamless-delegate-stop
+
+set -u -e
+
+docker pull rpbs/seamless
+cd delegate
+docker compose build hashserver database micro-assistant mini-assistant micro-dask-assistant mini-dask-assistant minifront-dask-assistant

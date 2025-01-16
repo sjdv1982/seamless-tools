@@ -44,3 +44,5 @@ fi
 
 docker compose stop
 docker container prune -f >& /dev/null
+
+cd $currdir

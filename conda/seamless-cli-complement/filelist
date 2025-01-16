@@ -33,6 +33,7 @@ seamless-run-safe
 seamless-run-safe-no-webserver
 seamless-shell-existing
 seamless-unify-webserver-ports
+seamless-upgrade-installation
 assistants/micro-assistant-devel.Dockerfile
 assistants/micro-assistant.Dockerfile
 assistants/micro-assistant.py
