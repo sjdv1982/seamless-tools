@@ -1,7 +1,7 @@
 FROM rpbs/seamless-deps:0.13
 LABEL author="Sjoerd de Vries <sjoerd.devries@loria.fr>"
 LABEL maintainer="Sjoerd de Vries <sjoerd.devries@loria.fr>"
-LABEL version="0.13"
+LABEL version="0.14"
 USER root
 RUN apt update && apt install less gcc g++ gfortran libjpeg9 gettext -y  # gettext for seamless-mode
 RUN cd /usr/local/src && apt install git -y && git clone https://github.com/sjdv1982/seamless.git --branch stable --depth 1 && rm seamless/.git -rf

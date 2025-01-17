@@ -10,3 +10,6 @@ set -u -e
 docker pull rpbs/seamless
 cd delegate
 docker compose build hashserver database micro-assistant mini-assistant micro-dask-assistant mini-dask-assistant minifront-dask-assistant
+
+conda update -c rpbs -c conda-forge seamless-cli -y
+
