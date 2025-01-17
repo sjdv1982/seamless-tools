@@ -8,7 +8,13 @@ source ./seamless-delegate-stop
 set -u -e
 
 docker pull rpbs/seamless
-cd delegate
+
+if [[ -e delegate ]]; then
+    cd delegate
+else
+    cd $CONDA_PREFIX/share/seamless-cli/delegate
+fi
+
 docker compose build hashserver database micro-assistant mini-assistant micro-dask-assistant mini-dask-assistant minifront-dask-assistant
 
 conda update -c rpbs -c conda-forge seamless-cli -y
