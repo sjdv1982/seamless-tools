@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rpbs/seamless:0.13
+FROM rpbs/seamless:0.14
 RUN pip install "dask[distributed]" 'distributed==2024.11.*' anyio 'tornado>=6.3' lz4 cloudpickle==3
 COPY mini-dask-assistant.py .
 CMD python -u mini-dask-assistant.py $DASK_SCHEDULER_ADDRESS --port $ASSISTANT_PORT --host $ASSISTANT_HOST
