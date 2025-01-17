@@ -2,7 +2,7 @@
 
 package:
   name: seamless-cli
-  version: "0.13"
+  version: "0.14"
 
 build:
   number: 1

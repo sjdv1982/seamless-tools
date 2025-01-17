@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rpbs/seamless:0.13
+FROM rpbs/seamless:0.14
 COPY mini-assistant.py .
 CMD start.sh python -u mini-assistant.py --port $ASSISTANT_PORT --host $ASSISTANT_HOST
 HEALTHCHECK --interval=5s --timeout=2s --start-period=30s --retries=3 \
