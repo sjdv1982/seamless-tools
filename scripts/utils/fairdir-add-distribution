@@ -27,7 +27,7 @@ import csv
 import sys
 import json
 from seamless import Checksum, Buffer
-from seamless.util import cson
+from seamless.util.cson import cson2json
 
 
 def err(*args, **kwargs):
@@ -183,7 +183,7 @@ distributions_file = os.path.join(FAIRDIR, "distributions", args.dataset_name + 
 if os.path.exists(distributions_file):
     with open(distributions_file) as f:
         # Load with CSON to be more robust towards manual editing
-        distributions = cson.load(f)
+        distributions = cson2json(f.read())
         assert isinstance(distributions, list)
 else:
     distributions = []
