@@ -13,7 +13,18 @@ from playhouse.sqlite_ext import JSONField
 def ChecksumField(*args, **kwargs):
     return FixedCharField(max_length=64, *args, **kwargs)
 
-_db = SqliteDatabase(None)
+
+_db = SqliteDatabase(
+    None,
+    pragmas={
+        "journal_mode": "wal",
+        "cache_size": -1 * 64000,  # 64MB
+        "foreign_keys": 1,
+        "ignore_check_constraints": 0,
+        "synchronous": 0,
+    },
+)
+
 
 class BaseModel(Model):
     class Meta:
@@ -188,7 +199,8 @@ for model_class in _model_classes:
     else:
         raise Exception
 
-def db_init(filename, init_parameters:dict=None, connection_parameters:dict=None):
+
+def db_init(filename, init_parameters: dict = None, connection_parameters: dict = None):
     if init_parameters is None:
         init_parameters = {}
     if connection_parameters is None:
@@ -196,5 +208,6 @@ def db_init(filename, init_parameters:dict=None, connection_parameters:dict=None
     _db.init(filename, **init_parameters)
     _db.connect(**connection_parameters)
     _db.create_tables(_model_classes, safe=True)
+
 
 db_atomic = _db.atomic
