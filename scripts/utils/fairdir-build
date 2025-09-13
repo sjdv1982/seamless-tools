@@ -242,6 +242,8 @@ def do_operation(cmd, source_celltype, target_celltype, ops):
                 if result_buf is None:
                     result_buf = buffer_cache.get_buffer(result_checksum)
                 assert result_buf is not None
+            else:
+                result_buf = buf
 
             old_result_buffer_info = get_buffer_info(result_checksum)
             result_buffer_info = copy.deepcopy(old_result_buffer_info)
@@ -428,7 +430,10 @@ afname = args.actionfile.name
 if afname.endswith(".json"):
     loader = json.load
 elif afname.endswith(".cson"):
-    loader = cson.load
+    
+    def loader(file):
+        return cson.cson2json(file.read())
+    
 elif afname.endswith(".yaml"):
 
     def loader(file):
