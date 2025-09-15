@@ -18,7 +18,7 @@ OR seamless-framework + seamless-cli-bin + seamless-cli-complement + rpbs/seamle
 
 2. Update the version number in `*/meta.yaml`. Git commit and tag.
 
-3. If you didn't do already, create a conda environment to build and upload conda environments: `mamba create -n seamless-build -c conda-forge -c rpbs -c main silk seamless-cli anaconda-client conda-build -y`
+3. If you didn't do already, create a conda environment to build and upload conda environments: `mamba create -n seamless-build -c conda-forge -c rpbs silk seamless-cli anaconda-client conda-build -y`
 
 4. Do `conda activate seamless-build`. In case of `seamless-cli-bin`, go to /seamless/conda instead.
 

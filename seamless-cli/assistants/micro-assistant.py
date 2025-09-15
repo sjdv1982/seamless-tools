@@ -1,3 +1,5 @@
+# TODO: RESPECT --ncores!!
+
 import asyncio
 import os
 import signal
